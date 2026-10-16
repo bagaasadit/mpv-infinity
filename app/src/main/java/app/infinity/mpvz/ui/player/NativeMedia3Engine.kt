@@ -143,15 +143,15 @@ class NativeMedia3Engine(context: Context) {
     .setLoadControl(
       DefaultLoadControl.Builder()
         .setBufferDurationsMs(
-          70_000,
-          120_000,
-          2_500,
-          5_000,
+          20_000,
+          45_000,
+          2_000,
+          4_000,
         )
-        .setBackBuffer(15_000, false)
-        // Set 1 GB RAM buffer ceiling and 70-second cushion for smooth 115 Mbps UHD remux playback
-        .setTargetBufferBytes(1024 * 1024 * 1024)
-        .setPrioritizeTimeOverSizeThresholds(true)
+        .setBackBuffer(10_000, false)
+        // Safe 192 MB RAM buffer ceiling within Android's 512 MB Dalvik/ART heap limit
+        .setTargetBufferBytes(192 * 1024 * 1024)
+        .setPrioritizeTimeOverSizeThresholds(false)
         .build(),
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
