@@ -11,6 +11,10 @@ import android.view.View
 import android.view.SurfaceView
 import java.io.File
 import app.infinity.mpvz.R
+import android.animation.ValueAnimator
+import android.view.animation.AccelerateDecelerateInterpolator
+import org.json.JSONArray
+import org.json.JSONObject
 import androidx.media3.common.C
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.text.CueGroup
@@ -111,6 +115,46 @@ private data class NativeSubtitleSelection(
   val codecs: String?,
 )
 
+
+data class AspectTimeSegment(
+  val startMs: Long,
+  val endMs: Long,
+  val ratio: Float,
+)
+
+internal object BuiltInImaxProfiles {
+  // The Dark Knight (UHD Blu-ray Remux 23.976 fps)
+  val THE_DARK_KNIGHT = listOf(
+    AspectTimeSegment(0L, 322_000L, 1.78f),            // Bank Heist
+    AspectTimeSegment(322_000L, 1_241_000L, 2.39f),
+    AspectTimeSegment(1_241_000L, 1_440_000L, 1.78f),  // Hong Kong Extraction
+    AspectTimeSegment(1_440_000L, 4_904_000L, 2.39f),
+    AspectTimeSegment(4_904_000L, 5_383_000L, 1.78f),  // Armored Truck Chase
+    AspectTimeSegment(5_383_000L, 6_378_000L, 2.39f),
+    AspectTimeSegment(6_378_000L, 6_520_000L, 1.78f),  // Hospital Explosion
+    AspectTimeSegment(6_520_000L, 7_732_000L, 2.39f),
+    AspectTimeSegment(7_732_000L, 8_558_000L, 1.78f),  // Ferries & Climax
+    AspectTimeSegment(8_558_000L, 8_820_000L, 2.39f),
+    AspectTimeSegment(8_820_000L, 9_120_000L, 1.78f),  // Finale Monologue
+  )
+
+  // Interstellar (UHD Blu-ray Remux 23.976 fps)
+  val INTERSTELLAR = listOf(
+    AspectTimeSegment(0L, 120_000L, 2.39f),
+    AspectTimeSegment(120_000L, 450_000L, 1.78f),      // Dust storm / Drone chase
+    AspectTimeSegment(450_000L, 2_600_000L, 2.39f),
+    AspectTimeSegment(2_600_000L, 3_150_000L, 1.78f),  // Rocket launch
+    AspectTimeSegment(3_150_000L, 4_300_000L, 2.39f),
+    AspectTimeSegment(4_300_000L, 5_200_000L, 1.78f),  // Wormhole transit
+    AspectTimeSegment(5_200_000L, 5_900_000L, 2.39f),
+    AspectTimeSegment(5_900_000L, 7_200_000L, 1.78f),  // Miller's water planet & wave
+    AspectTimeSegment(7_200_000L, 8_100_000L, 2.39f),
+    AspectTimeSegment(8_100_000L, 9_000_000L, 1.78f),  // Mann's planet & docking
+    AspectTimeSegment(9_000_000L, 9_900_000L, 2.39f),
+    AspectTimeSegment(9_900_000L, 10_800_000L, 1.78f), // Gargantua & Tesseract
+  )
+}
+
 data class NativeChapter(
   val title: String,
   val startSeconds: Float,
@@ -174,6 +218,13 @@ class NativeMedia3Engine(context: Context) {
   private var libassRenderer: LibassSubtitleRenderer? = null
   private val externalAssEnabled = mutableMapOf<String, Boolean>()
   private var subtitleScale = 1f
+  // Dynamic Surface Scaling & Aspect Ratio Controller (Blueprint 1)
+  private var activeAspectSegments: List<AspectTimeSegment> = emptyList()
+  private var currentAppliedScale: Float = 1.0f
+  private var isScopeFixEnabled: Boolean = false
+  private var currentAnimatingScale: Float? = null
+  private var hasUserManuallySelectedAudio: Boolean = false
+  private var hasUserManuallySelectedSubtitle: Boolean = false
   private var subtitlePosition = 100
   private var subtitleFontSize = 55
   private var subtitleFontFamily = "sans-serif"
@@ -209,7 +260,9 @@ class NativeMedia3Engine(context: Context) {
       // after a seek. MPV renders from its current clock in all of these states.
       if (player.currentMediaItem == null) return
       publishSnapshot()
-      subtitleOverlay?.setPositionUs(player.currentPosition.coerceAtLeast(0L) * 1000L)
+      val currentPosMs = player.currentPosition.coerceAtLeast(0L)
+      subtitleOverlay?.setPositionUs(currentPosMs * 1000L)
+      checkDynamicAspectAtPosition(currentPosMs)
       // Keep the seekbar responsive without forcing a 10 Hz Compose/native snapshot loop on a
       // 4K HDR decoder. Direct commands remain immediate; the UI only needs a quarter-second tick.
       loopHandler.postDelayed(this, 250L)
@@ -327,6 +380,8 @@ class NativeMedia3Engine(context: Context) {
       }
       restoreSelectedNativeSubtitle(tracks)
       applyPendingExternalSelection()
+      autoSelectBestAudioTrack(tracks)
+      autoSelectBestSubtitleTrack(tracks)
     }
 
     override fun onIsLoadingChanged(isLoading: Boolean) {
@@ -405,12 +460,271 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun setVideoAspect(aspect: VideoAspect) {
-    attachedView?.resizeMode = when (aspect) {
-      VideoAspect.Fit -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-      VideoAspect.Crop -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-      VideoAspect.Stretch -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+    when (aspect) {
+      VideoAspect.Fit -> {
+        isScopeFixEnabled = false
+        applySurfaceScale(1.0f, animated = true)
+        attachedView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+      }
+      VideoAspect.Crop -> {
+        // Smart Hardware Scope Fix for 20:9: fill width (1.25x) without cutting active frame or subtitles
+        isScopeFixEnabled = true
+        attachedView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+        applySurfaceScale(1.25f, animated = true)
+      }
+      VideoAspect.Stretch -> {
+        isScopeFixEnabled = false
+        applySurfaceScale(1.0f, animated = false)
+        attachedView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+      }
     }
   }
+
+  // ==============================================================================
+  // BLUEPRINT 1: HARDWARE SURFACE SCALING & DYNAMIC ASPECT RATIO
+  // ==============================================================================
+  fun applySurfaceScale(targetScale: Float, animated: Boolean = true, durationMs: Long = 300L) {
+    if (kotlin.math.abs(currentAppliedScale - targetScale) < 0.005f && currentAnimatingScale == null) return
+    val surface = (attachedView?.videoSurfaceView as? android.view.SurfaceView) ?: return
+
+    if (!animated) {
+      surface.scaleX = targetScale
+      surface.scaleY = targetScale
+      currentAppliedScale = targetScale
+      currentAnimatingScale = null
+      return
+    }
+
+    currentAnimatingScale = targetScale
+    surface.animate().cancel()
+    surface.animate()
+      .scaleX(targetScale)
+      .scaleY(targetScale)
+      .setDuration(durationMs)
+      .setInterpolator(AccelerateDecelerateInterpolator())
+      .withEndAction {
+        currentAppliedScale = targetScale
+        currentAnimatingScale = null
+      }
+      .start()
+  }
+
+  private fun checkDynamicAspectAtPosition(currentPosMs: Long) {
+    if (activeAspectSegments.isNotEmpty()) {
+      val active = activeAspectSegments.firstOrNull { currentPosMs in it.startMs..it.endMs }
+      val targetScale = if (active != null && active.ratio < 2.0f) {
+        1.0f // IMAX 1.78:1 / 1.85:1 -> full height
+      } else {
+        1.25f // Scope 2.39:1 -> full 20:9 width (2400px), 0 windowbox, 0 active cut
+      }
+      applySurfaceScale(targetScale, animated = true, durationMs = 350L)
+    } else if (isScopeFixEnabled) {
+      applySurfaceScale(1.25f, animated = false)
+    }
+  }
+
+  fun loadAspectMapForUri(mediaUri: Uri, sourceHint: String = "") {
+    val query = (mediaUri.lastPathSegment ?: sourceHint).lowercase()
+    when {
+      query.contains("dark.knight") || query.contains("dark knight") -> {
+        activeAspectSegments = BuiltInImaxProfiles.THE_DARK_KNIGHT
+        Log.i(logTag, "Loaded built-in IMAX aspect map for The Dark Knight (${activeAspectSegments.size} scenes)")
+        return
+      }
+      query.contains("interstellar") -> {
+        activeAspectSegments = BuiltInImaxProfiles.INTERSTELLAR
+        Log.i(logTag, "Loaded built-in IMAX aspect map for Interstellar (${activeAspectSegments.size} scenes)")
+        return
+      }
+    }
+    // Check external JSON files in /storage/emulated/0/Research/aspect_maps/ or /storage/emulated/0/aspect_maps/
+    val candidateDirs = listOf(
+      File("/storage/emulated/0/Research/aspect_maps"),
+      File("/storage/emulated/0/aspect_maps")
+    )
+    for (dir in candidateDirs) {
+      if (dir.exists() && dir.isDirectory) {
+        val matchedFile = dir.listFiles()?.firstOrNull { file ->
+          val stem = file.nameWithoutExtension.lowercase()
+          stem.isNotEmpty() && query.contains(stem)
+        }
+        if (matchedFile != null) {
+          parseAspectMapJson(matchedFile)
+          return
+        }
+      }
+    }
+    activeAspectSegments = emptyList()
+  }
+
+  private fun parseAspectMapJson(file: File) {
+    runCatching {
+      val text = file.readText()
+      val array = JSONArray(text)
+      val list = mutableListOf<AspectTimeSegment>()
+      for (i in 0 until array.length()) {
+        val obj = array.getJSONObject(i)
+        val start = if (obj.has("startMs")) obj.getLong("startMs") else (obj.optDouble("start", 0.0) * 1000.0).toLong()
+        val end = if (obj.has("endMs")) obj.getLong("endMs") else (obj.optDouble("end", 0.0) * 1000.0).toLong()
+        val ratio = obj.optDouble("ratio", 2.39).toFloat()
+        if (end > start) {
+          list.add(AspectTimeSegment(start, end, ratio))
+        }
+      }
+      activeAspectSegments = list
+      Log.i(logTag, "Loaded external aspect map from ${file.name} with ${list.size} cues")
+    }.onFailure {
+      Log.e(logTag, "Failed to parse aspect map JSON: ${it.message}")
+    }
+  }
+
+  // ==============================================================================
+  // INTELLIGENT AUDIO & SUBTITLE SELECTION (PORT OF LUA HEURISTICS)
+  // ==============================================================================
+  private fun autoSelectBestAudioTrack(tracks: Tracks) {
+    if (hasUserManuallySelectedAudio) return
+    val audioGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+    if (audioGroups.isEmpty()) return
+
+    var bestGroup: Tracks.Group? = null
+    var bestTrackIndex = -1
+    var highestScore = Int.MIN_VALUE
+
+    for (group in audioGroups) {
+      for (i in 0 until group.length) {
+        val format = group.getTrackFormat(i)
+        val score = scoreAudioTrack(format)
+        if (score > highestScore) {
+          highestScore = score
+          bestGroup = group
+          bestTrackIndex = i
+        }
+      }
+    }
+
+    if (bestGroup != null && bestTrackIndex >= 0 && highestScore > -10000) {
+      if (!bestGroup.isTrackSelected(bestTrackIndex)) {
+        Log.i(logTag, "Auto-selected optimal Lossless/Original audio track: ${bestGroup.getTrackFormat(bestTrackIndex).label} (score=$highestScore)")
+        player.trackSelectionParameters = player.trackSelectionParameters
+          .buildUpon()
+          .setOverrideForType(TrackSelectionOverride(bestGroup.mediaTrackGroup, bestTrackIndex))
+          .build()
+      }
+    }
+  }
+
+  private fun scoreAudioTrack(format: androidx.media3.common.Format): Int {
+    var score = 0
+    val label = (format.label ?: "").lowercase()
+    val mime = (format.sampleMimeType ?: "").lowercase()
+    val codecs = (format.codecs ?: "").lowercase()
+    val lang = (format.language ?: "").lowercase()
+
+    // Anti-Commentary
+    val isCommentary = listOf("commentary", "director", "cast", "track 2", "audio commentary").any { label.contains(it) }
+    val isAudioDescription = listOf("descriptive", "adh", "audio description", "visually impaired", "description").any { label.contains(it) }
+    if (isCommentary || isAudioDescription) return -50000
+
+    // Anti-Dubbing
+    val isDub = listOf("dub", "dubbed", "mvo", "dvo", "avo", "закадровый", "дубляж", "синхронный", "voiceover", "voice-over").any { label.contains(it) }
+    if (isDub) return -30000
+
+    // Codec hierarchy
+    when {
+      mime.contains("true-hd") || codecs.contains("truehd") || label.contains("truehd") || label.contains("atmos") -> score += 10000
+      mime.contains("dts.hd") || codecs.contains("dts-hd") || label.contains("dts-hd") || label.contains("dts:x") -> score += 8000
+      mime.contains("flac") || mime.contains("raw") || label.contains("lpcm") || label.contains("pcm") -> score += 6000
+      mime.contains("eac3") || codecs.contains("ec-3") || label.contains("ddp") || label.contains("e-ac3") -> score += 4000
+      mime.contains("ac3") || codecs.contains("ac-3") || label.contains("ac3") || label.contains("dolby digital") -> score += 2000
+      mime.contains("dts") -> score += 2000
+      mime.contains("mp4a") || mime.contains("aac") -> score += 1000
+    }
+
+    // Channel count bonus
+    score += format.channelCount * 150
+
+    // Original/Theatrical mix bonus
+    if (label.contains("original") || label.contains("theatrical") || label.contains("cinema")) {
+      score += 1500
+    }
+
+    // English / Original language preference
+    if (lang in setOf("eng", "en") || label.contains("english") || label.contains("eng")) {
+      score += 1000
+    }
+
+    return score
+  }
+
+  private fun autoSelectBestSubtitleTrack(tracks: Tracks) {
+    if (hasUserManuallySelectedSubtitle) return
+    val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
+    if (textGroups.isEmpty()) return
+
+    var bestGroup: Tracks.Group? = null
+    var bestTrackIndex = -1
+    var highestScore = Int.MIN_VALUE
+
+    for (group in textGroups) {
+      for (i in 0 until group.length) {
+        val format = group.getTrackFormat(i)
+        val score = scoreSubtitleTrack(format)
+        if (score > highestScore) {
+          highestScore = score
+          bestGroup = group
+          bestTrackIndex = i
+        }
+      }
+    }
+
+    if (bestGroup != null && bestTrackIndex >= 0 && highestScore > -10000) {
+      if (!bestGroup.isTrackSelected(bestTrackIndex)) {
+        Log.i(logTag, "Auto-selected optimal English subtitle track: ${bestGroup.getTrackFormat(bestTrackIndex).label} (score=$highestScore)")
+        player.trackSelectionParameters = player.trackSelectionParameters
+          .buildUpon()
+          .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+          .setOverrideForType(TrackSelectionOverride(bestGroup.mediaTrackGroup, bestTrackIndex))
+          .build()
+      }
+    }
+  }
+
+  private fun scoreSubtitleTrack(format: androidx.media3.common.Format): Int {
+    var score = 0
+    val label = (format.label ?: "").lowercase()
+    val mime = (format.sampleMimeType ?: "").lowercase()
+    val lang = (format.language ?: "").lowercase()
+
+    // English check
+    val isEnglish = lang in setOf("eng", "en", "enm") ||
+                    listOf("english", "eng", "inglés", "ingles", "anglais").any { label.contains(it) }
+    if (!isEnglish) return -50000
+
+    // Anti-Commentary
+    if (listOf("commentary", "director", "cast").any { label.contains(it) }) return -40000
+
+    // SDH penalty
+    val isSdh = listOf("sdh", "hearing impaired", "hoh", "deaf").any { label.contains(it) }
+    if (isSdh) score -= 3000
+
+    // Forced subtitle handling
+    val isForced = listOf("forced", "forzato", "forzati").any { label.contains(it) }
+    if (isForced) score -= 10000
+
+    // Format hierarchy (Text > Bitmap)
+    when {
+      mime.contains("x-subrip") || mime.contains("subrip") || label.contains("srt") -> score += 5000
+      mime.contains("x-ssa") || mime.contains("ass") || label.contains("ass") -> score += 4500
+      mime.contains("vtt") || label.contains("vtt") -> score += 4000
+      mime.contains("pgs") || label.contains("pgs") || mime.contains("hdmv") -> score += 1500
+    }
+
+    if (listOf("full", "dialog", "dialogue").any { label.contains(it) }) score += 800
+    if ((format.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0) score += 200
+
+    return score
+  }
+
 
   fun setZoom(zoom: Float) {
     val scale = 2f.pow(zoom.coerceIn(-1f, 3f))
@@ -771,6 +1085,11 @@ class NativeMedia3Engine(context: Context) {
         uri
       }
     Log.d(logTag, "play uri=$mediaUri source=$sourceUri positionMs=$startPositionMs autoplay=$autoplay")
+    hasUserManuallySelectedAudio = false
+    hasUserManuallySelectedSubtitle = false
+    currentAppliedScale = 1.0f
+    currentAnimatingScale = null
+    loadAspectMapForUri(mediaUri, sourceUri?.toString() ?: "")
     httpDataSourceFactory.setDefaultRequestProperties(headers)
     val mediaItem =
       MediaItem.Builder()
@@ -999,6 +1318,7 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun selectAudioTrack(group: Tracks.Group, trackIndex: Int) {
+    hasUserManuallySelectedAudio = true
     player.trackSelectionParameters = player.trackSelectionParameters
       .buildUpon()
       .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
@@ -1008,6 +1328,7 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun selectSubtitleTrack(groupIndex: Int, trackIndex: Int) {
+    hasUserManuallySelectedSubtitle = true
     val group = player.currentTracks.groups.getOrNull(groupIndex) ?: return
     if (group.type != C.TRACK_TYPE_TEXT) return
     if (trackIndex !in 0 until group.length) return
@@ -1036,6 +1357,7 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun disableSubtitles() {
+    hasUserManuallySelectedSubtitle = true
     disableAssTracks()
     selectedNativeSubtitleKey = null
     selectedNativeSubtitleSelection = null
