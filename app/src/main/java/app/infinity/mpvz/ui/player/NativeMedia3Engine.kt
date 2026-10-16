@@ -436,7 +436,6 @@ class NativeMedia3Engine(context: Context) {
       surface.scaleY = 1f
     }
     lastAppliedResizeMode = null
-    loadAspectMapForUri(mediaUri, sourceUri?.toString() ?: "")
     attachedView?.resizeMode = when (aspect) {
       VideoAspect.Fit -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
       VideoAspect.Crop -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
@@ -954,6 +953,8 @@ class NativeMedia3Engine(context: Context) {
         uri
       }
     Log.d(logTag, "play uri=$mediaUri source=$sourceUri positionMs=$startPositionMs autoplay=$autoplay")
+    lastAppliedResizeMode = null
+    loadAspectMapForUri(mediaUri, sourceUri?.toString() ?: "")
     (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
       surface.scaleX = 1f
       surface.scaleY = 1f
