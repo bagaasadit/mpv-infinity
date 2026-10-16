@@ -57,7 +57,7 @@ private object NativeMedia3Cache {
   fun get(context: Context): SimpleCache {
     return cache ?: SimpleCache(
       java.io.File(context.applicationContext.cacheDir, "media3-native-cache"),
-      LeastRecentlyUsedCacheEvictor(512L * 1024L * 1024L),
+      LeastRecentlyUsedCacheEvictor(2048L * 1024L * 1024L),
       StandaloneDatabaseProvider(context.applicationContext),
     ).also { cache = it }
   }
@@ -143,15 +143,14 @@ class NativeMedia3Engine(context: Context) {
     .setLoadControl(
       DefaultLoadControl.Builder()
         .setBufferDurationsMs(
-          10_000,
+          70_000,
           120_000,
-          1_000,
-          3_000,
+          2_500,
+          5_000,
         )
-        .setBackBuffer(10_000, false)
-        // Keep a bounded amount of compressed media buffered; the disk cache handles repeated
-        // network reads without forcing a large memory buffer on 4K HDR devices.
-        .setTargetBufferBytes(128 * 1024 * 1024)
+        .setBackBuffer(15_000, false)
+        // Set 1 GB RAM buffer ceiling and 70-second cushion for smooth 115 Mbps UHD remux playback
+        .setTargetBufferBytes(1024 * 1024 * 1024)
         .setPrioritizeTimeOverSizeThresholds(true)
         .build(),
     )
