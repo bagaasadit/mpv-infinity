@@ -170,7 +170,7 @@ class NativeMedia3Engine(context: Context) {
     .setRenderersFactory(
       DefaultRenderersFactory(context.applicationContext)
         // Prefer platform hardware codecs for 4K/HDR; extensions remain available as fallback.
-        .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+        .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
         // Keep Media3's decoder fallback enabled. Some HDR profile/codec combinations on Xiaomi
         // devices reject the first candidate even though a compatible Media3 decoder is available.
         .setEnableDecoderFallback(true)
@@ -385,7 +385,7 @@ class NativeMedia3Engine(context: Context) {
     player.setAudioAttributes(
       AudioAttributes.Builder()
         .setUsage(C.USAGE_MEDIA)
-        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
         .build(),
       true,
     )
@@ -497,19 +497,21 @@ class NativeMedia3Engine(context: Context) {
     val isDub = listOf("dub", "dubbed", "mvo", "dvo", "avo", "закадровый", "дубляж", "синхронный", "voiceover", "voice-over").any { label.contains(it) }
     if (isDub) return -30000
 
-    // Codec hierarchy
+    // Codec hierarchy (with FfmpegAudioRenderer PREFERRED, TrueHD and DTS are 100% decoded in software by libffmpegJNI)
     when {
-      mime.contains("true-hd") || codecs.contains("truehd") || label.contains("truehd") || label.contains("atmos") -> score += 10000
-      mime.contains("dts.hd") || codecs.contains("dts-hd") || label.contains("dts-hd") || label.contains("dts:x") -> score += 8000
-      mime.contains("flac") || mime.contains("raw") || label.contains("lpcm") || label.contains("pcm") -> score += 6000
-      mime.contains("eac3") || codecs.contains("ec-3") || label.contains("ddp") || label.contains("e-ac3") -> score += 4000
-      mime.contains("ac3") || codecs.contains("ac-3") || label.contains("ac3") || label.contains("dolby digital") -> score += 2000
-      mime.contains("dts") -> score += 2000
-      mime.contains("mp4a") || mime.contains("aac") -> score += 1000
+      // Lossless Master Audio (FraMeSToR TrueHD Atmos & DTS-HD MA)
+      mime.contains("true-hd") || codecs.contains("truehd") || label.contains("truehd") -> score += 10000
+      mime.contains("dts.hd") || codecs.contains("dts-hd") || label.contains("dts-hd") || label.contains("dts:x") -> score += 9000
+      mime.contains("flac") || mime.contains("raw") || label.contains("lpcm") || label.contains("pcm") -> score += 8000
+      mime.contains("eac3") || codecs.contains("ec-3") || label.contains("ddp") || label.contains("e-ac3") || label.contains("atmos") -> score += 7000
+      mime.contains("dts") -> score += 6000
+      mime.contains("ac3") || codecs.contains("ac-3") || label.contains("ac3") || label.contains("dolby digital") -> score += 5000
+      mime.contains("opus") -> score += 4000
+      mime.contains("mp4a") || mime.contains("aac") -> score += 3000
     }
 
-    // Channel count bonus
-    score += format.channelCount * 150
+    // Channel count bonus (multichannel audio downmixed cleanly by AudioFlinger)
+    score += (format.channelCount.coerceIn(1, 8)) * 100
 
     // Original/Theatrical mix bonus
     if (label.contains("original") || label.contains("theatrical") || label.contains("cinema")) {
