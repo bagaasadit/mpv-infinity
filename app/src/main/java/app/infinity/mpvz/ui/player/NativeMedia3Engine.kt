@@ -11,8 +11,6 @@ import android.view.View
 import android.view.SurfaceView
 import java.io.File
 import app.infinity.mpvz.R
-import android.animation.ValueAnimator
-import android.view.animation.AccelerateDecelerateInterpolator
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.media3.common.C
@@ -115,45 +113,11 @@ private data class NativeSubtitleSelection(
   val codecs: String?,
 )
 
-
 data class AspectTimeSegment(
   val startMs: Long,
   val endMs: Long,
   val ratio: Float,
 )
-
-internal object BuiltInImaxProfiles {
-  // The Dark Knight (UHD Blu-ray Remux 23.976 fps)
-  val THE_DARK_KNIGHT = listOf(
-    AspectTimeSegment(0L, 322_000L, 1.78f),            // Bank Heist
-    AspectTimeSegment(322_000L, 1_241_000L, 2.39f),
-    AspectTimeSegment(1_241_000L, 1_440_000L, 1.78f),  // Hong Kong Extraction
-    AspectTimeSegment(1_440_000L, 4_904_000L, 2.39f),
-    AspectTimeSegment(4_904_000L, 5_383_000L, 1.78f),  // Armored Truck Chase
-    AspectTimeSegment(5_383_000L, 6_378_000L, 2.39f),
-    AspectTimeSegment(6_378_000L, 6_520_000L, 1.78f),  // Hospital Explosion
-    AspectTimeSegment(6_520_000L, 7_732_000L, 2.39f),
-    AspectTimeSegment(7_732_000L, 8_558_000L, 1.78f),  // Ferries & Climax
-    AspectTimeSegment(8_558_000L, 8_820_000L, 2.39f),
-    AspectTimeSegment(8_820_000L, 9_120_000L, 1.78f),  // Finale Monologue
-  )
-
-  // Interstellar (UHD Blu-ray Remux 23.976 fps)
-  val INTERSTELLAR = listOf(
-    AspectTimeSegment(0L, 120_000L, 2.39f),
-    AspectTimeSegment(120_000L, 450_000L, 1.78f),      // Dust storm / Drone chase
-    AspectTimeSegment(450_000L, 2_600_000L, 2.39f),
-    AspectTimeSegment(2_600_000L, 3_150_000L, 1.78f),  // Rocket launch
-    AspectTimeSegment(3_150_000L, 4_300_000L, 2.39f),
-    AspectTimeSegment(4_300_000L, 5_200_000L, 1.78f),  // Wormhole transit
-    AspectTimeSegment(5_200_000L, 5_900_000L, 2.39f),
-    AspectTimeSegment(5_900_000L, 7_200_000L, 1.78f),  // Miller's water planet & wave
-    AspectTimeSegment(7_200_000L, 8_100_000L, 2.39f),
-    AspectTimeSegment(8_100_000L, 9_000_000L, 1.78f),  // Mann's planet & docking
-    AspectTimeSegment(9_000_000L, 9_900_000L, 2.39f),
-    AspectTimeSegment(9_900_000L, 10_800_000L, 1.78f), // Gargantua & Tesseract
-  )
-}
 
 data class NativeChapter(
   val title: String,
@@ -187,15 +151,15 @@ class NativeMedia3Engine(context: Context) {
     .setLoadControl(
       DefaultLoadControl.Builder()
         .setBufferDurationsMs(
-          20_000,
-          45_000,
-          2_000,
-          4_000,
+          50_000,                  // 50s robust buffer cushion for 115 Mbps streams
+          120_000,                 // 120s maximum buffer
+          2_500,                   // Quick start in 2.5s
+          5_000,                   // 5s cushion after any rebuffering
         )
-        .setBackBuffer(10_000, false)
-        // Safe 192 MB RAM buffer ceiling within Android's 512 MB Dalvik/ART heap limit
-        .setTargetBufferBytes(192 * 1024 * 1024)
-        .setPrioritizeTimeOverSizeThresholds(false)
+        .setBackBuffer(15_000, false)
+        // 256 MB RAM buffer ceiling safe within Dalvik heap limit
+        .setTargetBufferBytes(256 * 1024 * 1024)
+        .setPrioritizeTimeOverSizeThresholds(true)
         .build(),
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -218,13 +182,9 @@ class NativeMedia3Engine(context: Context) {
   private var libassRenderer: LibassSubtitleRenderer? = null
   private val externalAssEnabled = mutableMapOf<String, Boolean>()
   private var subtitleScale = 1f
-  // Dynamic Surface Scaling & Aspect Ratio Controller (Blueprint 1)
+  // Aspect Map (JSON) Controller for Shifting IMAX Films
   private var activeAspectSegments: List<AspectTimeSegment> = emptyList()
-  private var currentAppliedScale: Float = 1.0f
-  private var isScopeFixEnabled: Boolean = false
-  private var currentAnimatingScale: Float? = null
-  private var hasUserManuallySelectedAudio: Boolean = false
-  private var hasUserManuallySelectedSubtitle: Boolean = false
+  private var lastAppliedResizeMode: Int? = null
   private var subtitlePosition = 100
   private var subtitleFontSize = 55
   private var subtitleFontFamily = "sans-serif"
@@ -262,7 +222,18 @@ class NativeMedia3Engine(context: Context) {
       publishSnapshot()
       val currentPosMs = player.currentPosition.coerceAtLeast(0L)
       subtitleOverlay?.setPositionUs(currentPosMs * 1000L)
-      checkDynamicAspectAtPosition(currentPosMs)
+      if (activeAspectSegments.isNotEmpty()) {
+        val active = activeAspectSegments.firstOrNull { currentPosMs in it.startMs..it.endMs }
+        val targetMode = if (active != null && active.ratio < 2.0f) {
+          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT // IMAX: 100% full height, 0% frame cut
+        } else {
+          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM // Scope: fills 20:9 width
+        }
+        if (lastAppliedResizeMode != targetMode) {
+          lastAppliedResizeMode = targetMode
+          attachedView?.post { attachedView?.resizeMode = targetMode }
+        }
+      }
       // Keep the seekbar responsive without forcing a 10 Hz Compose/native snapshot loop on a
       // 4K HDR decoder. Direct commands remain immediate; the UI only needs a quarter-second tick.
       loopHandler.postDelayed(this, 250L)
@@ -460,127 +431,25 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun setVideoAspect(aspect: VideoAspect) {
-    when (aspect) {
-      VideoAspect.Fit -> {
-        isScopeFixEnabled = false
-        applySurfaceScale(1.0f, animated = true)
-        attachedView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-      }
-      VideoAspect.Crop -> {
-        // Smart Hardware Scope Fix for 20:9: fill width (1.25x) without cutting active frame or subtitles
-        isScopeFixEnabled = true
-        attachedView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-        applySurfaceScale(1.25f, animated = true)
-      }
-      VideoAspect.Stretch -> {
-        isScopeFixEnabled = false
-        applySurfaceScale(1.0f, animated = false)
-        attachedView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-      }
+    (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
+      surface.scaleX = 1f
+      surface.scaleY = 1f
     }
-  }
-
-  // ==============================================================================
-  // BLUEPRINT 1: HARDWARE SURFACE SCALING & DYNAMIC ASPECT RATIO
-  // ==============================================================================
-  fun applySurfaceScale(targetScale: Float, animated: Boolean = true, durationMs: Long = 300L) {
-    if (kotlin.math.abs(currentAppliedScale - targetScale) < 0.005f && currentAnimatingScale == null) return
-    val surface = (attachedView?.videoSurfaceView as? android.view.SurfaceView) ?: return
-
-    if (!animated) {
-      surface.scaleX = targetScale
-      surface.scaleY = targetScale
-      currentAppliedScale = targetScale
-      currentAnimatingScale = null
-      return
-    }
-
-    currentAnimatingScale = targetScale
-    surface.animate().cancel()
-    surface.animate()
-      .scaleX(targetScale)
-      .scaleY(targetScale)
-      .setDuration(durationMs)
-      .setInterpolator(AccelerateDecelerateInterpolator())
-      .withEndAction {
-        currentAppliedScale = targetScale
-        currentAnimatingScale = null
-      }
-      .start()
-  }
-
-  private fun checkDynamicAspectAtPosition(currentPosMs: Long) {
-    if (activeAspectSegments.isNotEmpty()) {
-      val active = activeAspectSegments.firstOrNull { currentPosMs in it.startMs..it.endMs }
-      val targetScale = if (active != null && active.ratio < 2.0f) {
-        1.0f // IMAX 1.78:1 / 1.85:1 -> full height
-      } else {
-        1.25f // Scope 2.39:1 -> full 20:9 width (2400px), 0 windowbox, 0 active cut
-      }
-      applySurfaceScale(targetScale, animated = true, durationMs = 350L)
-    } else if (isScopeFixEnabled) {
-      applySurfaceScale(1.25f, animated = false)
-    }
-  }
-
-  fun loadAspectMapForUri(mediaUri: Uri, sourceHint: String = "") {
-    val query = (mediaUri.lastPathSegment ?: sourceHint).lowercase()
-    when {
-      query.contains("dark.knight") || query.contains("dark knight") -> {
-        activeAspectSegments = BuiltInImaxProfiles.THE_DARK_KNIGHT
-        Log.i(logTag, "Loaded built-in IMAX aspect map for The Dark Knight (${activeAspectSegments.size} scenes)")
-        return
-      }
-      query.contains("interstellar") -> {
-        activeAspectSegments = BuiltInImaxProfiles.INTERSTELLAR
-        Log.i(logTag, "Loaded built-in IMAX aspect map for Interstellar (${activeAspectSegments.size} scenes)")
-        return
-      }
-    }
-    // Check external JSON files in /storage/emulated/0/Research/aspect_maps/ or /storage/emulated/0/aspect_maps/
-    val candidateDirs = listOf(
-      File("/storage/emulated/0/Research/aspect_maps"),
-      File("/storage/emulated/0/aspect_maps")
-    )
-    for (dir in candidateDirs) {
-      if (dir.exists() && dir.isDirectory) {
-        val matchedFile = dir.listFiles()?.firstOrNull { file ->
-          val stem = file.nameWithoutExtension.lowercase()
-          stem.isNotEmpty() && query.contains(stem)
-        }
-        if (matchedFile != null) {
-          parseAspectMapJson(matchedFile)
-          return
-        }
-      }
-    }
-    activeAspectSegments = emptyList()
-  }
-
-  private fun parseAspectMapJson(file: File) {
-    runCatching {
-      val text = file.readText()
-      val array = JSONArray(text)
-      val list = mutableListOf<AspectTimeSegment>()
-      for (i in 0 until array.length()) {
-        val obj = array.getJSONObject(i)
-        val start = if (obj.has("startMs")) obj.getLong("startMs") else (obj.optDouble("start", 0.0) * 1000.0).toLong()
-        val end = if (obj.has("endMs")) obj.getLong("endMs") else (obj.optDouble("end", 0.0) * 1000.0).toLong()
-        val ratio = obj.optDouble("ratio", 2.39).toFloat()
-        if (end > start) {
-          list.add(AspectTimeSegment(start, end, ratio))
-        }
-      }
-      activeAspectSegments = list
-      Log.i(logTag, "Loaded external aspect map from ${file.name} with ${list.size} cues")
-    }.onFailure {
-      Log.e(logTag, "Failed to parse aspect map JSON: ${it.message}")
+    lastAppliedResizeMode = null
+    loadAspectMapForUri(mediaUri, sourceUri?.toString() ?: "")
+    attachedView?.resizeMode = when (aspect) {
+      VideoAspect.Fit -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+      VideoAspect.Crop -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+      VideoAspect.Stretch -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
     }
   }
 
   // ==============================================================================
   // INTELLIGENT AUDIO & SUBTITLE SELECTION (PORT OF LUA HEURISTICS)
   // ==============================================================================
+  private var hasUserManuallySelectedAudio: Boolean = false
+  private var hasUserManuallySelectedSubtitle: Boolean = false
+
   private fun autoSelectBestAudioTrack(tracks: Tracks) {
     if (hasUserManuallySelectedAudio) return
     val audioGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
@@ -1085,11 +954,10 @@ class NativeMedia3Engine(context: Context) {
         uri
       }
     Log.d(logTag, "play uri=$mediaUri source=$sourceUri positionMs=$startPositionMs autoplay=$autoplay")
-    hasUserManuallySelectedAudio = false
-    hasUserManuallySelectedSubtitle = false
-    currentAppliedScale = 1.0f
-    currentAnimatingScale = null
-    loadAspectMapForUri(mediaUri, sourceUri?.toString() ?: "")
+    (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
+      surface.scaleX = 1f
+      surface.scaleY = 1f
+    }
     httpDataSourceFactory.setDefaultRequestProperties(headers)
     val mediaItem =
       MediaItem.Builder()
@@ -1354,6 +1222,52 @@ class NativeMedia3Engine(context: Context) {
     selectedNativeSubtitleKey = groupIndex to trackIndex
     Log.i(logTag, "silent subtitle selection enabled group=${group.mediaTrackGroup.id} requested=$trackIndex")
     publishSnapshot()
+  }
+
+
+  // ==============================================================================
+  // ASPECT MAP JSON LOADER (FOR SHIFTING RATIO FILMS LIKE NOLAN / IMAX)
+  // ==============================================================================
+  private fun loadAspectMapForUri(mediaUri: Uri, sourceHint: String = "") {
+    val query = (mediaUri.lastPathSegment ?: sourceHint).lowercase()
+    val candidateDirs = listOf(
+      File("/storage/emulated/0/Research/aspect_maps"),
+      File("/storage/emulated/0/aspect_maps")
+    )
+    for (dir in candidateDirs) {
+      if (dir.exists() && dir.isDirectory) {
+        val matchedFile = dir.listFiles()?.firstOrNull { file ->
+          val stem = file.nameWithoutExtension.lowercase()
+          stem.isNotEmpty() && query.contains(stem)
+        }
+        if (matchedFile != null) {
+          parseAspectMapJson(matchedFile)
+          return
+        }
+      }
+    }
+    activeAspectSegments = emptyList()
+  }
+
+  private fun parseAspectMapJson(file: File) {
+    runCatching {
+      val text = file.readText()
+      val array = JSONArray(text)
+      val list = mutableListOf<AspectTimeSegment>()
+      for (i in 0 until array.length()) {
+        val obj = array.getJSONObject(i)
+        val start = if (obj.has("startMs")) obj.getLong("startMs") else (obj.optDouble("start", 0.0) * 1000.0).toLong()
+        val end = if (obj.has("endMs")) obj.getLong("endMs") else (obj.optDouble("end", 0.0) * 1000.0).toLong()
+        val ratio = obj.optDouble("ratio", 2.39).toFloat()
+        if (end > start) {
+          list.add(AspectTimeSegment(start, end, ratio))
+        }
+      }
+      activeAspectSegments = list
+      Log.i(logTag, "Loaded external aspect map from ${file.name} with ${list.size} cues")
+    }.onFailure {
+      Log.e(logTag, "Failed to parse aspect map JSON: ${it.message}")
+    }
   }
 
   fun disableSubtitles() {
