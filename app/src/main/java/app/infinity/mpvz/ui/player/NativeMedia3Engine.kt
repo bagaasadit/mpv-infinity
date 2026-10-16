@@ -35,6 +35,11 @@ import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.audio.ChannelMixingAudioProcessor
+import androidx.media3.common.audio.ChannelMixingMatrix
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.extractor.metadata.Chapter
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -168,11 +173,27 @@ class NativeMedia3Engine(context: Context) {
     .setStuckBufferingDetectionTimeoutMs(Int.MAX_VALUE)
     .setMediaSourceFactory(mediaSourceFactory)
     .setRenderersFactory(
-      DefaultRenderersFactory(context.applicationContext)
-        // Prefer platform hardware codecs for 4K/HDR; extensions remain available as fallback.
+      object : DefaultRenderersFactory(context.applicationContext) {
+        override fun buildAudioSink(
+          context: Context,
+          enableFloatOutput: Boolean,
+          enableAudioTrackPlaybackParams: Boolean
+        ): AudioSink? {
+          val channelMixingProcessor = ChannelMixingAudioProcessor().apply {
+            for (inChannels in 3..8) {
+              putChannelMixingMatrix(
+                ChannelMixingMatrix.createForConstantPower(inChannels, 2)
+              )
+            }
+          }
+          return DefaultAudioSink.Builder(context)
+            .setAudioProcessors(arrayOf(channelMixingProcessor))
+            .setEnableFloatOutput(false)
+            .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            .build()
+        }
+      }
         .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-        // Keep Media3's decoder fallback enabled. Some HDR profile/codec combinations on Xiaomi
-        // devices reject the first candidate even though a compatible Media3 decoder is available.
         .setEnableDecoderFallback(true)
         .withAssSupport(assHandler)
     )
@@ -448,11 +469,14 @@ class NativeMedia3Engine(context: Context) {
   // ==============================================================================
   private var hasUserManuallySelectedAudio: Boolean = false
   private var hasUserManuallySelectedSubtitle: Boolean = false
+  private var hasAutoSelectedAudioForCurrentItem: Boolean = false
+  private var hasAutoSelectedSubtitleForCurrentItem: Boolean = false
 
   private fun autoSelectBestAudioTrack(tracks: Tracks) {
-    if (hasUserManuallySelectedAudio) return
+    if (hasUserManuallySelectedAudio || hasAutoSelectedAudioForCurrentItem) return
     val audioGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
     if (audioGroups.isEmpty()) return
+    hasAutoSelectedAudioForCurrentItem = true
 
     var bestGroup: Tracks.Group? = null
     var bestTrackIndex = -1
@@ -527,9 +551,10 @@ class NativeMedia3Engine(context: Context) {
   }
 
   private fun autoSelectBestSubtitleTrack(tracks: Tracks) {
-    if (hasUserManuallySelectedSubtitle) return
+    if (hasUserManuallySelectedSubtitle || hasAutoSelectedSubtitleForCurrentItem) return
     val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
     if (textGroups.isEmpty()) return
+    hasAutoSelectedSubtitleForCurrentItem = true
 
     var bestGroup: Tracks.Group? = null
     var bestTrackIndex = -1
@@ -933,6 +958,10 @@ class NativeMedia3Engine(context: Context) {
   ) {
     _hasRenderedFirstFrame.value = false
     endedUri = null
+    hasAutoSelectedAudioForCurrentItem = false
+    hasAutoSelectedSubtitleForCurrentItem = false
+    hasUserManuallySelectedAudio = false
+    hasUserManuallySelectedSubtitle = false
     lastKnownDurationMs = 0L
     videoDecoderName = null
     audioDecoderName = null
@@ -1127,6 +1156,11 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun selectTrack(track: NativeTrack) {
+    if (track.type == C.TRACK_TYPE_AUDIO) {
+      hasUserManuallySelectedAudio = true
+    } else if (track.type == C.TRACK_TYPE_TEXT) {
+      hasUserManuallySelectedSubtitle = true
+    }
     val group = player.currentTracks.groups.getOrNull(track.groupIndex) ?: return
     if (group.type != track.type || track.trackIndex !in 0 until group.length) return
     if (track.type == C.TRACK_TYPE_TEXT) {
