@@ -47,7 +47,6 @@ import android.widget.Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
@@ -214,29 +213,6 @@ class PlayerActivity :
    * Observer for MPV events.
    */
   private val playerObserver by lazy { PlayerObserver(this) }
-
-  /**
-   * File picker launcher used when PlayerActivity is opened directly as an external player
-   * from the launcher icon without a media URI.
-   */
-  private val openDocumentLauncher =
-    registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-      if (uri != null) {
-        runCatching {
-          contentResolver.takePersistableUriPermission(
-            uri,
-            Intent.FLAG_GRANT_READ_URI_PERMISSION,
-          )
-        }
-        val playIntent = Intent(Intent.ACTION_VIEW, uri).apply {
-          setDataAndType(uri, contentResolver.getType(uri) ?: "video/*")
-          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        handleNewIntent(playIntent)
-      } else if (playlist.isEmpty() && !isNativeEngineActive() && !isReady) {
-        finish()
-      }
-    }
 
   /**
    * True when the current playback session was launched from the Secure Folder. Files hidden
@@ -1266,8 +1242,7 @@ class PlayerActivity :
       pendingSavedPlaylistSelection = null
       loadPlaylistItemInternal(playlistIndex, saveCurrentPlaybackState = false)
     } else if (!attachedToCurrentSession && !awaitingRoomPlaylistRestore) {
-      val playableUri = getPlayableUri(intent)
-      if (playableUri != null) {
+      getPlayableUri(intent)?.let { playableUri ->
         currentPlayableUri = playableUri
         isReady = false
         viewModel.onVideoLoadStarted()
@@ -1295,8 +1270,6 @@ class PlayerActivity :
             positionRestoreOverride = restoredAudioPlaybackSnapshot?.toPositionRestoreOverride(),
           )
         }
-      } else if (intent.action == Intent.ACTION_MAIN && playlist.isEmpty()) {
-        openDocumentLauncher.launch(arrayOf("video/*", "audio/*", "*/*"))
       }
     }
     setupCastPlayback()
@@ -5896,14 +5869,6 @@ class PlayerActivity :
     if (!ownsPlaybackSession()) return
 
     var intent = sourceIntent
-
-    // If launched/brought to front via home launcher without media
-    if (intent.action == Intent.ACTION_MAIN && intent.data == null) {
-      if (playlist.isEmpty() && !isReady && !isNativeEngineActive()) {
-        openDocumentLauncher.launch(arrayOf("video/*", "audio/*", "*/*"))
-      }
-      return
-    }
 
     // Transport intents control the existing session and must not replace its media/source intent.
     when (intent.action) {

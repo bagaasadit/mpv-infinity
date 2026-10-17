@@ -79,6 +79,7 @@ import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
 import app.infinity.mpvz.ui.browser.MainScreen
 import app.infinity.mpvz.ui.browser.NavigationBarState
+import app.infinity.mpvz.ui.home.PurePlayerHomeScreen
 import app.infinity.mpvz.ui.browser.components.MiniPlayer
 import app.infinity.mpvz.ui.player.NavigationAnimStyle
 import app.infinity.mpvz.ui.theme.DarkMode
@@ -567,7 +568,7 @@ class MainActivity : AppCompatActivity() {
    */
   @Composable
   fun Navigator() {
-    val backstack = rememberNavBackStack(MainScreen)
+    val backstack = rememberNavBackStack(PurePlayerHomeScreen)
 
     @Suppress("UNCHECKED_CAST")
     val typedBackstack = backstack as NavBackStack<Screen>
@@ -609,7 +610,7 @@ class MainActivity : AppCompatActivity() {
 
       LaunchedEffect(hasNavEntries) {
         if (!hasNavEntries) {
-          typedBackstack.add(MainScreen)
+          typedBackstack.add(PurePlayerHomeScreen)
         }
       }
       LaunchedEffect(openDownloadsFromIntent, hasNavEntries) {
