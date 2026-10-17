@@ -108,7 +108,7 @@ object PurePlayerHomeScreen : Screen {
               horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
               Image(
-                painter = painterResource(id = R.mipmap.ic_launcher),
+                painter = painterResource(id = R.drawable.ic_launcher_user_logo),
                 contentDescription = null,
                 modifier = Modifier
                   .size(32.dp)
