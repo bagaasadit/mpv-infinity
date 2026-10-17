@@ -1026,14 +1026,7 @@ private object NoOpAudiobookshelfServerDao : AudiobookshelfServerDao {
   override suspend fun deleteById(id: Long) {}
 }
 
-private object NoOpAudiobookDao : AudiobookDao() {
-  override fun observeLibrary(): Flow<List<Audiobook>> = emptyFlow()
-  override suspend fun getBook(id: Long): Audiobook? = null
-  override fun observeBook(id: Long): Flow<Audiobook?> = flowOf(null)
-  override suspend fun findBySource(sourceKey: String): Long? = null
-  override suspend fun insertBook(book: AudiobookEntity): Long = -1L
-  override suspend fun insertTracks(tracks: List<AudiobookTrackEntity>): List<Long> = emptyList()
-}
+private object NoOpAudiobookDao : AudiobookDao()
 
 private object NoOpDownloadItemDao : DownloadItemDao {
   override fun observeAll(): Flow<List<DownloadItemEntity>> = emptyFlow()
