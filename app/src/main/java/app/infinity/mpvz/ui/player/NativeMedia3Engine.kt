@@ -336,7 +336,10 @@ class NativeMedia3Engine(context: Context) {
         }
         if (lastAppliedResizeMode != targetMode) {
           lastAppliedResizeMode = targetMode
-          attachedView?.post { attachedView?.resizeMode = targetMode }
+          attachedView?.post {
+            attachedView?.resizeMode = targetMode
+            attachedView?.requestLayout()
+          }
         }
       }
       // Keep the seekbar responsive without forcing a 10 Hz Compose/native snapshot loop on a
@@ -1039,6 +1042,7 @@ class NativeMedia3Engine(context: Context) {
     headers: Map<String, String> = emptyMap(),
     mimeType: String? = null,
     sourceUri: Uri? = null,
+    sourceHint: String = "",
   ) {
     _hasRenderedFirstFrame.value = false
     endedUri = null
@@ -1067,9 +1071,22 @@ class NativeMedia3Engine(context: Context) {
       } else {
         uri
       }
-    Log.d(logTag, "play uri=$mediaUri source=$sourceUri positionMs=$startPositionMs autoplay=$autoplay")
+    Log.d(logTag, "play uri=$mediaUri source=$sourceUri hint=$sourceHint positionMs=$startPositionMs autoplay=$autoplay")
     lastAppliedResizeMode = null
-    loadAspectMapForUri(mediaUri, sourceUri?.toString() ?: "")
+    loadAspectMapForUri(mediaUri, sourceHint, sourceUri)
+    if (activeAspectSegments.isNotEmpty()) {
+      val initialActive = activeAspectSegments.firstOrNull { startPositionMs in it.startMs..it.endMs }
+      val initialMode = if (initialActive != null && initialActive.ratio < 2.0f) {
+        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+      } else {
+        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+      }
+      lastAppliedResizeMode = initialMode
+      attachedView?.post {
+        attachedView?.resizeMode = initialMode
+        attachedView?.requestLayout()
+      }
+    }
     (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
       surface.scaleX = 1f
       surface.scaleY = 1f
@@ -1349,25 +1366,62 @@ class NativeMedia3Engine(context: Context) {
   // ==============================================================================
   // ASPECT MAP JSON LOADER (FOR SHIFTING RATIO FILMS LIKE NOLAN / IMAX)
   // ==============================================================================
-  private fun loadAspectMapForUri(mediaUri: Uri, sourceHint: String = "") {
-    val query = (mediaUri.lastPathSegment ?: sourceHint).lowercase()
+  private fun loadAspectMapForUri(mediaUri: Uri, sourceHint: String = "", sourceUri: Uri? = null) {
+    val candidateNames = mutableListOf<String>()
+
+    fun extractDisplayName(u: Uri?): String? {
+      if (u == null) return null
+      if (u.scheme == "content") {
+        return runCatching {
+          appContext.contentResolver.query(u, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0 && cursor.moveToFirst()) cursor.getString(idx) else null
+          }
+        }.getOrNull()
+      }
+      return u.lastPathSegment
+    }
+
+    if (sourceHint.isNotBlank()) candidateNames.add(sourceHint)
+    extractDisplayName(mediaUri)?.let { candidateNames.add(it) }
+    extractDisplayName(sourceUri)?.let { candidateNames.add(it) }
+    mediaUri.path?.let { candidateNames.add(it) }
+    mediaUri.lastPathSegment?.let { candidateNames.add(it) }
+    sourceUri?.path?.let { candidateNames.add(it) }
+    sourceUri?.lastPathSegment?.let { candidateNames.add(it) }
+
+    val cleanCandidates = candidateNames.map {
+      Uri.decode(it).lowercase().replace("[._\\-\\s]+".toRegex(), " ").trim()
+    }.filter { it.isNotBlank() }
+
+    Log.i(logTag, "Aspect map search candidates: $cleanCandidates")
+
     val candidateDirs = listOf(
       File("/storage/emulated/0/Research/aspect_maps"),
-      File("/storage/emulated/0/aspect_maps")
+      File("/storage/emulated/0/aspect_maps"),
+      File("/storage/emulated/0/Movies/aspect_maps"),
+      File("/storage/emulated/0/Download/aspect_maps"),
+      File("/storage/emulated/0/Documents/aspect_maps")
     )
+
     for (dir in candidateDirs) {
       if (dir.exists() && dir.isDirectory) {
-        val matchedFile = dir.listFiles()?.firstOrNull { file ->
-          val stem = file.nameWithoutExtension.lowercase()
-          stem.isNotEmpty() && query.contains(stem)
-        }
-        if (matchedFile != null) {
-          parseAspectMapJson(matchedFile)
-          return
+        val jsonFiles = dir.listFiles { f -> f.extension.equals("json", ignoreCase = true) } ?: continue
+        for (file in jsonFiles) {
+          val stem = file.nameWithoutExtension.lowercase().replace("[._\\-\\s]+".toRegex(), " ").trim()
+          val isMatch = cleanCandidates.any { candidate ->
+            candidate.contains(stem) || (stem.length >= 5 && stem.contains(candidate.take(12)))
+          }
+          if (isMatch) {
+            Log.i(logTag, "Matched aspect map file: ${file.absolutePath} for candidates: $cleanCandidates")
+            parseAspectMapJson(file)
+            return
+          }
         }
       }
     }
     activeAspectSegments = emptyList()
+    Log.w(logTag, "No matching aspect map found for: $cleanCandidates")
   }
 
   private fun parseAspectMapJson(file: File) {

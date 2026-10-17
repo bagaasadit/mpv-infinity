@@ -899,6 +899,7 @@ class PlayerActivity :
                 headers = currentItem?.headers.orEmpty(),
                 mimeType = currentItem?.mimeType,
                 sourceUri = currentItem?.originalUri?.toUri(),
+                sourceHint = fileName,
               )
               engineHandoffJob = lifecycleScope.launch {
                 // Some Android 13 devices need longer than 15 seconds to decode a local
@@ -6528,6 +6529,7 @@ class PlayerActivity :
           headers = nativeItem.headers,
           mimeType = nativeItem.mimeType,
           sourceUri = nativeItem.originalUri.toUri(),
+          sourceHint = fileName.ifBlank { nativeItem.title.orEmpty() },
         )
         viewModel.onVideoLoadCompleted()
       }
