@@ -740,13 +740,13 @@ class PlayerViewModel : ViewModel(),
       .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val subtitleTracks: StateFlow<List<TrackNode>> =
-    combine(allTracks, nativeSubtitleTracks, nativeExternalSubtitleTracks, nativeEngineActive, decoderPreferences.playbackEngine.changes()) { tracks, nativeTracks, externalTracks, nativeActive, engine ->
-      if (nativeActive || engine == PlaybackEngineMode.NATIVE) nativeTracks + externalTracks else tracks.filter { it.isSubtitle }
+    combine(allTracks, nativeSubtitleTracks, nativeExternalSubtitleTracks, nativeEngineActive) { tracks, nativeTracks, externalTracks, nativeActive ->
+      if (nativeActive) nativeTracks + externalTracks else tracks.filter { it.isSubtitle }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val audioTracks: StateFlow<List<TrackNode>> =
-    combine(allTracks, nativeAudioTracks, nativeEngineActive, decoderPreferences.playbackEngine.changes()) { tracks, nativeTracks, nativeActive, engine ->
-      if (nativeActive || engine == PlaybackEngineMode.NATIVE) nativeTracks else tracks.filter { it.isAudio }
+    combine(allTracks, nativeAudioTracks, nativeEngineActive) { tracks, nativeTracks, nativeActive ->
+      if (nativeActive) nativeTracks else tracks.filter { it.isAudio }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val videoQualityTracks: StateFlow<List<TrackNode>> =
@@ -811,7 +811,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun selectAudioTrack(track: TrackNode) {
-    if (nativeEngineActive.value || decoderPreferences.playbackEngine.get() == PlaybackEngineMode.NATIVE) {
+    if (nativeEngineActive.value) {
       nativeAudioToggleListener?.invoke(track.id)
       return
     }
@@ -4236,7 +4236,7 @@ class PlayerViewModel : ViewModel(),
     // During a native handoff the active engine can be Native before the persisted preference
     // is updated. Route the click by the actual active engine, otherwise this would write MPV's
     // sid/sub-visibility properties while Media3 is the visible player.
-    if (nativeEngineActive.value || decoderPreferences.playbackEngine.get() == PlaybackEngineMode.NATIVE) {
+    if (nativeEngineActive.value) {
       if (id <= -10_000) {
         nativeExternalSubtitleToggleListener?.invoke(id)
         return
@@ -4265,7 +4265,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun isSubtitleSelected(id: Int): Boolean {
-    if (nativeEngineActive.value || decoderPreferences.playbackEngine.get() == PlaybackEngineMode.NATIVE) {
+    if (nativeEngineActive.value) {
       return subtitleTracks.value.firstOrNull { it.id == id }?.selected == true
     }
     val primarySid = getTrackSelectionId("sid")
@@ -4274,7 +4274,7 @@ class PlayerViewModel : ViewModel(),
   }
 
   fun subtitleSelectionIndicator(id: Int): String? {
-    if (decoderPreferences.playbackEngine.get() == PlaybackEngineMode.NATIVE) {
+    if (nativeEngineActive.value) {
       return if (subtitleTracks.value.firstOrNull { it.id == id }?.selected == true) "P" else null
     }
     val primarySid = getTrackSelectionId("sid")

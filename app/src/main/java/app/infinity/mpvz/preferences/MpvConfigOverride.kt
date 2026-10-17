@@ -194,7 +194,11 @@ enum class MpvConfigOverride(
         "cache-pause",
         "cache-pause-wait",
         "demuxer-max-bytes",
+        "demuxer-max-back-bytes",
+        "demuxer-readahead-secs",
+        "demuxer-lavf-buffersize",
         "demuxer-lavf-o",
+        "stream-lavf-o",
       ),
   ),
   YTDLP(

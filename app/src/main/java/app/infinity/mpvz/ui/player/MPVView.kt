@@ -11,6 +11,7 @@ package app.infinity.mpvz.ui.player
 
 import android.content.Context
 import android.os.Environment
+import java.io.File
 import android.util.AttributeSet
 import android.util.Log
 import android.view.KeyCharacterMap
@@ -237,8 +238,11 @@ class MPVView(
     PlaybackSession.setOptionString("keep-open", "yes")
     PlaybackSession.setOptionString("input-default-bindings", "yes")
 
-    PlaybackSession.setOptionString("tls-verify", "yes")
-    PlaybackSession.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
+    val caFile = File(context.filesDir, "cacert.pem")
+    if (caFile.exists() && caFile.length() > 0L) {
+      PlaybackSession.setOptionString("tls-verify", "yes")
+      PlaybackSession.setOptionString("tls-ca-file", caFile.absolutePath)
+    }
 
     val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
     screenshotDir.mkdirs()
@@ -262,13 +266,16 @@ class MPVView(
     PlaybackSession.setOptionString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
     PlaybackSession.setOptionString("cache", "auto")
     PlaybackSession.setOptionString("cache-pause", "yes")
-    PlaybackSession.setOptionString("cache-pause-wait", "2")
-    PlaybackSession.setOptionString("demuxer-max-bytes", "64MiB")
+    PlaybackSession.setOptionString("cache-pause-wait", "3")
+    PlaybackSession.setOptionString("demuxer-max-bytes", "256MiB")
+    PlaybackSession.setOptionString("demuxer-max-back-bytes", "64MiB")
+    PlaybackSession.setOptionString("demuxer-readahead-secs", "60")
+    PlaybackSession.setOptionString("demuxer-lavf-buffersize", "1048576")
     // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
     // Do not use reconnect_at_eof globally: a legitimate VOD EOF must still finish normally.
     PlaybackSession.setOptionString(
       "demuxer-lavf-o",
-      "http_persistent=0,reconnect=1,reconnect_on_network_error=1,reconnect_streamed=1," +
+      "reconnect=1,reconnect_on_network_error=1,reconnect_streamed=1," +
         "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
     )
     // demuxer-lavf-o only reaches demuxer-internal opens (HLS/DASH segments). The primary http(s)
@@ -277,7 +284,7 @@ class MPVView(
     PlaybackSession.setOptionString(
       "stream-lavf-o",
       "reconnect=1,reconnect_on_network_error=1,reconnect_on_http_error=5xx,reconnect_streamed=1," +
-        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20",
+        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20,buffer_size=1048576",
     )
     // Drop only video-output-bound late frames when rendering cannot keep up.
     // This prevents long-term jitter buildup without aggressively sacrificing smoothness.
