@@ -180,11 +180,95 @@ class NativeMedia3Engine(context: Context) {
           enableAudioTrackPlaybackParams: Boolean
         ): AudioSink? {
           val channelMixingProcessor = ChannelMixingAudioProcessor().apply {
-            for (inChannels in 3..8) {
-              putChannelMixingMatrix(
-                ChannelMixingMatrix.createForConstantPower(inChannels, 2)
+            // 1ch (Mono) -> 2ch (Stereo)
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(1, 2, floatArrayOf(0.7071f, 0.7071f))
+            )
+            // 2ch (Stereo) -> 2ch (Bypassed via identity matrix)
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(2, 2, floatArrayOf(1.0f, 0.0f, 0.0f, 1.0f))
+            )
+            // 3ch (3.0: FL, FR, FC) -> Stereo
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(
+                3, 2,
+                floatArrayOf(
+                  1.0f, 0.0f,      // FL -> L
+                  0.0f, 1.0f,      // FR -> R
+                  0.7071f, 0.7071f // FC -> L, R (Center / Dialog)
+                )
               )
-            }
+            )
+            // 4ch (Quad: FL, FR, BL, BR) -> Stereo
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(
+                4, 2,
+                floatArrayOf(
+                  1.0f, 0.0f,      // FL -> L
+                  0.0f, 1.0f,      // FR -> R
+                  0.7071f, 0.0f,   // BL -> L
+                  0.0f, 0.7071f    // BR -> R
+                )
+              )
+            )
+            // 5ch (5.0: FL, FR, FC, BL, BR) -> Stereo
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(
+                5, 2,
+                floatArrayOf(
+                  1.0f, 0.0f,      // FL -> L
+                  0.0f, 1.0f,      // FR -> R
+                  0.7071f, 0.7071f, // FC -> L, R
+                  0.7071f, 0.0f,   // BL -> L
+                  0.0f, 0.7071f    // BR -> R
+                )
+              )
+            )
+            // 6ch (5.1: FL, FR, FC, LFE, BL, BR) -> Stereo
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(
+                6, 2,
+                floatArrayOf(
+                  1.0f, 0.0f,      // FL -> L
+                  0.0f, 1.0f,      // FR -> R
+                  0.7071f, 0.7071f, // FC -> L, R (Clear dialog)
+                  0.5f, 0.5f,      // LFE -> L, R (Bass)
+                  0.7071f, 0.0f,   // BL -> L
+                  0.0f, 0.7071f    // BR -> R
+                )
+              )
+            )
+            // 7ch (6.1: FL, FR, FC, LFE, BC, SL, SR) -> Stereo
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(
+                7, 2,
+                floatArrayOf(
+                  1.0f, 0.0f,      // FL -> L
+                  0.0f, 1.0f,      // FR -> R
+                  0.7071f, 0.7071f, // FC -> L, R
+                  0.5f, 0.5f,      // LFE -> L, R
+                  0.5f, 0.5f,      // BC -> L, R
+                  0.7071f, 0.0f,   // SL -> L
+                  0.0f, 0.7071f    // SR -> R
+                )
+              )
+            )
+            // 8ch (7.1: FL, FR, FC, LFE, BL, BR, SL, SR) -> Stereo (TrueHD & DTS-HD MA)
+            putChannelMixingMatrix(
+              ChannelMixingMatrix(
+                8, 2,
+                floatArrayOf(
+                  1.0f, 0.0f,      // FL -> L
+                  0.0f, 1.0f,      // FR -> R
+                  0.7071f, 0.7071f, // FC -> L, R (Center / Dialog clarity)
+                  0.5f, 0.5f,      // LFE -> L, R (Subwoofer bass)
+                  0.5f, 0.0f,      // BL -> L
+                  0.0f, 0.5f,      // BR -> R
+                  0.5f, 0.0f,      // SL -> L
+                  0.0f, 0.5f       // SR -> R
+                )
+              )
+            )
           }
           return DefaultAudioSink.Builder(context)
             .setAudioProcessors(arrayOf(channelMixingProcessor))
