@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import app.infinity.mpvz.catalog.nuvio.PluginRepository
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
@@ -46,9 +45,6 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
   private val catalogRepository = StremioCatalogRepository()
   private val streamRepository = StremioStreamRepository()
   private val metadataRepository = StremioMetadataRepository()
-  private val nuvioPlugins = PluginRepository(application)
-  private val nuvioMetadata = app.infinity.mpvz.catalog.nuvio.TmdbMetadataRepository()
-  private val tvdbMetadata = app.infinity.mpvz.catalog.nuvio.TvdbMetadataRepository()
   private val checkedNuvioMigrationUrls = mutableSetOf<String>()
   private val _state = MutableStateFlow(CatalogState())
   val state: StateFlow<CatalogState> = _state.asStateFlow()
@@ -228,17 +224,8 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     }
     metadataJob = viewModelScope.launch {
       val sources = settings.catalogSources()
-      val addonMetadata = runCatching { metadataRepository.loadMetadata(item, sources) }.getOrNull() ?: item
-      val metadata = runCatching { nuvioMetadata.load(addonMetadata, nuvioPlugins.tmdbApiKey()) }.getOrNull() ?: addonMetadata
-      val tvdbArtwork = if (metadata.type == MediaType.TV) {
-        runCatching { tvdbMetadata.load(item, nuvioPlugins.tvdbApiKey()) }
-          .onFailure { Log.e(TAG, "TVDB primary artwork failed title=${item.title}", it) }
-          .getOrNull()
-      } else null
-      val artworkMetadata = tvdbArtwork?.takeIf { it.seasons.any { season -> !season.posterUrl.isNullOrBlank() } }?.let {
-        metadata.copy(seasons = mergeAuthoritativeSeasonArtwork(metadata.seasons, it.seasons))
-      } ?: metadata
-      val sanitizedArtworkMetadata = artworkMetadata.copy(seasons = sanitizeSeasons(artworkMetadata.seasons))
+      val metadata = runCatching { metadataRepository.loadMetadata(item, sources) }.getOrNull() ?: item
+      val sanitizedArtworkMetadata = metadata.copy(seasons = sanitizeSeasons(metadata.seasons))
       Log.i(TAG, "details artwork title=${item.title} seasons=${sanitizedArtworkMetadata.seasons.size} posters=${sanitizedArtworkMetadata.seasons.count { !it.posterUrl.isNullOrBlank() }} urls=${sanitizedArtworkMetadata.seasons.joinToString { "S${it.number}:${it.posterUrl?.substringAfterLast('/') ?: "none"}" }}")
       val completedItem = if (sanitizedArtworkMetadata.type == MediaType.TV && sanitizedArtworkMetadata.seasons.isEmpty()) {
         val seasons = runCatching { metadataRepository.loadSeasons(sanitizedArtworkMetadata, sources) }.getOrDefault(emptyList())
@@ -300,20 +287,6 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
       // Start both provider families together. Nuvio providers already publish
       // batches progressively; parallel startup removes the old sequential wait.
       coroutineScope {
-        val pluginJob = async {
-          runCatching {
-            nuvioPlugins.resolve(item, season, episode) { batch ->
-              _state.update { current ->
-                if (current.resolvingKey == itemKey && current.selectedSeason == season &&
-                  current.selectedEpisode == episode && current.selectedEpisodeVideoId == episodeVideoId
-                ) current.copy(streamOptions = mergeStreamOptions(current.streamOptions, batch)) else current
-              }
-            }
-          }.onFailure { error ->
-            if (error is CancellationException) throw error
-            Log.w(TAG, "Nuvio stream resolution failed")
-          }.getOrDefault(emptyList())
-        }
         val addonJob = async {
           runCatching {
             streamRepository.resolve(
@@ -322,7 +295,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
               episode = episode,
               sources = settings.catalogSources(),
               episodeVideoId = episodeVideoId,
-              resolveImdbId = { candidate -> nuvioMetadata.resolveImdbId(candidate, nuvioPlugins.tmdbApiKey()) },
+              resolveImdbId = { null },
               onBatch = { batch ->
                 _state.update { current ->
                   if (current.resolvingKey == itemKey && current.selectedSeason == season &&
@@ -337,8 +310,8 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
               Log.w(TAG, "Stremio stream resolution failed")
             }.getOrDefault(emptyList())
         }
-        val (pluginStreams, addonStreams) = awaitAll(pluginJob, addonJob)
-          .map { it as List<StreamOption> }
+        val addonStreams = addonJob.await()
+        val pluginStreams = emptyList<StreamOption>()
         _state.update { current ->
           val all = mergeStreamOptions(current.streamOptions, pluginStreams + addonStreams)
           current.copy(
@@ -537,107 +510,15 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
 
     lateinit var enrichmentJob: Job
     enrichmentJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
-      try {
-        val tmdbApiKey = nuvioPlugins.tmdbApiKey()
-        val tvdbApiKey = nuvioPlugins.tvdbApiKey()
-        if (tmdbApiKey.isBlank() && tvdbApiKey.isBlank()) {
-          posterEnrichmentKeys.removeAll(candidateKeys)
-          posterFailureRequests.removeAll(candidateKeys)
-          return@launch
-        }
-
-        val results = coroutineScope {
-          candidates.map { item ->
-            async {
-              posterArtworkSemaphore.withPermit {
-                val itemKey = catalogItemIdentityKey(item)
-                val replaceFailedPoster = itemKey in forcePosterKeys
-                val lookupItem = if (replaceFailedPoster) item.copy(posterUrl = null) else item
-                val tmdbArtwork = if (tmdbApiKey.isBlank()) null else try {
-                  nuvioMetadata.loadPosterArtwork(lookupItem, tmdbApiKey)
-                } catch (error: CancellationException) {
-                  throw error
-                } catch (_: Exception) {
-                  null
-                }
-                val tvdbArtwork = if (item.type == MediaType.TV && tvdbApiKey.isNotBlank() && tmdbArtwork?.posterUrl.isNullOrBlank()) {
-                  val baseItem = tmdbArtwork ?: lookupItem
-                  try {
-                    tvdbMetadata.loadTitleArtwork(baseItem, tvdbApiKey)
-                  } catch (error: CancellationException) {
-                    throw error
-                  } catch (_: Exception) {
-                    null
-                  }
-                } else null
-                when {
-                  tmdbArtwork != null && tvdbArtwork != null -> mergeMissingCatalogArtwork(
-                    tmdbArtwork,
-                    tvdbArtwork,
-                    replaceFailedPoster = replaceFailedPoster,
-                  )
-                  tvdbArtwork != null -> tvdbArtwork
-                  else -> tmdbArtwork
-                }
-              }
-            }
-          }.awaitAll()
-        }
-        val artworkByKey = candidates.zip(results).mapNotNull { (item, artwork) ->
-          val itemKey = catalogItemIdentityKey(item)
-          artwork?.let {
-            itemKey to mergeMissingCatalogArtwork(
-              item,
-              it,
-              replaceFailedPoster = itemKey in forcePosterKeys,
-            )
-          }
-        }.filter { (_, artwork) -> !artwork.posterUrl.isNullOrBlank() || !artwork.backdropUrl.isNullOrBlank() }
-          .toMap()
-        if (artworkByKey.isEmpty() || posterEnrichmentQuery != normalizedQuery || _state.value.query.trim() != normalizedQuery) return@launch
-
-        val applyArtwork: (MediaItem) -> MediaItem = { item ->
-          val itemKey = catalogItemIdentityKey(item)
-          artworkByKey[itemKey]?.let {
-            mergeMissingCatalogArtwork(item, it, replaceFailedPoster = itemKey in forcePosterKeys)
-          } ?: item
-        }
-        _state.update { current ->
-          if (current.query.trim() != normalizedQuery) current
-          else current.copy(
-            items = current.items.map(applyArtwork),
-            recentItems = current.recentItems.map(applyArtwork),
-            selectedItem = current.selectedItem?.let(applyArtwork),
-          )
-        }
-        if (normalizedQuery.isBlank() && _state.value.query.isBlank()) {
-          cachedHomeItems = cachedHomeItems.map(applyArtwork)
-        }
-      } finally {
-        posterEnrichmentJobs.remove(enrichmentJob)
-      }
+      posterEnrichmentKeys.removeAll(candidateKeys)
+      posterFailureRequests.removeAll(candidateKeys)
     }
     posterEnrichmentJobs += enrichmentJob
     enrichmentJob.start()
   }
 
   private suspend fun migrateNuvioScraperRepositories() {
-    val candidates = settings.catalogSources()
-      .filterNot { it.manifestUrl.contains("v3-cinemeta.strem.io", true) || it.manifestUrl.contains("anime-kitsu.strem.fun", true) }
-      .filter { checkedNuvioMigrationUrls.add(it.manifestUrl) }
-    if (candidates.isEmpty()) return
-    val migrated = mutableListOf<CatalogSource>()
-    candidates.forEach { source ->
-      if (catalogRepository.isNuvioScraperManifest(source.manifestUrl) && nuvioPlugins.importIfNuvioRepository(source.manifestUrl)) {
-        migrated += source
-      }
-    }
-    if (migrated.isEmpty()) return
-    val remaining = settings.catalogSources().filterNot { source -> migrated.any { it.manifestUrl.equals(source.manifestUrl, true) } }
-    settings.saveCatalogSources(remaining)
-    _catalogSources.value = remaining
-    if (_state.value.query.isBlank()) loadTrending() else runSearch(_state.value.query.trim())
-    Log.i(TAG, "Migrated ${migrated.size} legacy provider repository configuration(s) into Nuvio scraper storage")
+    // Pruned in pure player mode
   }
 
   private fun normalizeCatalogManifestUrl(rawValue: String): String {

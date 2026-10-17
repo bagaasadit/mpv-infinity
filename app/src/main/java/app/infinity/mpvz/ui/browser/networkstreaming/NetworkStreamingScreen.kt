@@ -503,15 +503,14 @@ object NetworkStreamingScreen : Screen {
                 onSaveToMedia = { entry ->
                   val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
                   when (linkDownloadCoordinator.enqueue(playableSource, entry.fileName)) {
-                      app.infinity.mpvz.domain.download.LinkDownloadCoordinator.Route.UNSUPPORTED ->
-                        android.widget.Toast
-                          .makeText(context, R.string.downloads_location_invalid, android.widget.Toast.LENGTH_SHORT)
-                          .show()
-                      else ->
-                        android.widget.Toast
-                          .makeText(context, R.string.downloads_started, android.widget.Toast.LENGTH_SHORT)
-                          .show()
-                    }
+                    app.infinity.mpvz.domain.download.LinkDownloadCoordinator.Route.UNSUPPORTED ->
+                      android.widget.Toast
+                        .makeText(context, R.string.downloads_location_invalid, android.widget.Toast.LENGTH_SHORT)
+                        .show()
+                    else ->
+                      android.widget.Toast
+                        .makeText(context, R.string.downloads_started, android.widget.Toast.LENGTH_SHORT)
+                        .show()
                   }
                 },
                 onDeleteRecent = viewModel::deleteStreamEntry,

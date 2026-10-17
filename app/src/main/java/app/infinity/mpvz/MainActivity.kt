@@ -197,7 +197,6 @@ class MainActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    openDownloadsFromIntent = intent.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false)
 
     pipHelper = MPVPipHelper(
       activity = this,
