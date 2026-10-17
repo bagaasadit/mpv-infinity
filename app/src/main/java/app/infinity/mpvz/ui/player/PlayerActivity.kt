@@ -843,10 +843,11 @@ class PlayerActivity :
           val outgoingEngine = activeEngineMode
           val outgoingPositionMs =
             if (outgoingEngine == PlaybackEngineMode.NATIVE) {
-              nativeEngine.currentPlayer.currentPosition.coerceAtLeast(0L)
+              maxOf(nativeEngine.currentPlayer.currentPosition, nativeEngine.lastKnownPosition).coerceAtLeast(0L)
             } else {
-              ((PlaybackSession.getPropertyDouble("time-pos") ?: 0.0) * 1000.0).toLong()
-            }.coerceAtLeast(0L)
+              val mpvSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: (viewModel.pos?.toDouble() ?: 0.0)
+              (mpvSeconds * 1000.0).toLong().coerceAtLeast(0L)
+            }
           val outgoingPlaying =
             if (outgoingEngine == PlaybackEngineMode.NATIVE) {
               nativeEngine.currentPlayer.isPlaying
@@ -1254,18 +1255,25 @@ class PlayerActivity :
             hasExistingPlaylist = playlist.isNotEmpty(),
             hasPlaylistId = playlistId != null,
           )
+        val intentPositionOverride = extractIntentInitialPositionSeconds(intent)?.let {
+          PlaybackPositionRestoreOverride(positionSeconds = it)
+        }
+        val initialRestoreOverride =
+          intentPositionOverride
+            ?: restoredAudioPlaybackSnapshot?.toPositionRestoreOverride()
+
         if (shouldExpandM3u) {
           startMediaLoad(
             playableUri,
             originalUri?.toString(),
             expandM3u = true,
-            positionRestoreOverride = restoredAudioPlaybackSnapshot?.toPositionRestoreOverride(),
+            positionRestoreOverride = initialRestoreOverride,
           )
         } else {
           startMediaLoad(
             playableUri,
             originalUri?.toString(),
-            positionRestoreOverride = restoredAudioPlaybackSnapshot?.toPositionRestoreOverride(),
+            positionRestoreOverride = initialRestoreOverride,
           )
         }
       }
@@ -4005,12 +4013,30 @@ class PlayerActivity :
    *
    * @param extras Bundle containing intent extras
    */
+  /**
+   * Extracts initial playback position from intent extras sent by external launchers (e.g. Nuvio, MX Player, JustPlayer callers).
+   * Supports "position" (ms or seconds), "start_position_ms", and consumes it so subsequent engine handoffs don't reset to it.
+   */
+  private fun extractIntentInitialPositionSeconds(sourceIntent: Intent?): Double? {
+    val extras = sourceIntent?.extras ?: return null
+    val rawPositionMs = sequenceOf(
+      runCatching { extras.getLong("position", -1L) }.getOrNull()?.takeIf { it >= 0L },
+      runCatching { extras.getInt("position", -1) }.getOrNull()?.takeIf { it >= 0 }?.toLong(),
+      runCatching { extras.getLong("start_position_ms", -1L) }.getOrNull()?.takeIf { it >= 0L },
+      runCatching { extras.getInt("start_position_ms", -1) }.getOrNull()?.takeIf { it >= 0 }?.toLong(),
+      runCatching { extras.getString("position")?.toLongOrNull() }.getOrNull()?.takeIf { it >= 0L },
+    ).filterNotNull().firstOrNull() ?: return null
+
+    // Consume from intent so internal handoffs/reloads do not re-apply the initial launch position
+    sourceIntent.removeExtra("position")
+    sourceIntent.removeExtra("start_position_ms")
+
+    val positionSeconds = rawPositionMs.toDouble() / 1000.0
+    return positionSeconds.takeIf { it.isFinite() && it >= 0.0 }
+  }
+
   private fun setIntentExtras(extras: Bundle?) {
     if (extras == null) return
-
-    extras.getInt("position", POSITION_NOT_SET).takeIf { it != POSITION_NOT_SET }?.let {
-      PlaybackSession.setPropertyInt("time-pos", it / MILLISECONDS_TO_SECONDS)
-    }
 
     addSubtitlesFromExtras(extras)
     setHttpHeadersFromExtras(extras)
@@ -5826,10 +5852,35 @@ class PlayerActivity :
         RESULT_INTENT
       }
 
+    val nativeEngineActive = activeEngineMode == PlaybackEngineMode.NATIVE || isNativeEngineActive()
+    val currentPositionMs: Long =
+      if (nativeEngineActive) {
+        maxOf(nativeEngine.currentPlayer.currentPosition, nativeEngine.lastKnownPosition).coerceAtLeast(0L)
+      } else {
+        val mpvSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: (viewModel.pos?.toDouble() ?: 0.0)
+        (mpvSeconds * 1000.0).toLong().coerceAtLeast(0L)
+      }
+
+    val currentDurationMs: Long =
+      if (nativeEngineActive) {
+        nativeEngine.currentPlayer.duration.takeIf { it != C.TIME_UNSET && it > 0L }
+          ?: nativeEngine.lastKnownDuration
+      } else {
+        val mpvDuration = PlaybackSession.getPropertyDouble("duration") ?: (viewModel.duration?.toDouble() ?: 0.0)
+        (mpvDuration * 1000.0).toLong().coerceAtLeast(0L)
+      }
+
     val resultIntent =
       Intent(action).apply {
-        viewModel.pos?.let { putExtra("position", it * MILLISECONDS_TO_SECONDS) }
-        viewModel.duration?.let { putExtra("duration", it * MILLISECONDS_TO_SECONDS) }
+        putExtra("position", currentPositionMs.toInt())
+        putExtra("position_ms", currentPositionMs)
+        putExtra("duration", currentDurationMs.toInt())
+        putExtra("duration_ms", currentDurationMs)
+        if (currentDurationMs > 0 && currentPositionMs >= currentDurationMs - 2000L) {
+          putExtra("end_by", "playback_completion")
+        } else {
+          putExtra("end_by", "user")
+        }
       }
 
     setResult(RESULT_OK, resultIntent)
@@ -6089,14 +6140,22 @@ class PlayerActivity :
           hasExistingPlaylist = playlist.isNotEmpty(),
           hasPlaylistId = playlistId != null,
         )
+      val intentPositionOverride = extractIntentInitialPositionSeconds(intent)?.let {
+        PlaybackPositionRestoreOverride(positionSeconds = it)
+      }
       if (shouldExpandM3u) {
         startMediaLoad(
           playableUri = uri,
           originalUri = originalUri?.toString(),
           expandM3u = true,
+          positionRestoreOverride = intentPositionOverride,
         )
       } else {
-        startMediaLoad(uri, originalUri?.toString())
+        startMediaLoad(
+          playableUri = uri,
+          originalUri = originalUri?.toString(),
+          positionRestoreOverride = intentPositionOverride,
+        )
       }
     }
   }
