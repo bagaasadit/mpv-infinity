@@ -38,6 +38,7 @@ import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
+import android.view.Display
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -727,6 +728,7 @@ class PlayerActivity :
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    applyMaxDisplayRefreshRate()
     restoreAudioPlaybackSessionIfNeeded()
     if (redirectUnselectedTorrentToPicker(intent, finishCurrent = true)) return
     if (!acceptPreparedPlaybackLaunch(intent)) {
@@ -2093,8 +2095,8 @@ class PlayerActivity :
       MediaPlaybackService.prepareForMpvShutdown()
       if (!pipDismissalCommitted) {
         endBackgroundPlayback()
-        PlaybackSession.stop(clearQueue = true)
       }
+      PlaybackSession.stop(clearQueue = true)
     } else {
       PlaybackSession.markBackground()
     }
@@ -2584,6 +2586,43 @@ class PlayerActivity :
     val attributes = window.attributes
     attributes.layoutInDisplayCutoutMode = mode
     window.attributes = attributes
+  }
+
+  /**
+   * Locks the window to the display's peak refresh rate (e.g. 120Hz on POCO F5).
+   * On Xiaomi / HyperOS devices, the system aggressive dynamic refresh policy frequently drops
+   * touch polling and Compose HUD rendering to 60Hz or lower during video playback.
+   * Setting preferredDisplayModeId ensures buttery-smooth 120Hz touch polling, HUD transitions,
+   * and clean 5:5 pulldown for 24fps content with zero judder.
+   */
+  private fun applyMaxDisplayRefreshRate() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      runCatching {
+        val targetDisplay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+          display
+        } else {
+          @Suppress("DEPRECATION")
+          windowManager.defaultDisplay
+        } ?: return
+        val currentMode = targetDisplay.mode
+        val supportedModes = targetDisplay.supportedModes ?: return
+        val bestMode = supportedModes
+          .filter { it.physicalWidth == currentMode.physicalWidth && it.physicalHeight == currentMode.physicalHeight }
+          .maxByOrNull { it.refreshRate }
+          ?: supportedModes.maxByOrNull { it.refreshRate }
+
+        if (bestMode != null && bestMode.refreshRate > 60f) {
+          val layoutParams = window.attributes
+          if (layoutParams.preferredDisplayModeId != bestMode.modeId) {
+            layoutParams.preferredDisplayModeId = bestMode.modeId
+            window.attributes = layoutParams
+            Log.i(TAG, "Locked display to peak refresh rate: ${bestMode.refreshRate}Hz (mode ${bestMode.modeId})")
+          }
+        }
+      }.onFailure { error ->
+        Log.w(TAG, "Failed to apply peak display refresh rate", error)
+      }
+    }
   }
 
   private fun setupSystemBarsAutoHide() {
@@ -3847,6 +3886,7 @@ class PlayerActivity :
 
   override fun onResume() {
     super.onResume()
+    applyMaxDisplayRefreshRate()
     if ((!mpvInitialized && !isNativeEngineActive()) || !ownsPlaybackSession()) return
     if (!isInPictureInPictureMode && hasWindowFocus()) completePipExpansion()
     restoreForegroundVideoAndAmbientIfUnlocked()
