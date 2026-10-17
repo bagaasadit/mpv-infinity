@@ -1,8 +1,16 @@
-name: Build debug APK
+name: Build APK
 
 on:
   workflow_dispatch:
     inputs:
+      build_type:
+        description: Build type (release = R8 optimized + 120Hz smooth, debug = unminified)
+        required: true
+        default: release
+        type: choice
+        options:
+          - release
+          - debug
       flavor:
         description: APK flavor
         required: true
@@ -25,8 +33,8 @@ permissions:
   contents: read
 
 jobs:
-  build-debug:
-    name: Build ${{ inputs.flavor }} debug APK
+  build:
+    name: Build ${{ inputs.flavor }} ${{ inputs.build_type }} APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,19 +47,27 @@ jobs:
           cache: gradle
       - name: Install native subtitle build dependencies
         run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool gettext autopoint gperf pkg-config
-      - name: Build debug APK
+      - name: Build APK
         run: |
           chmod +x ./gradlew
           ABI_ARGS=""
           if [[ "${{ inputs.target_abi }}" != "all" ]]; then ABI_ARGS="-PtargetAbi=${{ inputs.target_abi }}"; fi
-          case "${{ inputs.flavor }}" in
-            standard) ./gradlew assembleStandardDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
-            fongmi) ./gradlew assembleFongmiDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
-            no_vulkan) ./gradlew assembleNoVulkanDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
-          esac
-      - name: Upload debug APKs
+          if [[ "${{ inputs.build_type }}" == "release" ]]; then
+            case "${{ inputs.flavor }}" in
+              standard) ./gradlew assembleStandardRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+              fongmi) ./gradlew assembleFongmiRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+              no_vulkan) ./gradlew assembleNoVulkanRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+            esac
+          else
+            case "${{ inputs.flavor }}" in
+              standard) ./gradlew assembleStandardDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+              fongmi) ./gradlew assembleFongmiDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+              no_vulkan) ./gradlew assembleNoVulkanDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+            esac
+          fi
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: mpv-infinity-${{ inputs.flavor }}-debug
+          name: mpv-infinity-${{ inputs.flavor }}-${{ inputs.build_type }}
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error

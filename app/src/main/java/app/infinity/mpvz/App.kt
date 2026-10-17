@@ -136,8 +136,8 @@ class App :
   override fun onActivityStarted(activity: Activity) {
     if (startedActivityCount++ == 0) {
       getKoin().get<app.infinity.mpvz.domain.syncplay.SyncplayManager>().onAppForegrounded()
-      scheduleFastThumbnailWarmupOnce()
-      scheduleMetadataMaintenanceOnce()
+      // Background workers (FastThumbnails and SQLite metadata maintenance) disabled
+      // to keep pure player startup instant and main-thread 120Hz smooth.
     }
   }
 

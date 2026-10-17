@@ -82,3 +82,40 @@
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
 }
+
+# =====================================================================
+# 1. LIBMPV JNI BRIDGE & CALLBACKS (SACRED)
+# =====================================================================
+-keep class is.xyz.mpv.** { *; }
+-keepclassmembers class is.xyz.mpv.** { *; }
+-keepclasseswithmembernames,includedescriptorclasses class * {
+    native <methods>;
+}
+
+# =====================================================================
+# 2. LIBASS & MATROSKA SUBTITLE SUBSYSTEM (SACRED)
+# =====================================================================
+-keep class * extends androidx.media3.exoplayer.BaseRenderer { *; }
+-keep class **.Media3LibassRenderer { *; }
+-keep class **.LibassSubtitleSurfaceView { *; }
+-keep class **.AssMatroskaExtractor* { *; }
+-keep class **.MatroskaFontScanner* { *; }
+
+# =====================================================================
+# 3. MEDIA3 / EXOPLAYER RENDERERS & DECODERS
+# =====================================================================
+-dontwarn androidx.media3.**
+-keepclassmembers class androidx.media3.** { *; }
+
+# =====================================================================
+# 4. SEEKER & UI CONTROLS
+# =====================================================================
+-keep class com.github.abdallahmehiz.seeker.** { *; }
+
+# =====================================================================
+# 5. ROOM DATABASE ENTITIES
+# =====================================================================
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class * { *; }
+-keep class * implements androidx.room.migration.Migration { *; }
+

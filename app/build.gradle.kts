@@ -125,6 +125,7 @@ android {
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
       )
+      signingConfig = signingConfigs.getByName("debug")
       ndk {
         debugSymbolLevel = "none"
       }
@@ -249,7 +250,6 @@ dependencies {
   implementation(libs.androidx.compose.material)
   implementation(libs.androidx.ui.tooling.preview)
   debugImplementation(libs.androidx.ui.tooling)
-  debugImplementation(libs.leakcanary.android)
   testImplementation("junit:junit:4.13.2")
   implementation(libs.bundles.compose.navigation3)
   implementation(libs.androidx.appcompat)
