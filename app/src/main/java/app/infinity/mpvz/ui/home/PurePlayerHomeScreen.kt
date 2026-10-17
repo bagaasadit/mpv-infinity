@@ -31,8 +31,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
@@ -127,8 +125,8 @@ object PurePlayerHomeScreen : Screen {
           actions = {
             IconButton(onClick = { backStack.add(PreferencesScreen) }) {
               Icon(
-                imageVector = Icons.Settings,
-                contentDescription = stringResource(R.string.ui_preferences),
+                imageVector = Icons.RoundedFilled.Settings,
+                contentDescription = stringResource(R.string.pref_preferences),
                 tint = MaterialTheme.colorScheme.onSurface,
               )
             }
@@ -194,7 +192,7 @@ object PurePlayerHomeScreen : Screen {
               .height(48.dp),
           ) {
             Icon(
-              imageVector = Icons.Link,
+              imageVector = Icons.RoundedFilled.Link,
               contentDescription = null,
               modifier = Modifier.size(18.dp),
             )
@@ -219,7 +217,7 @@ object PurePlayerHomeScreen : Screen {
               .height(48.dp),
           ) {
             Icon(
-              imageVector = Icons.InsertDriveFile,
+              imageVector = Icons.RoundedFilled.InsertDriveFile,
               contentDescription = null,
               modifier = Modifier.size(18.dp),
             )
@@ -244,7 +242,7 @@ object PurePlayerHomeScreen : Screen {
               .height(48.dp),
           ) {
             Icon(
-              imageVector = Icons.FolderOpen,
+              imageVector = Icons.RoundedFilled.FolderOpen,
               contentDescription = null,
               modifier = Modifier.size(18.dp),
             )
