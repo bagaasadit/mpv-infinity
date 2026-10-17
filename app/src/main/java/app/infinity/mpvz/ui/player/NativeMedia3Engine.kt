@@ -290,6 +290,8 @@ class NativeMedia3Engine(context: Context) {
   // Aspect Map (JSON) Controller for Shifting IMAX Films
   private var activeAspectSegments: List<AspectTimeSegment> = emptyList()
   private var lastAppliedResizeMode: Int? = null
+  private var lastAppliedSegmentIndex: Int = -1
+  private var isManualAspectOverride: Boolean = false
   private var subtitlePosition = 100
   private var subtitleFontSize = 55
   private var subtitleFontFamily = "sans-serif"
@@ -328,13 +330,16 @@ class NativeMedia3Engine(context: Context) {
       val currentPosMs = player.currentPosition.coerceAtLeast(0L)
       subtitleOverlay?.setPositionUs(currentPosMs * 1000L)
       if (activeAspectSegments.isNotEmpty()) {
-        val active = activeAspectSegments.firstOrNull { currentPosMs in it.startMs..it.endMs }
-        val targetMode = if (active != null && active.ratio < 2.0f) {
-          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT // IMAX: 100% full height, 0% frame cut
-        } else {
-          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM // Scope: fills 20:9 width
-        }
-        if (lastAppliedResizeMode != targetMode) {
+        val segmentIndex = activeAspectSegments.indexOfFirst { currentPosMs in it.startMs..it.endMs }
+        if (segmentIndex != -1 && segmentIndex != lastAppliedSegmentIndex) {
+          lastAppliedSegmentIndex = segmentIndex
+          isManualAspectOverride = false
+          val segment = activeAspectSegments[segmentIndex]
+          val targetMode = if (segment.ratio < 2.0f) {
+            androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT // IMAX: 100% full height, 0% frame cut
+          } else {
+            androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM // Scope: fills 20:9 width
+          }
           lastAppliedResizeMode = targetMode
           attachedView?.post {
             attachedView?.resizeMode = targetMode
@@ -543,11 +548,16 @@ class NativeMedia3Engine(context: Context) {
       surface.scaleX = 1f
       surface.scaleY = 1f
     }
-    lastAppliedResizeMode = null
-    attachedView?.resizeMode = when (aspect) {
+    isManualAspectOverride = true
+    val mode = when (aspect) {
       VideoAspect.Fit -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
       VideoAspect.Crop -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
       VideoAspect.Stretch -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+    }
+    lastAppliedResizeMode = mode
+    attachedView?.post {
+      attachedView?.resizeMode = mode
+      attachedView?.requestLayout()
     }
   }
 
@@ -1073,18 +1083,24 @@ class NativeMedia3Engine(context: Context) {
       }
     Log.d(logTag, "play uri=$mediaUri source=$sourceUri hint=$sourceHint positionMs=$startPositionMs autoplay=$autoplay")
     lastAppliedResizeMode = null
+    lastAppliedSegmentIndex = -1
+    isManualAspectOverride = false
     loadAspectMapForUri(mediaUri, sourceHint, sourceUri)
     if (activeAspectSegments.isNotEmpty()) {
-      val initialActive = activeAspectSegments.firstOrNull { startPositionMs in it.startMs..it.endMs }
-      val initialMode = if (initialActive != null && initialActive.ratio < 2.0f) {
-        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-      } else {
-        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-      }
-      lastAppliedResizeMode = initialMode
-      attachedView?.post {
-        attachedView?.resizeMode = initialMode
-        attachedView?.requestLayout()
+      val initialIndex = activeAspectSegments.indexOfFirst { startPositionMs in it.startMs..it.endMs }
+      if (initialIndex != -1) {
+        lastAppliedSegmentIndex = initialIndex
+        val initialActive = activeAspectSegments[initialIndex]
+        val initialMode = if (initialActive.ratio < 2.0f) {
+          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+        } else {
+          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+        }
+        lastAppliedResizeMode = initialMode
+        attachedView?.post {
+          attachedView?.resizeMode = initialMode
+          attachedView?.requestLayout()
+        }
       }
     }
     (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
