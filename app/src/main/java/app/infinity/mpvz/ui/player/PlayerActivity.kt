@@ -1256,7 +1256,7 @@ class PlayerActivity :
             hasPlaylistId = playlistId != null,
           )
         val intentPositionOverride = extractIntentInitialPositionSeconds(intent)?.let {
-          PlaybackPositionRestoreOverride(positionSeconds = it)
+          PlaybackPositionRestoreOverride(positionSeconds = it, paused = false)
         }
         val initialRestoreOverride =
           intentPositionOverride
@@ -6141,7 +6141,7 @@ class PlayerActivity :
           hasPlaylistId = playlistId != null,
         )
       val intentPositionOverride = extractIntentInitialPositionSeconds(intent)?.let {
-        PlaybackPositionRestoreOverride(positionSeconds = it)
+        PlaybackPositionRestoreOverride(positionSeconds = it, paused = false)
       }
       if (shouldExpandM3u) {
         startMediaLoad(

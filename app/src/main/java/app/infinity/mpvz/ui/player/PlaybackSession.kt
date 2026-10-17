@@ -47,7 +47,7 @@ data class PlaybackSessionState(
 
 data class PlaybackPositionRestoreOverride(
   val positionSeconds: Double?,
-  val paused: Boolean,
+  val paused: Boolean = false,
 )
 
 /** A native-backed property that remains safe to access before the libmpv core exists. */
