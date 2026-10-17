@@ -2004,7 +2004,6 @@ class PlayerActivity :
     runCatching {
       mediaLoadJob?.cancel()
       cancelPlaybackLoadRecovery()
-      if (::castPlaybackController.isInitialized) castPlaybackController.release()
       cancelSystemBarsAutoHide()
       if (playbackWasInitialized && ownsPlaybackSession) saveVideoPlaybackState(fileName, immediate = true)
       if (!keepBackgroundPlaybackAlive && nativeWasActive) {

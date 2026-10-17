@@ -24,7 +24,7 @@ class TorrentStreamingEngine(
     throw UnsupportedOperationException("Torrent streaming is not supported in pure player mode")
   }
 
-  suspend fun prepareTorrent(source: String): TorrentPreparationResult {
+  suspend fun prepareTorrent(source: String): TorrentCatalog {
     throw UnsupportedOperationException("Torrent streaming is not supported in pure player mode")
   }
 
