@@ -137,14 +137,8 @@ class NativeMedia3Engine(context: Context) {
     .setAllowCrossProtocolRedirects(true)
     .setConnectTimeoutMs(15_000)
     .setReadTimeoutMs(30_000)
-  private val cacheDataSourceFactory = CacheDataSource.Factory()
-    .setCache(NativeMedia3Cache.get(context))
-    .setUpstreamDataSourceFactory(httpDataSourceFactory)
-    .setCacheReadDataSourceFactory(FileDataSource.Factory())
-    .setFlags(
-      CacheDataSource.FLAG_BLOCK_ON_CACHE or CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR,
-    )
-  private val dataSourceFactory = DefaultDataSource.Factory(context.applicationContext, cacheDataSourceFactory)
+  // Direct streaming into RAM without intermediate flash storage I/O thrashing on high-bitrate 4K streams
+  private val dataSourceFactory = DefaultDataSource.Factory(context.applicationContext, httpDataSourceFactory)
   private val assHandler = AssHandler(renderType = AssRenderType.OVERLAY_CANVAS)
   private val assSubtitleParserFactory = AssSubtitleParserFactory(assHandler)
   private val extractorsFactory: ExtractorsFactory =
@@ -156,15 +150,15 @@ class NativeMedia3Engine(context: Context) {
     .setLoadControl(
       DefaultLoadControl.Builder()
         .setBufferDurationsMs(
-          50_000,                  // 50s robust buffer cushion for 115 Mbps streams
-          120_000,                 // 120s maximum buffer
-          2_500,                   // Quick start in 2.5s
-          5_000,                   // 5s cushion after any rebuffering
+          15_000,                  // 15s agile buffer cushion
+          60_000,                  // 60s maximum buffer ceiling
+          1_500,                   // Instant start in 1.5s
+          3_000,                   // Quick resume in 3s after rebuffering
         )
-        .setBackBuffer(15_000, false)
-        // 256 MB RAM buffer ceiling safe within Dalvik heap limit
-        .setTargetBufferBytes(256 * 1024 * 1024)
-        .setPrioritizeTimeOverSizeThresholds(true)
+        .setBackBuffer(10_000, false)
+        // 128 MB RAM buffer ceiling safe within Dalvik heap limit
+        .setTargetBufferBytes(128 * 1024 * 1024)
+        .setPrioritizeTimeOverSizeThresholds(false)
         .build(),
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -326,7 +320,7 @@ class NativeMedia3Engine(context: Context) {
       // Keep the subtitle clock alive while paused, buffering, and immediately
       // after a seek. MPV renders from its current clock in all of these states.
       if (player.currentMediaItem == null) return
-      publishSnapshot()
+      publishPlaybackSnapshot()
       val currentPosMs = player.currentPosition.coerceAtLeast(0L)
       subtitleOverlay?.setPositionUs(currentPosMs * 1000L)
       if (activeAspectSegments.isNotEmpty()) {
@@ -1633,16 +1627,38 @@ class NativeMedia3Engine(context: Context) {
       .takeIf { it != C.TIME_UNSET && it > 0L }
       ?.also { lastKnownDurationMs = it }
       ?: lastKnownDurationMs
+    val currentPos = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L)
+    val isPlaying = player.isPlaying
+    val isReady = player.playbackState == Player.STATE_READY
+    val isBuffering = player.playbackState == Player.STATE_BUFFERING
+    val isLoading = player.isLoading
+    val isEnded = player.playbackState == Player.STATE_ENDED
+    val buffered = player.totalBufferedDuration.coerceAtLeast(0L)
+    val speed = player.playbackParameters.speed
+
+    if (previous.isPlaying == isPlaying &&
+      previous.isReady == isReady &&
+      previous.isBuffering == isBuffering &&
+      previous.isLoading == isLoading &&
+      previous.isEnded == isEnded &&
+      previous.speed == speed &&
+      previous.durationMs == reportedDurationMs &&
+      kotlin.math.abs(previous.positionMs - currentPos) < 150L &&
+      kotlin.math.abs(previous.totalBufferedDurationMs - buffered) < 500L
+    ) {
+      return
+    }
+
     _snapshot.value = previous.copy(
-      isPlaying = player.isPlaying,
-      isReady = player.playbackState == Player.STATE_READY,
-      isBuffering = player.playbackState == Player.STATE_BUFFERING,
-      isLoading = player.isLoading,
-      isEnded = player.playbackState == Player.STATE_ENDED,
-      positionMs = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L),
+      isPlaying = isPlaying,
+      isReady = isReady,
+      isBuffering = isBuffering,
+      isLoading = isLoading,
+      isEnded = isEnded,
+      positionMs = currentPos,
       durationMs = reportedDurationMs,
-      totalBufferedDurationMs = player.totalBufferedDuration.coerceAtLeast(0L),
-      speed = player.playbackParameters.speed,
+      totalBufferedDurationMs = buffered,
+      speed = speed,
     )
   }
 
