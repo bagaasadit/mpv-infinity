@@ -2005,7 +2005,7 @@ class PlayerActivity :
       mediaLoadJob?.cancel()
       cancelPlaybackLoadRecovery()
       cancelSystemBarsAutoHide()
-      if (playbackWasInitialized && ownsPlaybackSession) saveVideoPlaybackState(fileName, immediate = true)
+      if ((playbackWasInitialized || nativeWasActive) && ownsPlaybackSession) saveVideoPlaybackState(fileName, immediate = true)
       if (!keepBackgroundPlaybackAlive && nativeWasActive) {
         nativeEngine.setPlaying(false)
         nativeEngine.stop()
@@ -2201,7 +2201,7 @@ class PlayerActivity :
     if (!mpvInitialized && !nativeActive) return
     if (nativeActive) {
       nativeEngine.setPlaying(false)
-      nativeEngine.stop()
+      runCatching { nativeEngine.currentPlayer.volume = 0f }
     }
     // Pause synchronously to freeze the resume position at the close boundary. Muting as well
     // prevents Android AudioTrack/libmpv buffers from draining a short audible tail afterward.
@@ -2243,7 +2243,11 @@ class PlayerActivity :
   }
 
   override fun onPause() {
-    if ((!mpvInitialized && !isNativeEngineActive()) || !ownsPlaybackSession()) {
+    val nativeActive =
+      activeEngineMode == PlaybackEngineMode.NATIVE ||
+        decoderPreferences.playbackEngine.get() == PlaybackEngineMode.NATIVE ||
+        isNativeEngineActive()
+    if ((!mpvInitialized && !nativeActive) || !ownsPlaybackSession()) {
       super.onPause()
       return
     }
@@ -2275,6 +2279,8 @@ class PlayerActivity :
       // Don't restore UI during normal finish to prevent flickering
       // System will handle UI restoration automatically
       isReady = false
+
+      if (fileName.isNotBlank()) saveVideoPlaybackState(fileName, immediate = true)
 
       if (!handledPipDismissal) {
         // Freeze and mute audio before Activity teardown. A completed background/Mini Player
@@ -2322,6 +2328,8 @@ class PlayerActivity :
       isReady = false
       isUserFinishing = true
 
+      if (fileName.isNotBlank()) saveVideoPlaybackState(fileName, immediate = true)
+
       if (!handledPipDismissal) {
         // Freeze and mute audio before Activity teardown. A completed background/Mini Player
         // handoff is preserved because silenceAudioOnClose() checks actual session ownership.
@@ -2354,7 +2362,7 @@ class PlayerActivity :
     MediaPlaybackService.activityForeground = false
     runCatching {
       pipHelper.onStop()
-      if (isNativeEngineActive() && fileName.isNotBlank()) {
+      if ((isNativeEngineActive() || activeEngineMode == PlaybackEngineMode.NATIVE) && fileName.isNotBlank()) {
         saveVideoPlaybackState(fileName, immediate = true)
       }
       if (!mpvInitialized) return@runCatching
@@ -2444,6 +2452,7 @@ class PlayerActivity :
     isBackgroundPlaybackSessionActive = false
     pendingBackgroundTransition = false
     startedBackgroundForPip = false
+    if (fileName.isNotBlank()) saveVideoPlaybackState(fileName, immediate = true)
     silenceAudioOnClose()
     MediaPlaybackService.stopForTerminalDismissal()
     return true
@@ -5419,17 +5428,17 @@ class PlayerActivity :
     if (saveIdentifier.isBlank()) return null
 
     val nativeSnapshot = nativeEngine.snapshot.value
-    val nativeEngineActive = isNativeEngineActive()
-    val liveNativePositionMs = nativeEngine.currentPlayer.currentPosition.coerceAtLeast(0L)
-    val liveNativeDurationMs = nativeEngine.currentPlayer.duration.takeIf { it != C.TIME_UNSET }?.coerceAtLeast(0L) ?: 0L
+    val nativeEngineActive = activeEngineMode == PlaybackEngineMode.NATIVE || isNativeEngineActive()
+    val liveNativePositionMs = maxOf(nativeEngine.currentPlayer.currentPosition, nativeEngine.lastKnownPosition).coerceAtLeast(0L)
+    val liveNativeDurationMs = nativeEngine.currentPlayer.duration.takeIf { it != C.TIME_UNSET && it > 0L } ?: nativeEngine.lastKnownDuration
     return PlaybackStateSnapshot(
       mediaIdentifier = saveIdentifier,
       mediaTitle = mediaTitle,
       currentPosition =
-        if (nativeEngineActive) maxOf(nativeSnapshot.positionMs, liveNativePositionMs).toSecondsInt()
+        if (nativeEngineActive) maxOf(nativeSnapshot.positionMs, liveNativePositionMs, nativeEngine.lastKnownPositionMs).toSecondsInt()
         else readMpvIntSeconds("time-pos", viewModel.pos ?: 0),
       duration =
-        if (nativeEngineActive) maxOf(nativeSnapshot.durationMs, liveNativeDurationMs).toSecondsInt()
+        if (nativeEngineActive) maxOf(nativeSnapshot.durationMs, liveNativeDurationMs, nativeEngine.lastKnownDurationMs).toSecondsInt()
         else readMpvIntSeconds("duration", viewModel.duration ?: 0),
       isPositionRestorePending =
         if (nativeEngineActive) {
@@ -5593,7 +5602,11 @@ class PlayerActivity :
       !viewModel.isAudioOnly.value &&
       !isCurrentMediaKnownAudio()
     ) {
-      PlaybackSession.setPropertyInt("time-pos", state.lastPosition)
+      if (isNativeEngineActive() || activeEngineMode == PlaybackEngineMode.NATIVE) {
+        nativeEngine.seekTo(state.lastPosition.toLong() * 1000L)
+      } else {
+        PlaybackSession.setPropertyInt("time-pos", state.lastPosition)
+      }
     }
   }
 
@@ -6365,7 +6378,9 @@ class PlayerActivity :
         (resolvePlaybackState(item.stableId, legacyMediaIdentifier)
           ?: resolvePlaybackState(mediaIdentifier, legacyMediaIdentifier)
           ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri(item.playableUri))
-          ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forLocalPath(item.playableUri)))
+          ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forUri(item.originalUri))
+          ?: playbackStateRepository.getVideoDataByTitle(PlaybackIdentity.forLocalPath(item.playableUri))
+          ?: (fileName.takeIf { it.isNotBlank() }?.let { resolvePlaybackState(it, null) }))
           ?.lastPosition
           ?.takeIf { it > 0 }
           ?.toDouble()

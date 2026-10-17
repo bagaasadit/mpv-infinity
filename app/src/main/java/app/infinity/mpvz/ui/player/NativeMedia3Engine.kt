@@ -303,7 +303,15 @@ class NativeMedia3Engine(context: Context) {
   private val loopHandler = Handler(Looper.getMainLooper())
   private var pendingSeekPositionMs: Long? = null
   private var pendingSeekDisplayPositionMs: Long? = null
-  private var lastKnownDurationMs: Long = 0L
+  private var pendingInitialSeekPositionMs: Long? = null
+  var lastKnownPositionMs: Long = 0L
+    private set
+  val lastKnownPosition: Long
+    get() = maxOf(lastKnownPositionMs, runCatching { player.currentPosition }.getOrDefault(0L).coerceAtLeast(0L))
+  var lastKnownDurationMs: Long = 0L
+    private set
+  val lastKnownDuration: Long
+    get() = player.duration.takeIf { it != C.TIME_UNSET && it > 0L } ?: lastKnownDurationMs
   private var pendingExternalSelectionId: String? = null
   private val seekRunnable = Runnable {
     val positionMs = pendingSeekPositionMs ?: return@Runnable
@@ -322,6 +330,7 @@ class NativeMedia3Engine(context: Context) {
       if (player.currentMediaItem == null) return
       publishPlaybackSnapshot()
       val currentPosMs = player.currentPosition.coerceAtLeast(0L)
+      if (currentPosMs > 0L) lastKnownPositionMs = currentPosMs
       subtitleOverlay?.setPositionUs(currentPosMs * 1000L)
       if (activeAspectSegments.isNotEmpty()) {
         val segmentIndex = activeAspectSegments.indexOfFirst { currentPosMs in it.startMs..it.endMs }
@@ -418,7 +427,17 @@ class NativeMedia3Engine(context: Context) {
       }
     }
     override fun onPlaybackStateChanged(playbackState: Int) {
-      if (playbackState == Player.STATE_READY) pendingSeekDisplayPositionMs = null
+      if (playbackState == Player.STATE_READY) {
+        pendingSeekDisplayPositionMs = null
+        val initialSeek = pendingInitialSeekPositionMs
+        if (initialSeek != null && initialSeek > 0L) {
+          pendingInitialSeekPositionMs = null
+          if (kotlin.math.abs(player.currentPosition - initialSeek) > 1500L) {
+            Log.i(logTag, "Enforcing initial resume seek to $initialSeek ms (current=${player.currentPosition} ms)")
+            player.seekTo(initialSeek)
+          }
+        }
+      }
       Log.d(logTag, "playback state=$playbackState uri=${player.currentMediaItem?.localConfiguration?.uri}")
       if (playbackState == Player.STATE_ENDED) {
         val uri = player.currentMediaItem?.localConfiguration?.uri
@@ -1055,6 +1074,15 @@ class NativeMedia3Engine(context: Context) {
     hasUserManuallySelectedAudio = false
     hasUserManuallySelectedSubtitle = false
     lastKnownDurationMs = 0L
+    if (startPositionMs > 0L) {
+      lastKnownPositionMs = startPositionMs
+      pendingInitialSeekPositionMs = startPositionMs
+      pendingSeekPositionMs = startPositionMs
+      pendingSeekDisplayPositionMs = startPositionMs
+    } else {
+      lastKnownPositionMs = 0L
+      pendingInitialSeekPositionMs = null
+    }
     videoDecoderName = null
     audioDecoderName = null
     // The player instance survives item changes; reset any ducked/zero output level before the
@@ -1486,6 +1514,11 @@ class NativeMedia3Engine(context: Context) {
     loopHandler.removeCallbacks(seekRunnable)
     pendingSeekPositionMs = null
     pendingSeekDisplayPositionMs = null
+    pendingInitialSeekPositionMs = null
+    val currentPos = runCatching { player.currentPosition }.getOrDefault(0L).coerceAtLeast(0L)
+    if (currentPos > 0L) lastKnownPositionMs = currentPos
+    val currentDur = runCatching { player.duration }.getOrDefault(0L).takeIf { it != C.TIME_UNSET && it > 0L } ?: 0L
+    if (currentDur > 0L) lastKnownDurationMs = currentDur
     player.stop()
     player.clearMediaItems()
     _subtitleCueText.value = ""
@@ -1591,13 +1624,15 @@ class NativeMedia3Engine(context: Context) {
       } else {
         0
       }
+    val currentPos = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L)
+    if (currentPos > 0L) lastKnownPositionMs = currentPos
     _snapshot.value = NativePlaybackSnapshot(
       isPlaying = player.isPlaying,
       isReady = player.playbackState == Player.STATE_READY,
       isBuffering = player.playbackState == Player.STATE_BUFFERING,
       isLoading = player.isLoading,
       isEnded = player.playbackState == Player.STATE_ENDED,
-      positionMs = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L),
+      positionMs = currentPos,
       durationMs = reportedDurationMs,
       totalBufferedDurationMs = player.totalBufferedDuration.coerceAtLeast(0L),
       videoWidth = video?.width ?: 0,
@@ -1628,6 +1663,7 @@ class NativeMedia3Engine(context: Context) {
       ?.also { lastKnownDurationMs = it }
       ?: lastKnownDurationMs
     val currentPos = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L)
+    if (currentPos > 0L) lastKnownPositionMs = currentPos
     val isPlaying = player.isPlaying
     val isReady = player.playbackState == Player.STATE_READY
     val isBuffering = player.playbackState == Player.STATE_BUFFERING
