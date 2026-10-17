@@ -9,22 +9,16 @@
 
 package app.infinity.mpvz.ui.editor
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
@@ -38,28 +32,39 @@ fun MpvScriptEditor(
   language: String,
   modifier: Modifier = Modifier,
 ) {
-  val verticalScroll = rememberScrollState()
-  val horizontalScroll = rememberScrollState()
-
-  Box(
-    modifier = modifier
-      .fillMaxSize()
-      .background(MaterialTheme.colorScheme.surface)
-      .verticalScroll(verticalScroll)
-      .horizontalScroll(horizontalScroll)
-      .padding(16.dp),
-  ) {
-    BasicTextField(
-      value = content,
-      onValueChange = onContentChange,
-      modifier = Modifier.fillMaxWidth(),
-      textStyle = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 14.sp,
-        color = MaterialTheme.colorScheme.onSurface,
-        lineHeight = 20.sp,
-      ),
-      cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-    )
-  }
+  TextField(
+    value = content,
+    onValueChange = onContentChange,
+    modifier = modifier.fillMaxSize(),
+    textStyle = TextStyle(
+      fontFamily = FontFamily.Monospace,
+      fontSize = 14.sp,
+      color = MaterialTheme.colorScheme.onSurface,
+      lineHeight = 20.sp,
+    ),
+    colors = TextFieldDefaults.colors(
+      focusedContainerColor = MaterialTheme.colorScheme.surface,
+      unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+      disabledContainerColor = MaterialTheme.colorScheme.surface,
+      focusedIndicatorColor = Color.Transparent,
+      unfocusedIndicatorColor = Color.Transparent,
+      disabledIndicatorColor = Color.Transparent,
+      cursorColor = MaterialTheme.colorScheme.primary,
+    ),
+    placeholder = {
+      Text(
+        text = when (language) {
+          "mpv.conf" -> "# Enter mpv configuration here\n# e.g.:\n# hwdec=auto\n# vo=gpu-next"
+          "input.conf" -> "# Enter key bindings here\n# e.g.:\n# RIGHT seek 5"
+          else -> "-- Enter script code here"
+        },
+        style = TextStyle(
+          fontFamily = FontFamily.Monospace,
+          fontSize = 14.sp,
+          color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+          lineHeight = 20.sp,
+        ),
+      )
+    },
+  )
 }

@@ -55,19 +55,15 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
 import app.infinity.mpvz.R
-import app.infinity.mpvz.preferences.SecureFolderPreferences
-import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
 import app.infinity.mpvz.ui.icons.AppIcon
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
-import app.infinity.mpvz.ui.securefolder.SecureFolderGateScreen
 import app.infinity.mpvz.ui.theme.LocalEmphasizedTypography
 import app.infinity.mpvz.ui.utils.LocalBackStack
 import app.infinity.mpvz.ui.utils.LocalShowSettingsBackArrow
 import app.infinity.mpvz.ui.utils.popSafely
 import kotlinx.serialization.Serializable
-import org.koin.compose.koinInject
 
 private data class SettingsDestination(
   val title: String,
@@ -196,8 +192,6 @@ object PreferencesScreen : Screen {
   @Composable
   private fun settingsSections(): List<SettingsSection> {
     val colorScheme = MaterialTheme.colorScheme
-    val secureFolderPreferences = koinInject<SecureFolderPreferences>()
-    val isSecureFolderEntryHidden by secureFolderPreferences.isEntryPointHidden.collectAsState()
     return listOf(
       SettingsSection(
         title = stringResource(R.string.pref_section_appearance),
@@ -272,50 +266,14 @@ object PreferencesScreen : Screen {
         title = stringResource(R.string.pref_section_storage),
         tint = colorScheme.onSurfaceVariant,
         items =
-          listOfNotNull(
+          listOf(
             SettingsDestination(
               title = stringResource(R.string.pref_folders_title),
               summary = stringResource(R.string.pref_folders_summary),
               icon = Icons.RoundedFilled.Folder,
               screen = FoldersPreferencesScreen,
             ),
-            if (!isSecureFolderEntryHidden) {
-              SettingsDestination(
-                title = stringResource(R.string.secure_folder_title),
-                summary = stringResource(R.string.secure_folder_summary),
-                icon = Icons.RoundedFilled.Lock,
-                screen = SecureFolderGateScreen,
-              )
-            } else {
-              null
-            },
         ),
-      ),
-      SettingsSection(
-        title = stringResource(R.string.pref_section_network),
-        tint = colorScheme.onSurfaceVariant,
-        items =
-          listOf(
-            SettingsDestination(
-              title = stringResource(R.string.pref_media_servers_title),
-              summary = stringResource(R.string.pref_media_servers_summary),
-              icon = Icons.RoundedFilled.CloudDone,
-              screen = MediaServersPreferencesScreen,
-            ),
-          ),
-      ),
-      SettingsSection(
-        title = stringResource(R.string.pref_section_ai),
-        tint = colorScheme.onSurfaceVariant,
-        items =
-          listOf(
-            SettingsDestination(
-              title = stringResource(R.string.pref_section_ai_title),
-              summary = stringResource(R.string.pref_section_ai_summary),
-              icon = Icons.RoundedFilled.AutoAwesome,
-              screen = AiIntegrationScreen,
-            ),
-          ),
       ),
       SettingsSection(
         title = stringResource(R.string.extra_features_title),
