@@ -129,9 +129,6 @@ import app.infinity.mpvz.ui.player.ytdlp.YtdlpInstallPromptDialog
 import app.infinity.mpvz.ui.player.ytdlp.YtdlpInstallProgressDialog
 import app.infinity.mpvz.ui.player.ytdlp.YtdlpManager
 import app.infinity.mpvz.ui.preferences.YtdlpSettingsScreen
-import app.infinity.mpvz.ui.torrent.TorrentSelectionInput
-import app.infinity.mpvz.ui.torrent.TorrentSelectionScreen
-import app.infinity.mpvz.ui.torrent.TorrentSelectionViewModel
 import app.infinity.mpvz.ui.utils.LocalBackStack
 import app.infinity.mpvz.utils.media.SharedUrlExtractor
 import app.infinity.mpvz.utils.media.MediaUtils
@@ -164,17 +161,6 @@ object NetworkStreamingScreen : Screen {
     val bookmarkPreferences = koinInject<NetworkBookmarkPreferences>()
     val wyzieSearchRepository = koinInject<WyzieSearchRepository>()
     val linkDownloadCoordinator = koinInject<app.infinity.mpvz.domain.download.LinkDownloadCoordinator>()
-    val torrentPickerViewModel: TorrentSelectionViewModel =
-      viewModel(
-        key = "network_torrent_picker",
-        factory =
-          TorrentSelectionViewModel.factory(
-            torrentStreamingEngine = torrentStreamingEngine,
-            streamEntryRepository = streamEntryRepository,
-            wyzieSearchRepository = wyzieSearchRepository,
-          ),
-      )
-    val torrentPickerState by torrentPickerViewModel.uiState.collectAsState()
     val connections by viewModel.connections.collectAsState()
     val folderBookmarks by bookmarkPreferences.bookmarks.collectAsState()
     val connectionStatuses by viewModel.connectionStatuses.collectAsState()
@@ -183,7 +169,6 @@ object NetworkStreamingScreen : Screen {
     var showAddSheet by remember { mutableStateOf(false) }
     var showAddMediaDialog by remember { mutableStateOf(false) }
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
-    var showTorrentPicker by remember { mutableStateOf(false) }
     val navigationBarHeight = app.infinity.mpvz.ui.browser.LocalNavigationBarHeight.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -260,20 +245,6 @@ object NetworkStreamingScreen : Screen {
         showYtdlDownloadQualityDialog = true
       } else {
         playLinkGatingYtdlp(playableSource)
-      }
-    }
-
-    LaunchedEffect(torrentPickerViewModel) {
-      torrentPickerViewModel.launches.collect { request ->
-        showTorrentPicker = false
-        MediaUtils.playFile(
-          source = request.source,
-          context = context,
-          launchSource = "network_torrent",
-          title = request.file.name,
-          torrentFileIndex = request.file.index,
-          torrentPreparationId = request.preparationId,
-        )
       }
     }
 
@@ -518,12 +489,7 @@ object NetworkStreamingScreen : Screen {
                     linkPlaybackJob?.isActive == true,
                 onPlayLink = { url ->
                   val playableSource = normalizeTorrentSource(url) ?: url.trim()
-                  if (isTorrentSource(playableSource)) {
-                    showTorrentPicker = true
-                    torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource))
-                  } else {
-                    submitPastedLink(playableSource)
-                  }
+                  submitPastedLink(playableSource)
                 },
                 onPlayRecent = { entry ->
                   viewModel.recordExistingLinkPlayed(entry.stableKey)
@@ -536,11 +502,7 @@ object NetworkStreamingScreen : Screen {
                 },
                 onSaveToMedia = { entry ->
                   val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
-                  if (isTorrentSource(playableSource)) {
-                    showTorrentPicker = true
-                    torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource, title = entry.fileName))
-                  } else {
-                    when (linkDownloadCoordinator.enqueue(playableSource, entry.fileName)) {
+                  when (linkDownloadCoordinator.enqueue(playableSource, entry.fileName)) {
                       app.infinity.mpvz.domain.download.LinkDownloadCoordinator.Route.UNSUPPORTED ->
                         android.widget.Toast
                           .makeText(context, R.string.downloads_location_invalid, android.widget.Toast.LENGTH_SHORT)
@@ -695,12 +657,7 @@ object NetworkStreamingScreen : Screen {
         onDismiss = { showAddMediaDialog = false },
         onSubmit = { url ->
           val playableSource = normalizeTorrentSource(url) ?: url.trim()
-          if (isTorrentSource(playableSource)) {
-            showTorrentPicker = true
-            torrentPickerViewModel.open(TorrentSelectionInput(source = playableSource))
-          } else {
-            submitPastedLink(playableSource)
-          }
+          submitPastedLink(playableSource)
         },
       )
 
@@ -738,18 +695,6 @@ object NetworkStreamingScreen : Screen {
             viewModel.updateConnection(updatedConnection, clearPassword)
             editingConnection = null
           },
-        )
-      }
-
-      if (showTorrentPicker) {
-        TorrentSelectionScreen(
-          state = torrentPickerState,
-          onBack = {
-            showTorrentPicker = false
-            torrentPickerViewModel.cancel()
-          },
-          onRetry = torrentPickerViewModel::retry,
-          onSelect = torrentPickerViewModel::select,
         )
       }
     }

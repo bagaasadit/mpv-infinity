@@ -280,7 +280,6 @@ dependencies {
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.okhttp)
-  implementation(files("libs/quickjs-kt-android-1.0.5-nuvio.aar"))
   implementation(libs.retrofit)
   implementation(libs.retrofit.kotlinx.serialization)
   implementation(libs.coil.compose)
@@ -298,10 +297,6 @@ dependencies {
   implementation("io.github.peerless2012:ass-media:0.5.1")
   implementation(libs.jellyfin.media3.ffmpeg.decoder)
   implementation(project(":subtitle-libass"))
-  implementation(platform(libs.sora.editor.bom))
-  implementation(libs.sora.editor)
-  implementation(libs.sora.language.textmate)
-  // implementation(libs.sora.oniguruma.native)
 
   coreLibraryDesugaring(libs.desugar.jdk.libs)
 
@@ -309,7 +304,6 @@ dependencies {
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
   implementation(libs.androidx.profileinstaller)
-  implementation(libs.google.cast.framework)
 
   "standardImplementation"(files("libs/mpvlib.aar"))
   "noVulkanImplementation"(files("libs/mpvlib-no-vulkun.aar"))
@@ -327,15 +321,6 @@ dependencies {
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
   implementation(libs.androidx.biometric)
-
-  // libtorrent4j's Java API plus the native library for every enabled APK ABI.
-  implementation(libs.libtorrent4j)
-  implementation(libs.libtorrent4j.android.arm64)
-  implementation(libs.libtorrent4j.android.arm)
-  if (enableX86) {
-    implementation(libs.libtorrent4j.android.x86)
-    implementation(libs.libtorrent4j.android.x8664)
-  }
 }
 
 // ---------------- Git helpers ----------------

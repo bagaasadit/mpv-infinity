@@ -160,12 +160,7 @@ class DirectDownloadService : Service() {
     private const val ACTION_CANCEL_ACTIVE = "app.infinity.mpvz.download.CANCEL_DIRECT_ACTIVE"
 
     fun start(context: Context) {
-      val intent = Intent(context, DirectDownloadService::class.java)
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        context.startForegroundService(intent)
-      } else {
-        context.startService(intent)
-      }
+      // Download services pruned in pure player mode
     }
   }
 }

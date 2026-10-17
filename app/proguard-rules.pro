@@ -22,7 +22,6 @@
 -dontobfuscate
 -keep,allowoptimization class is.xyz.mpv.** { public protected *; }
 -keep,allowoptimization class net.mediaarea.mediainfo.lib.** { public protected *; }
--keep class org.libtorrent4j.swig.libtorrent_jni { *; }
 -dontwarn org.xmlpull.v1.**
 -dontnote org.xmlpull.v1.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder

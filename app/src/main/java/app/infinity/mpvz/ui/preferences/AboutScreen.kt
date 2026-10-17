@@ -983,13 +983,6 @@ private val OPEN_SOURCE_LIBRARIES =
       url = "https://material.io/develop/android",
     ),
     OpenSourceLibrary(
-      name = "Google Cast",
-      artifact = "com.google.android.gms:play-services-cast-framework",
-      descriptionRes = R.string.oss_google_cast_description,
-      license = "Apache-2.0",
-      url = "https://developers.google.com/cast",
-    ),
-    OpenSourceLibrary(
       name = "Material Symbols",
       artifact = "com.composables:icons-material-symbols",
       descriptionRes = R.string.oss_material_symbols_description,

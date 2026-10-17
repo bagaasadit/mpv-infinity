@@ -68,7 +68,6 @@ import app.infinity.mpvz.preferences.PlayerButton
 import app.infinity.mpvz.preferences.PlayerClockFormat
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
-import app.infinity.mpvz.ui.cast.CastPlayerButton
 import app.infinity.mpvz.ui.icons.Icons
 import app.infinity.mpvz.ui.player.Panels
 import app.infinity.mpvz.ui.player.AmbientStyle
@@ -647,12 +646,7 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.CAST -> {
-      CastPlayerButton(
-        hideBackground = hideBackground,
-        buttonSize = buttonSize,
-        onInvoked = clickEvent,
-        contentColor = if (hideBackground) controlColor else null,
-      )
+      // Cast disabled in pure player mode
     }
 
     PlayerButton.ASPECT_RATIO -> {

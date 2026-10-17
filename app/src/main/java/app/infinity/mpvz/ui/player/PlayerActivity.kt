@@ -105,14 +105,11 @@ import app.infinity.mpvz.preferences.VideoSortType
 import app.infinity.mpvz.ui.browser.playlist.ALL_VIDEOS_PLAYLIST_ID
 import app.infinity.mpvz.ui.browser.playlist.buildAllVideosPlaylistEntity
 import app.infinity.mpvz.ui.browser.playlist.isAllVideosPlaylist
-import app.infinity.mpvz.ui.cast.CastMediaSnapshot
-import app.infinity.mpvz.ui.cast.CastPlaybackController
 import app.infinity.mpvz.ui.player.controls.PlayerControls
 import app.infinity.mpvz.ui.player.components.VideoAmbientBackground
 import app.infinity.mpvz.ui.player.components.rememberVideoAmbientFrame
 import app.infinity.mpvz.ui.player.ytdlp.YtdlpManager
 import app.infinity.mpvz.ui.theme.MpvInfinityTheme
-import app.infinity.mpvz.ui.torrent.TorrentSelectionActivity
 import app.infinity.mpvz.utils.device.VulkanCapabilities
 import app.infinity.mpvz.utils.history.RecentlyPlayedOps
 import app.infinity.mpvz.utils.media.HttpUtils
@@ -516,7 +513,6 @@ class PlayerActivity :
    * Helper for managing Picture-in-Picture mode.
    */
   private lateinit var pipHelper: MPVPipHelper
-  private lateinit var castPlaybackController: CastPlaybackController
 
   private var isReady = false // Single flag: true when video loaded and ready
   private var isUserFinishing = false
@@ -1272,7 +1268,6 @@ class PlayerActivity :
         }
       }
     }
-    setupCastPlayback()
 
     // Only set orientation immediately if NOT in Video mode
     // For Video mode, wait for video-params/aspect to become available
@@ -1838,73 +1833,6 @@ class PlayerActivity :
       onSeekBy = { offsetMs -> if (isNativeEngineActive()) nativeEngine.seekBy(offsetMs) else PlaybackSession.command("seek", (offsetMs / 1000L).toString(), resolveSeekMode(playerPreferences)) },
       onClose = { if (isNativeEngineActive()) nativeEngine.setPlaying(false) },
       nativeVideoSize = { nativeEngine.snapshot.value.videoWidth to nativeEngine.snapshot.value.videoHeight },
-    )
-  }
-
-  private fun setupCastPlayback() {
-    castPlaybackController =
-      CastPlaybackController(
-        activity = this,
-        currentMedia = ::currentCastMediaSnapshot,
-        pauseLocal = {
-          if (isNativeEngineActive()) nativeEngine.setPlaying(false) else viewModel.pause()
-        },
-        restoreLocal = { positionMs, play ->
-          if (!isFinishing && !isDestroyed) {
-            if (isNativeEngineActive()) {
-              nativeEngine.seekTo(positionMs)
-              nativeEngine.setPlaying(play)
-            } else {
-              viewModel.seekTo((positionMs / 1000L).toInt().coerceAtLeast(0))
-              if (play) viewModel.unpause() else viewModel.pause()
-            }
-          }
-        },
-        notifyUser = viewModel::showToast,
-      )
-    castPlaybackController.start()
-  }
-
-  private fun currentCastMediaSnapshot(): CastMediaSnapshot? {
-    if (isNativeEngineActive()) {
-      val nativeMediaItem = nativeEngine.currentPlayer.currentMediaItem ?: return null
-      val nativeUri = nativeMediaItem.localConfiguration?.uri ?: return null
-      val nativeScheme = nativeUri.scheme?.lowercase()
-      if (nativeScheme !in setOf("http", "https", "content", "file")) return null
-      return CastMediaSnapshot(
-        source = nativeUri,
-        title = getPreferredCurrentTitle().ifBlank { fileName.ifBlank { nativeUri.lastPathSegment.orEmpty() } },
-        mimeType = nativeMediaItem.localConfiguration?.mimeType ?: contentResolver.getType(nativeUri),
-        durationMs = nativeEngine.snapshot.value.durationMs,
-        positionMs = nativeEngine.snapshot.value.positionMs,
-        isPlaying = nativeEngine.currentPlayer.isPlaying,
-      )
-    }
-    if (!isReady || fileName.isBlank()) return null
-    val source =
-      sequenceOf(
-        currentPlayableUri,
-        runCatching { PlaybackSession.getPropertyString("path") }.getOrNull(),
-        intent?.dataString,
-      ).filterNotNull()
-        .filter { it.isNotBlank() }
-        .map { sourceText ->
-          val parsed = Uri.parse(sourceText)
-          if (parsed.scheme.isNullOrBlank()) Uri.fromFile(File(sourceText)) else parsed
-        }.firstOrNull { uri ->
-          when (uri.scheme?.lowercase()) {
-            "content", "file" -> true
-            "http", "https" -> uri.host !in setOf("127.0.0.1", "localhost", "0.0.0.0")
-            else -> false
-          }
-        } ?: return null
-    return CastMediaSnapshot(
-      source = source,
-      title = getPreferredCurrentTitle().ifBlank { fileName },
-      mimeType = intent?.type ?: runCatching { contentResolver.getType(source) }.getOrNull(),
-      durationMs = ((PlaybackSession.getPropertyDouble("duration") ?: 0.0) * 1000.0).toLong(),
-      positionMs = ((PlaybackSession.getPropertyDouble("time-pos") ?: 0.0) * 1000.0).toLong(),
-      isPlaying = PlaybackSession.getPropertyBoolean("pause") == false,
     )
   }
 
@@ -6730,27 +6658,7 @@ class PlayerActivity :
   private fun redirectUnselectedTorrentToPicker(
     sourceIntent: Intent,
     finishCurrent: Boolean,
-  ): Boolean {
-    if (
-      sourceIntent.getIntExtra(MediaUtils.EXTRA_TORRENT_FILE_INDEX, -1) >= 0 ||
-      !sourceIntent.getStringExtra(MediaUtils.EXTRA_TORRENT_PREPARATION_ID).isNullOrBlank()
-    ) {
-      return false
-    }
-    val source = extractUriFromIntent(sourceIntent)?.toString()?.trim().orEmpty()
-    if (!isTorrentSource(source, sourceIntent.type)) return false
-
-    val pickerIntent =
-      Intent(sourceIntent).apply {
-        setClass(this@PlayerActivity, TorrentSelectionActivity::class.java)
-        putExtra(MediaUtils.EXTRA_TORRENT_SOURCE, source)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      }
-    torrentPickerHandoff = finishCurrent
-    startActivity(pickerIntent)
-    if (finishCurrent) finish()
-    return true
-  }
+  ): Boolean = false
 
   // ==================== Picture-in-Picture Management ====================
 

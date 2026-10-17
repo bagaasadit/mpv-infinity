@@ -144,12 +144,7 @@ class YtdlpDownloadService : Service() {
     private const val ACTION_CANCEL_ACTIVE = "app.infinity.mpvz.download.CANCEL_ACTIVE"
 
     fun start(context: Context) {
-      val intent = Intent(context, YtdlpDownloadService::class.java)
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        context.startForegroundService(intent)
-      } else {
-        context.startService(intent)
-      }
+      // Download services pruned in pure player mode
     }
   }
 }

@@ -54,27 +54,6 @@
                 android:value="true" />
         </service>
 
-        <service
-            android:name=".domain.download.YtdlpDownloadService"
-            android:enabled="false"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
-        <service
-            android:name=".domain.download.DirectDownloadService"
-            android:enabled="false"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
-        <meta-data
-            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
-            android:value="app.infinity.mpvz.ui.cast.MpvInfinityCastOptionsProvider" />
-
-        <receiver
-            android:name="androidx.mediarouter.media.MediaTransferReceiver"
-            android:enabled="false"
-            android:exported="false" />
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -379,65 +358,6 @@
             </intent-filter>
         </activity-alias>
 
-        <activity
-            android:name=".ui.torrent.TorrentSelectionActivity"
-            android:exported="true"
-            android:grantUriPermissions="true"
-            android:theme="@style/Theme.mpvinfinity">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="magnet" />
-                <data android:scheme="torrent" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:mimeType="application/x-bittorrent" />
-                <data android:mimeType="application/x-torrent" />
-                <data android:mimeType="application/torrent" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:pathPattern=".*\\.torrent" />
-                <data android:pathPattern=".*\\..*\\.torrent" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-
-                <data android:mimeType="application/x-bittorrent" />
-                <data android:mimeType="application/x-torrent" />
-                <data android:mimeType="application/torrent" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".ui.cast.CastRemoteControllerActivity"
-            android:exported="false"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.mpvinfinity" />
-        <activity
-            android:name=".ui.cast.CastExpandedControlsActivity"
-            android:exported="false"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.mpvinfinity" />
         <activity android:name=".presentation.crash.CrashActivity" />
 
         <activity
@@ -445,27 +365,6 @@
             android:exported="true"
             android:theme="@style/Theme.mpvinfinity"
             android:label="@string/ui_media_info" />
-
-        <activity
-            android:name=".ui.downloads.QuickDownloadActivity"
-            android:exported="true"
-            android:theme="@style/Theme.mpvinfinity.QuickDownload"
-            android:label="Quick Download" />
-
-        <activity-alias
-            android:name=".ui.downloads.QuickDownloadActivityAlias"
-            android:targetActivity=".ui.downloads.QuickDownloadActivity"
-            android:exported="true"
-            android:enabled="true"
-            android:label="Quick Download">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-                <data android:mimeType="text/uri-list" />
-                <data android:mimeType="text/*" />
-            </intent-filter>
-        </activity-alias>
 
         <activity-alias
             android:name=".ui.mediainfo.MediaInfoActivityAlias"

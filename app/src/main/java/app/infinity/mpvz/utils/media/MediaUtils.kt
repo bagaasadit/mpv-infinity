@@ -23,7 +23,6 @@ import app.infinity.mpvz.ui.player.PlaybackItem
 import app.infinity.mpvz.ui.player.PlayerActivity
 import app.infinity.mpvz.ui.player.PlayerLookupHints
 import app.infinity.mpvz.ui.player.PreparedPlaybackLaunchStore
-import app.infinity.mpvz.ui.torrent.TorrentSelectionActivity
 import app.infinity.mpvz.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.Utils
 import java.io.File
@@ -156,15 +155,7 @@ object MediaUtils {
               source.uri
             }
           val intent = Intent(Intent.ACTION_VIEW, playbackUri)
-          val torrentSource = playbackUri.toString().takeIf { isTorrentSource(it, source.mimeType) }
-          intent.setClass(
-            context,
-            if (torrentSource != null && torrentFileIndex == null && torrentPreparationId == null) {
-              TorrentSelectionActivity::class.java
-            } else {
-              PlayerActivity::class.java
-            },
-          )
+          intent.setClass(context, PlayerActivity::class.java)
           intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
           intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
           intent.putExtra("internal_launch", true) // Enables subtitle autoload
@@ -252,20 +243,7 @@ object MediaUtils {
       }
 
     val intent = Intent(Intent.ACTION_VIEW, playbackUri)
-    val torrentSource =
-      when (source) {
-        is String -> source.trim()
-        is Uri -> source.toString()
-        else -> playbackUri.toString()
-      }.takeIf { isTorrentSource(it) }
-    intent.setClass(
-      context,
-      if (torrentSource != null && torrentFileIndex == null && torrentPreparationId == null) {
-        TorrentSelectionActivity::class.java
-      } else {
-        PlayerActivity::class.java
-      },
-    )
+    intent.setClass(context, PlayerActivity::class.java)
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     localPath?.let { intent.putExtra("local_media_path", it) }

@@ -186,7 +186,6 @@ class MainActivity : AppCompatActivity() {
   private var wasInPipMode = false
   private var pendingPipExitResolution = false
   private var isExpandingFromPip by mutableStateOf(false)
-  private var openDownloadsFromIntent by mutableStateOf(false)
 
   // Register the ActivityResultLauncher at class level
   private val mediaAccessLauncher =
@@ -472,9 +471,6 @@ class MainActivity : AppCompatActivity() {
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    if (intent.getBooleanExtra(EXTRA_OPEN_DOWNLOADS, false)) {
-      openDownloadsFromIntent = true
-    }
   }
 
   override fun onStop() {
@@ -559,7 +555,6 @@ class MainActivity : AppCompatActivity() {
   }
 
   companion object {
-    const val EXTRA_OPEN_DOWNLOADS = "app.infinity.mpvz.extra.OPEN_DOWNLOADS"
     const val SYSTEM_BAR_THEME_SWITCH_PROGRESS = 0.55f
   }
 
@@ -611,14 +606,6 @@ class MainActivity : AppCompatActivity() {
       LaunchedEffect(hasNavEntries) {
         if (!hasNavEntries) {
           typedBackstack.add(PurePlayerHomeScreen)
-        }
-      }
-      LaunchedEffect(openDownloadsFromIntent, hasNavEntries) {
-        if (openDownloadsFromIntent && hasNavEntries) {
-          if (typedBackstack.lastOrNull() != app.infinity.mpvz.ui.downloads.DownloadsScreen) {
-            typedBackstack.add(app.infinity.mpvz.ui.downloads.DownloadsScreen)
-          }
-          openDownloadsFromIntent = false
         }
       }
 
