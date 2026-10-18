@@ -556,16 +556,41 @@ class NativeMedia3Engine(context: Context) {
     }
   }
 
-  fun setVideoAspect(aspect: VideoAspect) {
+  private var autoCropScale: Float = 1f
+
+  fun setAutoCropScale(scale: Float) {
+    autoCropScale = scale.coerceIn(1f, 2.5f)
+    applySurfaceScale()
+  }
+
+  private fun applySurfaceScale() {
     (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
-      surface.scaleX = 1f
-      surface.scaleY = 1f
+      surface.scaleX = autoCropScale
+      surface.scaleY = autoCropScale
     }
+  }
+
+  fun setVideoAspect(aspect: VideoAspect) {
     isManualAspectOverride = true
     val mode = when (aspect) {
-      VideoAspect.Fit -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-      VideoAspect.Crop -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-      VideoAspect.Stretch -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+      VideoAspect.Fit -> {
+        applySurfaceScale()
+        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+      }
+      VideoAspect.Crop -> {
+        (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
+          surface.scaleX = 1f
+          surface.scaleY = 1f
+        }
+        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+      }
+      VideoAspect.Stretch -> {
+        (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
+          surface.scaleX = 1f
+          surface.scaleY = 1f
+        }
+        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+      }
     }
     lastAppliedResizeMode = mode
     attachedView?.post {
@@ -1529,6 +1554,8 @@ class NativeMedia3Engine(context: Context) {
       renderer.getTrackIds().keys.toList().forEach { renderer.removeTrack(it) }
     }
     _hasRenderedFirstFrame.value = false
+    autoCropScale = 1f
+    applySurfaceScale()
     publishSnapshot()
   }
 

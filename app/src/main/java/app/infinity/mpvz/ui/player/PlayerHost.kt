@@ -121,4 +121,10 @@ interface PlayerHost {
   fun nativeDisableSubtitles() {}
 
   fun nativeAddSubtitle(uri: android.net.Uri, select: Boolean): Boolean = false
+
+  fun nativeVideoSize(): Pair<Int, Int> = 0 to 0
+
+  fun nativeSetAutoCropScale(scale: Float) {}
+
+  fun captureCurrentVideoFrame(onCaptured: (android.graphics.Bitmap?) -> Unit) { onCaptured(null) }
 }

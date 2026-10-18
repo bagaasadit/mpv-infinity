@@ -58,7 +58,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.infinity.mpvz.R
 import app.infinity.mpvz.presentation.Screen
-import app.infinity.mpvz.ui.browser.filesystem.FileSystemBrowserRootScreen
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
 import app.infinity.mpvz.ui.player.PlayerActivity
@@ -224,31 +223,6 @@ object PurePlayerHomeScreen : Screen {
             Spacer(modifier = Modifier.width(8.dp))
             Text(
               text = "Pick a file",
-              style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = FontWeight.Medium,
-              ),
-            )
-          }
-
-          Spacer(modifier = Modifier.height(12.dp))
-
-          OutlinedButton(
-            onClick = {
-              backStack.add(FileSystemBrowserRootScreen)
-            },
-            shape = CircleShape,
-            modifier = Modifier
-              .fillMaxWidth(0.65f)
-              .height(48.dp),
-          ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.FolderOpen,
-              contentDescription = null,
-              modifier = Modifier.size(18.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              text = "Open file picker",
               style = MaterialTheme.typography.labelLarge.copy(
                 fontWeight = FontWeight.Medium,
               ),

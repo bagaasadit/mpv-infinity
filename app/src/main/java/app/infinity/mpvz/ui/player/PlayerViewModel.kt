@@ -123,6 +123,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -133,6 +135,7 @@ import java.security.MessageDigest
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.random.Random
@@ -5043,111 +5046,114 @@ class PlayerViewModel : ViewModel(),
     scheduleAutoCropAnalysis(force = true)
   }
 
-  private fun scheduleAutoCropAnalysis(force: Boolean = false) {
+  fun scheduleAutoCropAnalysis(force: Boolean = false) {
     if (!playerPreferences.autoCropBlackBars.get()) return
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUTO_CROP)) {
       _autoCropState.value = AutoCropState.UNSUPPORTED
       return
     }
 
-    val session = PlaybackSession.state.value
-    if (session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) {
-      if (session.phase == PlaybackPhase.LOADING && autoCropReadinessJob?.isActive != true) {
-        val expectedGeneration = session.generation
+    val isNative = host.isNativeEngineActive()
+    val isReady = if (isNative) {
+      host.isNativePlaying() || host.nativePlaybackPositionSeconds() > 0.0
+    } else {
+      val phase = PlaybackSession.state.value.phase
+      phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    }
+
+    if (!isReady) {
+      if (autoCropReadinessJob?.isActive != true) {
         _autoCropState.value = AutoCropState.ANALYZING
         autoCropReadinessJob =
           viewModelScope.launch {
-            val readyState =
-              withTimeoutOrNull(AUTO_CROP_READY_TIMEOUT_MS) {
-                PlaybackSession.state.first { state ->
-                  state.generation != expectedGeneration ||
-                    state.phase in
-                    setOf(
-                      PlaybackPhase.READY,
-                      PlaybackPhase.BACKGROUND,
-                      PlaybackPhase.ERROR,
-                      PlaybackPhase.IDLE,
-                    )
-                }
-              }
+            delay(1200L)
             autoCropReadinessJob = null
-            if (
-              readyState?.generation == expectedGeneration &&
-              readyState.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
-            ) {
+            if (playerPreferences.autoCropBlackBars.get()) {
               scheduleAutoCropAnalysis(force)
-            } else if (PlaybackSession.isCurrentGeneration(expectedGeneration)) {
-              _autoCropState.value = AutoCropState.ERROR
             }
           }
       }
       return
     }
-    val generation = session.generation
+
+    val generation = if (isNative) 1000L else PlaybackSession.state.value.generation
     if (!force && autoCropAnalyzedGeneration == generation) return
-    val source = runCatching { host.currentThumbnailSource() }.getOrNull()?.takeIf(String::isNotBlank)
-    val durationSeconds = PlaybackSession.getPropertyDouble("duration") ?: preciseDuration.value.toDouble()
-    val sourceWidth = PlaybackSession.getPropertyInt("video-params/w") ?: 0
-    val sourceHeight = PlaybackSession.getPropertyInt("video-params/h") ?: 0
-    val rotation = (PlaybackSession.getPropertyInt("video-params/rotate") ?: 0).mod(360)
-    if (source == null || durationSeconds <= 0.0 || sourceWidth <= 0 || sourceHeight <= 0) {
-      autoCropAnalyzedGeneration = generation
-      _autoCropState.value = AutoCropState.UNSUPPORTED
-      return
+
+    val (sourceWidth, sourceHeight) = if (isNative) {
+      val size = host.nativeVideoSize()
+      if (size.first > 0 && size.second > 0) size else 1920 to 1080
+    } else {
+      val w = PlaybackSession.getPropertyInt("video-params/w") ?: 0
+      val h = PlaybackSession.getPropertyInt("video-params/h") ?: 0
+      if (w > 0 && h > 0) w to h else 1920 to 1080
     }
 
     autoCropAnalyzedGeneration = generation
     autoCropJob?.cancel()
     _autoCropState.value = AutoCropState.ANALYZING
-    val cacheKey = "$source|$sourceWidth|$sourceHeight|${durationSeconds.toLong()}"
+
     autoCropJob =
-      viewModelScope.launch(Dispatchers.IO) {
-        Log.i(TAG, "Auto-crop analyzing generation=$generation source=$source")
-        val combined =
-          autoCropResultCache.get(cacheKey)?.let { cached ->
-            AutoCropSamples(listOf(cached, cached, cached), framesWereRotated = false)
-          } ?: run {
-            val positions = autoCropSamplePositions(source, durationSeconds)
-            extractAutoCropSamples(source, positions)
+      viewModelScope.launch(Dispatchers.Default) {
+        val samples = mutableListOf<AutoCropEdges>()
+        for (i in 0 until 3) {
+          if (!isActive) break
+          val bitmap: Bitmap? =
+            suspendCancellableCoroutine { cont ->
+              host.captureCurrentVideoFrame { bmp ->
+                if (cont.isActive) cont.resume(bmp) else bmp?.recycle()
+              }
+            }
+          if (bitmap != null) {
+            val edges =
+              try {
+                AutoCropAnalyzer.analyzeFrame(bitmap)
+              } finally {
+                bitmap.recycle()
+              }
+            if (edges != null) {
+              samples.add(edges)
+            }
           }
-        val detected = combined?.let { AutoCropAnalyzer.combine(it.edges) }
+          if (i < 2) delay(500L)
+        }
+
+        val detected =
+          if (samples.isNotEmpty()) {
+            AutoCropAnalyzer.combine(samples) ?: samples.firstOrNull()
+          } else {
+            null
+          }
 
         withContext(Dispatchers.Main) {
-          if (!PlaybackSession.isCurrentGeneration(generation) || !playerPreferences.autoCropBlackBars.get()) {
+          if (!playerPreferences.autoCropBlackBars.get()) {
             return@withContext
           }
-          if (combined == null) {
-            Log.w(TAG, "Auto-crop could not decode enough frames for generation=$generation")
-            clearAutoCropProperty()
-            _autoCropState.value = AutoCropState.ERROR
-            return@withContext
-          }
-          if (detected == null) {
-            Log.i(TAG, "Auto-crop found no persistent black bars for generation=$generation")
+
+          if (detected == null || (detected.left <= 0f && detected.top <= 0f && detected.right <= 0f && detected.bottom <= 0f)) {
             clearAutoCropProperty()
             _autoCropState.value = AutoCropState.NO_BARS
             return@withContext
           }
 
-          val sourceEdges =
-            if (combined.framesWereRotated) {
-              mapRotatedEdgesToSource(detected, rotation)
-            } else {
-              detected
-            }
-          val cropValue = buildAutoCropValue(sourceEdges, sourceWidth, sourceHeight)
+          val cropValue = buildAutoCropValue(detected, sourceWidth, sourceHeight)
           if (cropValue == null) {
-            Log.i(TAG, "Auto-crop result was too small or unsafe for generation=$generation edges=$sourceEdges")
             clearAutoCropProperty()
             _autoCropState.value = AutoCropState.NO_BARS
             return@withContext
           }
 
-          autoCropResultCache.put(cacheKey, sourceEdges)
-          PlaybackSession.setPropertyString("video-crop", cropValue)
-          Log.i(TAG, "Auto-crop applied generation=$generation crop=$cropValue edges=$sourceEdges")
+          if (isNative) {
+            val verticalCrop = (detected.top + detected.bottom).coerceIn(0f, 0.5f)
+            val horizontalCrop = (detected.left + detected.right).coerceIn(0f, 0.5f)
+            val scale = max(1f / (1f - verticalCrop), 1f / (1f - horizontalCrop))
+            host.nativeSetAutoCropScale(scale)
+          } else {
+            PlaybackSession.setPropertyString("video-crop", cropValue)
+          }
+
           autoCropApplied = true
           _autoCropState.value = AutoCropState.APPLIED
+          Log.i(TAG, "Auto-crop applied successfully: crop=$cropValue edges=$detected isNative=$isNative")
         }
       }
   }
@@ -5275,6 +5281,7 @@ class PlayerViewModel : ViewModel(),
 
   private fun clearAutoCropProperty() {
     PlaybackSession.setPropertyString("video-crop", "")
+    runCatching { host.nativeSetAutoCropScale(1f) }
     autoCropApplied = false
   }
 

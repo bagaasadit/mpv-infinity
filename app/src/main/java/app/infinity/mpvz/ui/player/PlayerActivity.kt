@@ -40,6 +40,8 @@ import android.provider.Settings
 import android.util.Log
 import android.view.Display
 import android.view.KeyEvent
+import android.view.PixelCopy
+import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -401,6 +403,58 @@ class PlayerActivity :
 
   override fun nativeSetVideoAspect(aspect: VideoAspect) {
     nativeEngine.setVideoAspect(aspect)
+  }
+
+  override fun nativeVideoSize(): Pair<Int, Int> =
+    nativeEngine.snapshot.value.videoWidth to nativeEngine.snapshot.value.videoHeight
+
+  override fun nativeSetAutoCropScale(scale: Float) {
+    nativeEngine.setAutoCropScale(scale)
+  }
+
+  override fun captureCurrentVideoFrame(onCaptured: (Bitmap?) -> Unit) {
+    if (isFinishing || isDestroyed) {
+      onCaptured(null)
+      return
+    }
+    val targetSurfaceView = if (isNativeEngineActive()) {
+      binding.media3Player.videoSurfaceView as? SurfaceView
+    } else {
+      binding.player
+    }
+
+    if (targetSurfaceView != null && targetSurfaceView.holder.surface.isValid && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      val width = 256
+      val height = 144
+      val dest = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+      try {
+        PixelCopy.request(
+          targetSurfaceView,
+          dest,
+          { result ->
+            if (result == PixelCopy.SUCCESS) {
+              onCaptured(dest)
+            } else {
+              dest.recycle()
+              if (!isNativeEngineActive()) {
+                onCaptured(PlaybackSession.grabThumbnail(256))
+              } else {
+                onCaptured(null)
+              }
+            }
+          },
+          Handler(Looper.getMainLooper()),
+        )
+        return
+      } catch (_: Throwable) {
+        dest.recycle()
+      }
+    }
+    if (!isNativeEngineActive()) {
+      onCaptured(PlaybackSession.grabThumbnail(256))
+    } else {
+      onCaptured(null)
+    }
   }
 
   // ==================== State Management ====================
@@ -935,6 +989,9 @@ class PlayerActivity :
                   // demuxer stops holding open network connections and competing for GDrive bandwidth.
                   PlaybackSession.stop(clearQueue = false)
                 }
+                if (playerPreferences.autoCropBlackBars.get()) {
+                  viewModel.scheduleAutoCropAnalysis(force = true)
+                }
               }
             } else if (mpvInitialized) {
               activeEngineMode = PlaybackEngineMode.MPV
@@ -1044,6 +1101,9 @@ class PlayerActivity :
                   // can race the next engine/playlist request, leaving video playing silently.
                   PlaybackSession.setPropertyBoolean("pause", !outgoingPlaying)
                   if (outgoingPlaying) PlaybackSession.command("play")
+                  if (playerPreferences.autoCropBlackBars.get()) {
+                    viewModel.scheduleAutoCropAnalysis(force = true)
+                  }
                 }
               }
             }

@@ -67,7 +67,13 @@ object AutoCropAnalyzer {
    * not override an expanded frame present in the sample set.
    */
   fun combine(samples: List<AutoCropEdges>): AutoCropEdges? {
-    if (samples.size < 3) return null
+    if (samples.isEmpty()) return null
+    if (samples.size == 1) {
+      val single = samples[0]
+      if (single.left + single.right > MAX_EDGE_FRACTION) return null
+      if (single.top + single.bottom > MAX_EDGE_FRACTION) return null
+      return single.takeIf { it.left > 0f || it.top > 0f || it.right > 0f || it.bottom > 0f }
+    }
 
     fun conservative(values: List<Float>): Float {
       val candidate = values.minOrNull() ?: 0f
