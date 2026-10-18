@@ -1,16 +1,19 @@
-name: Build APK
+name: Build Debug APK
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       build_type:
         description: Build type (release = R8 optimized + 120Hz smooth, debug = unminified)
         required: true
-        default: release
+        default: debug
         type: choice
         options:
-          - release
           - debug
+          - release
       flavor:
         description: APK flavor
         required: true
@@ -34,7 +37,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ inputs.flavor }} ${{ inputs.build_type }} APK
+    name: Build ${{ inputs.flavor || 'standard' }} ${{ inputs.build_type || 'debug' }} APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -50,16 +53,19 @@ jobs:
       - name: Build APK
         run: |
           chmod +x ./gradlew
+          BUILD_TYPE="${{ inputs.build_type || 'debug' }}"
+          FLAVOR="${{ inputs.flavor || 'standard' }}"
+          TARGET_ABI="${{ inputs.target_abi || 'arm64-v8a' }}"
           ABI_ARGS=""
-          if [[ "${{ inputs.target_abi }}" != "all" ]]; then ABI_ARGS="-PtargetAbi=${{ inputs.target_abi }}"; fi
-          if [[ "${{ inputs.build_type }}" == "release" ]]; then
-            case "${{ inputs.flavor }}" in
+          if [[ "$TARGET_ABI" != "all" ]]; then ABI_ARGS="-PtargetAbi=$TARGET_ABI"; fi
+          if [[ "$BUILD_TYPE" == "release" ]]; then
+            case "$FLAVOR" in
               standard) ./gradlew assembleStandardRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
               fongmi) ./gradlew assembleFongmiRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
               no_vulkan) ./gradlew assembleNoVulkanRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
             esac
           else
-            case "${{ inputs.flavor }}" in
+            case "$FLAVOR" in
               standard) ./gradlew assembleStandardDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
               fongmi) ./gradlew assembleFongmiDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
               no_vulkan) ./gradlew assembleNoVulkanDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
@@ -68,6 +74,6 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: mpv-infinity-${{ inputs.flavor }}-${{ inputs.build_type }}
+          name: mpv-infinity-${{ inputs.flavor || 'standard' }}-${{ inputs.build_type || 'debug' }}
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
