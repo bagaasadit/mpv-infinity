@@ -953,6 +953,7 @@ class PlayerActivity :
               binding.player.alpha = 0f
               binding.player.visibility = View.VISIBLE
               nativeEngine.stop()
+              applyMaxDisplayRefreshRate()
               // This is a renderer handoff, not a user-selected queue change. Avoid the normal
               // loader's outgoing-item stop/report path, which can race the new MPV load.
               val queueItem = PlaybackSession.queue.value.currentItem
@@ -2630,6 +2631,9 @@ class PlayerActivity :
             layoutParams.preferredDisplayModeId = bestMode.modeId
             window.attributes = layoutParams
             Log.i(TAG, "Locked display to peak refresh rate: ${bestMode.refreshRate}Hz (mode ${bestMode.modeId})")
+          }
+          runCatching {
+            PlaybackSession.setOptionString("display-fps", bestMode.refreshRate.toString())
           }
         }
       }.onFailure { error ->
@@ -4787,18 +4791,21 @@ class PlayerActivity :
       }
       "container-fps" -> {
         if (!mpvInitialized || player.isExiting || isFinishing) return
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && value > 0.0) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
           try {
             val surface = player.holder?.surface
             if (surface != null && surface.isValid) {
-              surface.setFrameRate(
-                value.toFloat(),
-                android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
-              )
-              android.util.Log.i(TAG, "Set display refresh rate to ${value}Hz")
+              if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                surface.clearFrameRate()
+              } else {
+                surface.setFrameRate(
+                  0f,
+                  android.view.Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,
+                )
+              }
             }
           } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to set frame rate", e)
+            android.util.Log.e(TAG, "Failed to clear frame rate", e)
           }
         }
       }
