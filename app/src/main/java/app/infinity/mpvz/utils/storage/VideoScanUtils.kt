@@ -357,16 +357,12 @@ object VideoScanUtils {
               mimeType = mimeType,
               bucketId = normalizeStoragePath(folder.absolutePath) ?: folder.absolutePath,
               bucketDisplayName = leafStorageName(folder.absolutePath),
-              width = cachedMetadata?.width ?: 0,
-              height = cachedMetadata?.height ?: 0,
-              fps = cachedMetadata?.fps ?: 0f,
-              resolution =
-                VideoResolutionFormatter.format(
-                  cachedMetadata?.width ?: 0,
-                  cachedMetadata?.height ?: 0,
-                ),
-              hasEmbeddedSubtitles = cachedMetadata?.hasEmbeddedSubtitles ?: false,
-              subtitleCodec = cachedMetadata?.subtitleCodec ?: "",
+              width = 0,
+              height = 0,
+              fps = 0f,
+              resolution = "",
+              hasEmbeddedSubtitles = false,
+              subtitleCodec = "",
               isAudio = isAudio,
             )
         } catch (e: Exception) {
