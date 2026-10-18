@@ -930,6 +930,11 @@ class PlayerActivity :
                 }
                 setNativeVideoSurfaceVisible(true)
                 binding.player.visibility = View.GONE
+                if (ownsPlaybackSession()) {
+                  // Native successfully took over rendering. Cleanly stop MPV so its background
+                  // demuxer stops holding open network connections and competing for GDrive bandwidth.
+                  PlaybackSession.stop(clearQueue = false)
+                }
               }
             } else if (mpvInitialized) {
               activeEngineMode = PlaybackEngineMode.MPV
@@ -6554,6 +6559,9 @@ class PlayerActivity :
     )
     if (canUseNative) {
       withContext(Dispatchers.Main) {
+        if (ownsPlaybackSession()) {
+          PlaybackSession.stop(clearQueue = false)
+        }
         activeSaveMediaIdentifier = item.stableId
         activeEngineMode = PlaybackEngineMode.NATIVE
         viewModel.setNativeEngineActive(true)
@@ -7300,17 +7308,27 @@ class PlayerActivity :
       return
     }
     runCatching {
+      val nativeEngineActive = activeEngineMode == PlaybackEngineMode.NATIVE || isNativeEngineActive()
       val phase = PlaybackSession.state.value.phase
       val state =
-        when (phase) {
-          PlaybackPhase.LOADING, PlaybackPhase.INITIALIZING -> PlaybackState.STATE_BUFFERING
-          PlaybackPhase.IDLE, PlaybackPhase.STOPPING -> PlaybackState.STATE_STOPPED
-          PlaybackPhase.ERROR -> PlaybackState.STATE_ERROR
-          PlaybackPhase.UNINITIALIZED -> PlaybackState.STATE_NONE
-          PlaybackPhase.READY, PlaybackPhase.BACKGROUND ->
-            if (isPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
+        if (nativeEngineActive) {
+          if (isPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
+        } else {
+          when (phase) {
+            PlaybackPhase.LOADING, PlaybackPhase.INITIALIZING -> PlaybackState.STATE_BUFFERING
+            PlaybackPhase.IDLE, PlaybackPhase.STOPPING -> PlaybackState.STATE_STOPPED
+            PlaybackPhase.ERROR -> PlaybackState.STATE_ERROR
+            PlaybackPhase.UNINITIALIZED -> PlaybackState.STATE_NONE
+            PlaybackPhase.READY, PlaybackPhase.BACKGROUND ->
+              if (isPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
+          }
         }
-      val positionMs = (viewModel.pos ?: 0) * 1000L
+      val positionMs =
+        if (nativeEngineActive) {
+          maxOf(nativeEngine.currentPlayer.currentPosition, nativeEngine.lastKnownPosition).coerceAtLeast(0L)
+        } else {
+          (viewModel.pos ?: 0) * 1000L
+        }
       var actions = 0L
       if (state != PlaybackState.STATE_STOPPED && state != PlaybackState.STATE_NONE && state != PlaybackState.STATE_ERROR) {
         actions = PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_STOP or PlaybackState.ACTION_SEEK_TO

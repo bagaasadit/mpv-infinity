@@ -1835,9 +1835,10 @@ class PlayerViewModel : ViewModel(),
     //   500 ms – paused
     viewModelScope.launch(playbackStateDispatcher) {
       while (isActive) {
+        val isNative = host.isNativeEngineActive()
         val playbackPhase = PlaybackSession.state.value.phase
-        val hasActiveTimeline = playbackPhase == PlaybackPhase.READY || playbackPhase == PlaybackPhase.BACKGROUND
-        if (!_isMpvCoreReady.value || !hasActiveTimeline) {
+        val hasActiveTimeline = isNative || playbackPhase == PlaybackPhase.READY || playbackPhase == PlaybackPhase.BACKGROUND
+        if ((!_isMpvCoreReady.value && !isNative) || !hasActiveTimeline) {
           delay(250L)
           continue
         }
@@ -1846,7 +1847,7 @@ class PlayerViewModel : ViewModel(),
           // produced redundant bridge traffic, stale positions, and unnecessary work on every
           // playback tick; it also prevented auto-skip from following Native playback.
           val time =
-            if (host.isNativeEngineActive()) {
+            if (isNative) {
               host.nativePlaybackPositionSeconds()
             } else {
               PlaybackSession.getPropertyDouble("time-pos") ?: Double.NaN
@@ -1864,9 +1865,10 @@ class PlayerViewModel : ViewModel(),
             Log.w(TAG, "Playback position polling failed", error)
           }
         }
+        val isPaused = if (isNative) !host.isNativePlaying() else paused == true
         val intervalMs =
           when {
-            paused == true -> 1000L // Reduce polling frequency when paused to conserve CPU/battery
+            isPaused -> 1000L // Reduce polling frequency when paused to conserve CPU/battery
             // 100 ms is below the threshold where seek-bar motion reads as stepped, while halving
             // the JNI reads and state emissions a 50 ms loop caused while controls are visible.
             seekBarVisibleForPolling || controlsVisibleForPolling -> 100L
