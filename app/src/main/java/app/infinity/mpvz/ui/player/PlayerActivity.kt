@@ -426,7 +426,7 @@ class PlayerActivity :
     // In MPV: ALWAYS grab frame directly from MPV core decoder!
     // MPVLib.grabThumbnail returns pure decoded video frame, free from display pillarbox / surface stretches.
     if (!isNativeEngineActive()) {
-      val bmp = runCatching { PlaybackSession.grabThumbnail(480) }.getOrNull()
+      val bmp = runCatching { PlaybackSession.grabThumbnail(256) }.getOrNull()
       onCaptured(bmp)
       return
     }
@@ -436,7 +436,7 @@ class PlayerActivity :
     if (targetSurfaceView != null && targetSurfaceView.holder.surface.isValid && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       val surfW = targetSurfaceView.width.coerceAtLeast(1)
       val surfH = targetSurfaceView.height.coerceAtLeast(1)
-      val targetH = 270
+      val targetH = 144
       val targetW = ((targetH.toFloat() * surfW) / surfH).toInt().coerceAtLeast(32)
       val dest = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
       try {

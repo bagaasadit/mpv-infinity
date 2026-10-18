@@ -447,6 +447,14 @@ class NativeMedia3Engine(context: Context) {
         }
       }
     }
+    override fun onPositionDiscontinuity(
+      oldPosition: Player.PositionInfo,
+      newPosition: Player.PositionInfo,
+      reason: Int,
+    ) {
+      pendingSeekDisplayPositionMs = null
+      pendingInitialSeekPositionMs = null
+    }
     override fun onPlayerError(error: PlaybackException) {
       Log.e(logTag, "player error uri=${player.currentMediaItem?.localConfiguration?.uri}", error)
     }
@@ -1290,6 +1298,7 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun seekTo(positionMs: Long) {
+    pendingInitialSeekPositionMs = null
     pendingSeekPositionMs = positionMs.coerceAtLeast(0L)
     loopHandler.removeCallbacks(seekRunnable)
     loopHandler.postDelayed(seekRunnable, 120L)
@@ -1299,7 +1308,12 @@ class NativeMedia3Engine(context: Context) {
   }
 
   fun seekBy(offsetMs: Long) {
-    val basePositionMs = pendingSeekPositionMs ?: player.currentPosition
+    pendingInitialSeekPositionMs = null
+    val basePositionMs =
+      pendingSeekPositionMs
+        ?: pendingSeekDisplayPositionMs
+        ?: player.currentPosition.takeIf { it > 0L }
+        ?: lastKnownPositionMs
     pendingSeekPositionMs = (basePositionMs + offsetMs).coerceAtLeast(0L)
     loopHandler.removeCallbacks(seekRunnable)
     loopHandler.postDelayed(seekRunnable, 120L)
