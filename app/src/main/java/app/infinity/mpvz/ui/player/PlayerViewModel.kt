@@ -1835,10 +1835,11 @@ class PlayerViewModel : ViewModel(),
     //   500 ms – paused
     viewModelScope.launch(playbackStateDispatcher) {
       while (isActive) {
-        val isNative = host.isNativeEngineActive()
+        val currentHost = hostReference.get()
+        val isNative = currentHost?.isNativeEngineActive() == true || nativeEngineActive.value
         val playbackPhase = PlaybackSession.state.value.phase
         val hasActiveTimeline = isNative || playbackPhase == PlaybackPhase.READY || playbackPhase == PlaybackPhase.BACKGROUND
-        if ((!_isMpvCoreReady.value && !isNative) || !hasActiveTimeline) {
+        if (currentHost == null || (!_isMpvCoreReady.value && !isNative) || !hasActiveTimeline) {
           delay(250L)
           continue
         }
@@ -1848,7 +1849,7 @@ class PlayerViewModel : ViewModel(),
           // playback tick; it also prevented auto-skip from following Native playback.
           val time =
             if (isNative) {
-              host.nativePlaybackPositionSeconds()
+              currentHost.nativePlaybackPositionSeconds()
             } else {
               PlaybackSession.getPropertyDouble("time-pos") ?: Double.NaN
             }
@@ -1865,7 +1866,7 @@ class PlayerViewModel : ViewModel(),
             Log.w(TAG, "Playback position polling failed", error)
           }
         }
-        val isPaused = if (isNative) !host.isNativePlaying() else paused == true
+        val isPaused = if (isNative) !currentHost.isNativePlaying() else paused == true
         val intervalMs =
           when {
             isPaused -> 1000L // Reduce polling frequency when paused to conserve CPU/battery
@@ -4478,9 +4479,9 @@ class PlayerViewModel : ViewModel(),
     }
   }
 
-  fun nativePlaybackPositionSeconds(): Double = host.nativePlaybackPositionSeconds()
+  fun nativePlaybackPositionSeconds(): Double = hostReference.get()?.nativePlaybackPositionSeconds() ?: 0.0
 
-  fun nativePlaybackDurationSeconds(): Double = host.nativePlaybackDurationSeconds()
+  fun nativePlaybackDurationSeconds(): Double = hostReference.get()?.nativePlaybackDurationSeconds() ?: 0.0
 
   /**
    * Conflated live preview used by the legacy/full-screen seek mode and the MPV audio seekbar.
@@ -4858,13 +4859,13 @@ class PlayerViewModel : ViewModel(),
     else PlaybackSession.setPropertyFloat("speed", clamped)
   }
 
-  fun isNativePlaying(): Boolean = host.isNativePlaying()
+  fun isNativePlaying(): Boolean = hostReference.get()?.isNativePlaying() == true
 
-  fun isNativeEngineActive(): Boolean = host.isNativeEngineActive()
+  fun isNativeEngineActive(): Boolean = hostReference.get()?.isNativeEngineActive() == true || nativeEngineActive.value
 
   fun activePlaybackSpeed(): Float =
-    if (host.isNativeEngineActive()) host.nativePlaybackSpeed()
-    else PlaybackSession.getPropertyFloat("speed") ?: 1f
+    hostReference.get()?.takeIf { it.isNativeEngineActive() }?.nativePlaybackSpeed()
+      ?: (PlaybackSession.getPropertyFloat("speed") ?: 1f)
 
   private fun syncSubtitleLayout(primaryPosition: Int = subtitlesPreferences.subPos.get()) {
     applySubtitleLayout(primaryPosition, subtitlesPreferences.overrideAssSubs.get())
