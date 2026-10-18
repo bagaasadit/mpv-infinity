@@ -481,7 +481,7 @@ object FolderListScreen : Screen {
     // After onboarding the app is fully usable; missing storage only shows an in-place prompt.
     LaunchedEffect(permissionState.status, isPermissionSetupCompleted) {
       app.infinity.mpvz.ui.browser.NavigationBarState.updatePermissionState(
-        isDenied = !isPermissionSetupCompleted,
+        denied = !isPermissionSetupCompleted,
       )
     }
 

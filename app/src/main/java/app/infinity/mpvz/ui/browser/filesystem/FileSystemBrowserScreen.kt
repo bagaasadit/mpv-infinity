@@ -359,7 +359,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           onlyVideos = true,
         )
         navBarState.updatePermissionState(
-          isDenied = !isPermissionSetupCompleted,
+          denied = !isPermissionSetupCompleted,
         )
     }
   }
