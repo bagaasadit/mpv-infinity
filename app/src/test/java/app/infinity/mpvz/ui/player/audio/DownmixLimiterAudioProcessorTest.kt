@@ -17,21 +17,21 @@ class DownmixLimiterAudioProcessorTest {
   @Test
   fun stereoPassesThroughUnchanged() {
     val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
-    val configured = processor.onConfigure(stereoFormat)
+    val configured = processor.configure(stereoFormat)
     assertEquals(AudioFormat.NOT_SET, configured)
   }
 
   @Test
   fun monoPassesThroughUnchanged() {
     val monoFormat = AudioFormat(48000, 1, C.ENCODING_PCM_16BIT)
-    val configured = processor.onConfigure(monoFormat)
+    val configured = processor.configure(monoFormat)
     assertEquals(AudioFormat.NOT_SET, configured)
   }
 
   @Test
   fun sixChannelConfiguresToStereo16Bit() {
     val format51 = AudioFormat(48000, 6, C.ENCODING_PCM_16BIT)
-    val configured = processor.onConfigure(format51)
+    val configured = processor.configure(format51)
     assertEquals(48000, configured.sampleRate)
     assertEquals(2, configured.channelCount)
     assertEquals(C.ENCODING_PCM_16BIT, configured.encoding)
@@ -40,7 +40,7 @@ class DownmixLimiterAudioProcessorTest {
   @Test
   fun eightChannelConfiguresToStereo16Bit() {
     val format71 = AudioFormat(48000, 8, C.ENCODING_PCM_16BIT)
-    val configured = processor.onConfigure(format71)
+    val configured = processor.configure(format71)
     assertEquals(48000, configured.sampleRate)
     assertEquals(2, configured.channelCount)
     assertEquals(C.ENCODING_PCM_16BIT, configured.encoding)

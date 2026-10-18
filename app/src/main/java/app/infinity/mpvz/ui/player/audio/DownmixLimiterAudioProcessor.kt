@@ -50,7 +50,7 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   private var currentGain = 1.0f
   private var releaseCoeff = 0.9995f
 
-  override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
+  public override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
     if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
         inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT
     ) {

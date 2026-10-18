@@ -71,4 +71,7 @@ data class SelectionState<ID>(
       lastSelectedId = invertedIds.lastOrNull(),
     )
   }
+
+  fun <T> getSelected(items: Iterable<T>, idSelector: (T) -> ID): List<T> =
+    items.filter { isSelected(idSelector(it)) }
 }
