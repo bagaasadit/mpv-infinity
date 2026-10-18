@@ -18,7 +18,22 @@ data class AutoCropEdges(
   val top: Float,
   val right: Float,
   val bottom: Float,
-)
+) {
+  /**
+   * Eliminates mixed-axis false positives:
+   * A real video has EITHER top/bottom letterbox OR left/right pillarbox, never both.
+   * If letterbox is detected, left & right are hard-locked to 0.0f (zero side cut).
+   */
+  fun sanitize(): AutoCropEdges {
+    if (top + bottom >= 0.02f) {
+      return copy(left = 0f, right = 0f)
+    }
+    if (left + right >= 0.02f) {
+      return copy(top = 0f, bottom = 0f)
+    }
+    return AutoCropEdges(0f, 0f, 0f, 0f)
+  }
+}
 
 /**
  * Detects encoded black bars without depending on the active playback core.
@@ -32,8 +47,8 @@ object AutoCropAnalyzer {
   private const val DARK_PIXEL_RATIO = 0.965f
   private const val MIN_CONTENT_PIXEL_RATIO = 0.035f
   private const val MAX_EDGE_FRACTION = 0.32f
-  private const val MIN_EDGE_FRACTION = 0.008f
-  private const val BOUNDARY_OVERLAP_PIXELS = 1
+  private const val MIN_EDGE_FRACTION = 0.02f
+  private const val BOUNDARY_OVERLAP_PIXELS = 0
 
   fun analyzeFrame(bitmap: Bitmap): AutoCropEdges? {
     val width = bitmap.width
@@ -56,7 +71,7 @@ object AutoCropAnalyzer {
       top = normalizeEdge(top, height),
       right = normalizeEdge(right, width),
       bottom = normalizeEdge(bottom, height),
-    )
+    ).sanitize()
   }
 
   /**
@@ -68,8 +83,9 @@ object AutoCropAnalyzer {
    */
   fun combine(samples: List<AutoCropEdges>): AutoCropEdges? {
     if (samples.isEmpty()) return null
-    if (samples.size == 1) {
-      val single = samples[0]
+    val sanitizedSamples = samples.map { it.sanitize() }
+    if (sanitizedSamples.size == 1) {
+      val single = sanitizedSamples[0]
       if (single.left + single.right > MAX_EDGE_FRACTION) return null
       if (single.top + single.bottom > MAX_EDGE_FRACTION) return null
       return single.takeIf { it.left > 0f || it.top > 0f || it.right > 0f || it.bottom > 0f }
@@ -82,11 +98,11 @@ object AutoCropAnalyzer {
 
     val result =
       AutoCropEdges(
-        left = conservative(samples.map(AutoCropEdges::left)),
-        top = conservative(samples.map(AutoCropEdges::top)),
-        right = conservative(samples.map(AutoCropEdges::right)),
-        bottom = conservative(samples.map(AutoCropEdges::bottom)),
-      )
+        left = conservative(sanitizedSamples.map(AutoCropEdges::left)),
+        top = conservative(sanitizedSamples.map(AutoCropEdges::top)),
+        right = conservative(sanitizedSamples.map(AutoCropEdges::right)),
+        bottom = conservative(sanitizedSamples.map(AutoCropEdges::bottom)),
+      ).sanitize()
 
     if (result.left + result.right > MAX_EDGE_FRACTION) return null
     if (result.top + result.bottom > MAX_EDGE_FRACTION) return null

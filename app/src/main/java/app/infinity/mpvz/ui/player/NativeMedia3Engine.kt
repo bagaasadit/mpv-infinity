@@ -557,16 +557,38 @@ class NativeMedia3Engine(context: Context) {
   }
 
   private var autoCropScale: Float = 1f
+  private var autoCropActive: Boolean = false
+
+  fun setAutoCropActive(active: Boolean) {
+    autoCropActive = active
+    val view = attachedView ?: return
+    view.post {
+      if (attachedView !== view) return@post
+      (view.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
+        surface.scaleX = 1f
+        surface.scaleY = 1f
+      }
+      val targetMode = if (active) {
+        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+      } else {
+        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+      }
+      lastAppliedResizeMode = targetMode
+      view.resizeMode = targetMode
+      view.requestLayout()
+      view.videoSurfaceView?.requestLayout()
+    }
+  }
 
   fun setAutoCropScale(scale: Float) {
-    autoCropScale = scale.coerceIn(1f, 2.5f)
-    applySurfaceScale()
+    autoCropScale = scale
+    setAutoCropActive(scale > 1.02f)
   }
 
   private fun applySurfaceScale() {
     (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
-      surface.scaleX = autoCropScale
-      surface.scaleY = autoCropScale
+      surface.scaleX = 1f
+      surface.scaleY = 1f
     }
   }
 
@@ -575,20 +597,18 @@ class NativeMedia3Engine(context: Context) {
     val mode = when (aspect) {
       VideoAspect.Fit -> {
         applySurfaceScale()
-        androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+        if (autoCropActive) {
+          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+        } else {
+          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+        }
       }
       VideoAspect.Crop -> {
-        (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
-          surface.scaleX = 1f
-          surface.scaleY = 1f
-        }
+        applySurfaceScale()
         androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
       }
       VideoAspect.Stretch -> {
-        (attachedView?.videoSurfaceView as? android.view.SurfaceView)?.let { surface ->
-          surface.scaleX = 1f
-          surface.scaleY = 1f
-        }
+        applySurfaceScale()
         androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
       }
     }
@@ -1555,6 +1575,7 @@ class NativeMedia3Engine(context: Context) {
     }
     _hasRenderedFirstFrame.value = false
     autoCropScale = 1f
+    autoCropActive = false
     applySurfaceScale()
     publishSnapshot()
   }

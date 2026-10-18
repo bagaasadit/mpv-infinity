@@ -5094,6 +5094,16 @@ class PlayerViewModel : ViewModel(),
 
     autoCropJob =
       viewModelScope.launch(Dispatchers.Default) {
+        // Reset crop first to ensure clean sampling of uncropped video frames
+        withContext(Dispatchers.Main) {
+          if (isNative) {
+            host.nativeSetAutoCropActive(false)
+          } else {
+            PlaybackSession.setPropertyString("video-crop", "")
+          }
+        }
+        delay(150L)
+
         val samples = mutableListOf<AutoCropEdges>()
         for (i in 0 until 3) {
           if (!isActive) break
@@ -5106,20 +5116,20 @@ class PlayerViewModel : ViewModel(),
           if (bitmap != null) {
             val edges =
               try {
-                AutoCropAnalyzer.analyzeFrame(bitmap)
+                AutoCropAnalyzer.analyzeFrame(bitmap)?.sanitize()
               } finally {
                 bitmap.recycle()
               }
-            if (edges != null) {
+            if (edges != null && (edges.top > 0f || edges.bottom > 0f || edges.left > 0f || edges.right > 0f)) {
               samples.add(edges)
             }
           }
-          if (i < 2) delay(500L)
+          if (i < 2) delay(400L)
         }
 
         val detected =
           if (samples.isNotEmpty()) {
-            AutoCropAnalyzer.combine(samples) ?: samples.firstOrNull()
+            AutoCropAnalyzer.combine(samples)
           } else {
             null
           }
@@ -5143,10 +5153,7 @@ class PlayerViewModel : ViewModel(),
           }
 
           if (isNative) {
-            val verticalCrop = (detected.top + detected.bottom).coerceIn(0f, 0.5f)
-            val horizontalCrop = (detected.left + detected.right).coerceIn(0f, 0.5f)
-            val scale = max(1f / (1f - verticalCrop), 1f / (1f - horizontalCrop))
-            host.nativeSetAutoCropScale(scale)
+            host.nativeSetAutoCropActive(true)
           } else {
             PlaybackSession.setPropertyString("video-crop", cropValue)
           }
@@ -5268,19 +5275,32 @@ class PlayerViewModel : ViewModel(),
   ): String? {
     fun evenFloor(value: Float): Int = (value.toInt().coerceAtLeast(0) / 2) * 2
 
-    val left = evenFloor(edges.left * sourceWidth)
-    val top = evenFloor(edges.top * sourceHeight)
-    val right = evenFloor(edges.right * sourceWidth)
-    val bottom = evenFloor(edges.bottom * sourceHeight)
-    val width = evenFloor((sourceWidth - left - right).toFloat())
-    val height = evenFloor((sourceHeight - top - bottom).toFloat())
-    if (width < sourceWidth / 2 || height < sourceHeight / 2) return null
-    if (sourceWidth - width < 4 && sourceHeight - height < 4) return null
-    return "${width}x$height+$left+$top"
+    // If letterbox (top/bottom) is detected: lock horizontal to 0, 100% width preserved! Zero side cut!
+    if (edges.top + edges.bottom >= 0.02f) {
+      val top = evenFloor(edges.top * sourceHeight)
+      val bottom = evenFloor(edges.bottom * sourceHeight)
+      val height = sourceHeight - top - bottom
+      if (height < sourceHeight / 2) return null
+      if (sourceHeight - height < 4) return null
+      return "${sourceWidth}x$height+0+$top"
+    }
+
+    // If pillarbox (left/right) is detected (e.g. 4:3 inside 16:9): lock vertical to 0! Zero top/bottom cut!
+    if (edges.left + edges.right >= 0.02f) {
+      val left = evenFloor(edges.left * sourceWidth)
+      val right = evenFloor(edges.right * sourceWidth)
+      val width = sourceWidth - left - right
+      if (width < sourceWidth / 2) return null
+      if (sourceWidth - width < 4) return null
+      return "${width}x$sourceHeight+$left+0"
+    }
+
+    return null
   }
 
   private fun clearAutoCropProperty() {
     PlaybackSession.setPropertyString("video-crop", "")
+    runCatching { host.nativeSetAutoCropActive(false) }
     runCatching { host.nativeSetAutoCropScale(1f) }
     autoCropApplied = false
   }

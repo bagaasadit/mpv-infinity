@@ -126,5 +126,7 @@ interface PlayerHost {
 
   fun nativeSetAutoCropScale(scale: Float) {}
 
+  fun nativeSetAutoCropActive(active: Boolean) {}
+
   fun captureCurrentVideoFrame(onCaptured: (android.graphics.Bitmap?) -> Unit) { onCaptured(null) }
 }

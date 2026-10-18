@@ -413,21 +413,32 @@ class PlayerActivity :
     nativeEngine.setAutoCropScale(scale)
   }
 
+  override fun nativeSetAutoCropActive(active: Boolean) {
+    nativeEngine.setAutoCropActive(active)
+  }
+
   override fun captureCurrentVideoFrame(onCaptured: (Bitmap?) -> Unit) {
     if (isFinishing || isDestroyed) {
       onCaptured(null)
       return
     }
-    val targetSurfaceView = if (isNativeEngineActive()) {
-      binding.media3Player.videoSurfaceView as? SurfaceView
-    } else {
-      binding.player
+
+    // In MPV: ALWAYS grab frame directly from MPV core decoder!
+    // MPVLib.grabThumbnail returns pure decoded video frame, free from display pillarbox / surface stretches.
+    if (!isNativeEngineActive()) {
+      val bmp = runCatching { PlaybackSession.grabThumbnail(480) }.getOrNull()
+      onCaptured(bmp)
+      return
     }
 
+    // In Native (Media3):
+    val targetSurfaceView = binding.media3Player.videoSurfaceView as? SurfaceView
     if (targetSurfaceView != null && targetSurfaceView.holder.surface.isValid && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      val width = 256
-      val height = 144
-      val dest = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+      val surfW = targetSurfaceView.width.coerceAtLeast(1)
+      val surfH = targetSurfaceView.height.coerceAtLeast(1)
+      val targetH = 270
+      val targetW = ((targetH.toFloat() * surfW) / surfH).toInt().coerceAtLeast(32)
+      val dest = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
       try {
         PixelCopy.request(
           targetSurfaceView,
@@ -437,11 +448,7 @@ class PlayerActivity :
               onCaptured(dest)
             } else {
               dest.recycle()
-              if (!isNativeEngineActive()) {
-                onCaptured(PlaybackSession.grabThumbnail(256))
-              } else {
-                onCaptured(null)
-              }
+              onCaptured(null)
             }
           },
           Handler(Looper.getMainLooper()),
@@ -451,11 +458,7 @@ class PlayerActivity :
         dest.recycle()
       }
     }
-    if (!isNativeEngineActive()) {
-      onCaptured(PlaybackSession.grabThumbnail(256))
-    } else {
-      onCaptured(null)
-    }
+    onCaptured(null)
   }
 
   // ==================== State Management ====================
