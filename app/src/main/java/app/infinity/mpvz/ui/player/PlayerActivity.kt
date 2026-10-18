@@ -6213,7 +6213,7 @@ class PlayerActivity :
       YtdlpManager.prepareForPlayback(this, item.playableUri) { line ->
         line.trim().takeIf { it.isNotEmpty() }?.let { message -> Log.d(TAG, message) }
       }
-    if (!ytdlpReady) throw IllegalStateException("yt-dlp could not be prepared for web playback")
+    if (requiresYtdlp && !ytdlpReady) throw IllegalStateException("yt-dlp could not be prepared for web playback")
     ensureCurrentMediaRequest(requestGeneration)
     val resolvedPageMediaUrl =
       if (requiresYtdlp) {

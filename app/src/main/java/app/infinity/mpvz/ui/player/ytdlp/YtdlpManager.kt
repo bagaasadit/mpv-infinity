@@ -387,8 +387,9 @@ object YtdlpManager {
 
     return withContext(Dispatchers.IO) {
       installMutex.withLock {
+        if (!requiresYtdlp(source)) return@withLock true
         if (!prepareRuntimeAssets(context, onLog)) return@withLock false
-        if (!requiresYtdlp(source) || isPlaybackRuntimeReady(context)) return@withLock true
+        if (isPlaybackRuntimeReady(context)) return@withLock true
 
         onLog("Preparing the current yt-dlp web playback runtime.\n")
         installYtdlp(context, onLog)
