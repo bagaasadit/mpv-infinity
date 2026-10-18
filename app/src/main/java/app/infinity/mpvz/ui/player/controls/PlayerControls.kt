@@ -348,12 +348,19 @@ fun PlayerControls(
       !isPlayerSeeking
   var stableDemuxerCacheTime by remember { mutableFloatStateOf(0f) }
   val currentDemuxerCacheTime =
-    demuxerCacheTime
-      ?.toFloat()
-      ?.takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && seekbarDuration > 0f }
-      ?.coerceIn(0f, seekbarDuration)
+    if (nativeEngineActive) {
+      val nativeBufferEndpoint = (nativeSnapshot.positionMs + nativeSnapshot.totalBufferedDurationMs) / 1000f
+      nativeBufferEndpoint
+        .takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && seekbarDuration > 0f }
+        ?.coerceIn(0f, seekbarDuration)
+    } else {
+      demuxerCacheTime
+        ?.toFloat()
+        ?.takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && seekbarDuration > 0f }
+        ?.coerceIn(0f, seekbarDuration)
+    }
 
-  LaunchedEffect(showBufferedRange, seekbarDuration, currentDemuxerCacheTime, isPlayerSeeking) {
+  LaunchedEffect(showBufferedRange, seekbarDuration, currentDemuxerCacheTime, isPlayerSeeking, nativeEngineActive) {
     when {
       !showBufferedRange || seekbarDuration <= 0f -> stableDemuxerCacheTime = 0f
       currentDemuxerCacheTime != null -> stableDemuxerCacheTime = currentDemuxerCacheTime
@@ -2338,6 +2345,9 @@ private fun NativeStatsPageOverlay(
           Text("Output: $quality · $outputRange · $colorSpace", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Video: $videoCodec · Decoder: $videoDecoder", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Bitrate: $videoBitrate · Duration: ${snapshot.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = Color.White)
+          val aheadSecs = String.format("%.1f", snapshot.totalBufferedDurationMs / 1000.0)
+          val bufferStatus = if (snapshot.isBuffering) "Buffering..." else if (snapshot.isLoading) "Buffering from network" else "Buffer ready"
+          Text("Buffer: ${aheadSecs}s ahead · $bufferStatus (target 256MB)", style = MaterialTheme.typography.bodySmall, color = Color.White)
         }
         2 -> {
           Text("Audio: $audioCodec · Decoder: $audioDecoder", style = MaterialTheme.typography.bodySmall, color = Color.White)
@@ -2352,6 +2362,8 @@ private fun NativeStatsPageOverlay(
         4 -> {
           Text("Position: ${snapshot.positionMs / 1000}s / ${snapshot.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Speed: ${"%.2f".format(snapshot.speed)}×", style = MaterialTheme.typography.bodySmall, color = Color.White)
+          val aheadSecs = String.format("%.1f", snapshot.totalBufferedDurationMs / 1000.0)
+          Text("Buffer: ${aheadSecs}s ahead (max 120s / 256MB)", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("State: ${if (snapshot.isBuffering) "Buffering" else if (snapshot.isPlaying) "Playing" else "Paused"}", style = MaterialTheme.typography.bodySmall, color = Color.White)
         }
         5 -> {
@@ -2420,6 +2432,7 @@ private fun CustomStatsPageSixOverlay(
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current.applicationContext
+  val activity = LocalActivity.current as? PlayerActivity
   val torrentState by viewModel.torrentState.collectAsState()
   val isHdrOutputEnabled by viewModel.isHdrScreenOutputEnabled.collectAsState()
   val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
@@ -2573,18 +2586,35 @@ private fun CustomStatsPageSixOverlay(
         cacheReadBytesPerSecond?.let { "${formatTorrentBytes(it.toLong())}/s" } ?: "?"
       val cacheMaxText = cacheMaxBytes?.let(::formatTorrentBytes) ?: "?"
       val hlsBitrate = runCatching { PlaybackSession.getPropertyString("hls-bitrate") }.getOrNull() ?: "?"
+      val isNativeActive = activity?.isNativeEngineActive() == true
+      val currentNativeSnapshot = activity?.nativePlaybackSnapshot?.value ?: NativePlaybackSnapshot()
       val playbackCacheText =
-        String.format(
-          playbackCacheFormat,
-          cacheDurationSeconds,
-          formatTorrentBytes(packetCacheBytes),
-          formatTorrentBytes(fileCacheBytes),
-        )
-      val cacheActivityText = "$cachePauseState · $cacheActivity · in $cacheReadRateText"
+        if (isNativeActive) {
+          val aheadSecs = String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)
+          val status = if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isLoading) "downloading" else "healthy"
+          "Native (Media3): ${aheadSecs}s ahead · $status"
+        } else {
+          String.format(
+            playbackCacheFormat,
+            cacheDurationSeconds,
+            formatTorrentBytes(packetCacheBytes),
+            formatTorrentBytes(fileCacheBytes),
+          )
+        }
+      val cacheActivityText =
+        if (isNativeActive) {
+          "RAM Buffer target=256MB · max=120s · state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"
+        } else {
+          "$cachePauseState · $cacheActivity · in $cacheReadRateText"
+        }
       val cacheOptionsText =
-        "cache=$cacheMode · pause=${cachePause?.toString() ?: "?"} · wait=${cachePauseWait?.toString() ?: "?"} · " +
-          "max=$cacheMaxText · " +
-          "secs=$cacheSecondsLimit · readahead=$demuxerReadaheadSeconds · hls=$hlsBitrate"
+        if (isNativeActive) {
+          "engine=Native(ExoPlayer) · min=30s · max=120s · RAM=256MB · ahead=${String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)}s"
+        } else {
+          "cache=$cacheMode · pause=${cachePause?.toString() ?: "?"} · wait=${cachePauseWait?.toString() ?: "?"} · " +
+            "max=$cacheMaxText · " +
+            "secs=$cacheSecondsLimit · readahead=$demuxerReadaheadSeconds · hls=$hlsBitrate"
+        }
 
       val battery = readBatterySnapshot(context)
 

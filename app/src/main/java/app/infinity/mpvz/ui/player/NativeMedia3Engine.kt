@@ -150,15 +150,15 @@ class NativeMedia3Engine(context: Context) {
     .setLoadControl(
       DefaultLoadControl.Builder()
         .setBufferDurationsMs(
-          15_000,                  // 15s agile buffer cushion
-          60_000,                  // 60s maximum buffer ceiling
-          1_500,                   // Instant start in 1.5s
-          3_000,                   // Quick resume in 3s after rebuffering
+          30_000,                  // 30s agile buffer cushion
+          120_000,                 // 120s maximum buffer ceiling (2 minutes)
+          2_000,                   // Instant start in 2s
+          4_000,                   // Quick resume in 4s after rebuffering
         )
-        .setBackBuffer(10_000, false)
-        // 128 MB RAM buffer ceiling safe within Dalvik heap limit
-        .setTargetBufferBytes(128 * 1024 * 1024)
-        .setPrioritizeTimeOverSizeThresholds(false)
+        .setBackBuffer(30_000, false)
+        // 256 MB RAM buffer ceiling safe on modern devices like POCO F5 (8/12GB RAM)
+        .setTargetBufferBytes(256 * 1024 * 1024)
+        .setPrioritizeTimeOverSizeThresholds(true)
         .build(),
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
