@@ -40,10 +40,12 @@ jobs:
     name: Build ${{ inputs.flavor || 'standard' }} ${{ inputs.build_type || 'debug' }} APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -53,7 +55,10 @@ jobs:
       - name: Run unit tests
         run: |
           chmod +x ./gradlew
-          ./gradlew testStandardDebugUnitTest --stacktrace --no-daemon --max-workers=2
+          TARGET_ABI="${{ inputs.target_abi || 'arm64-v8a' }}"
+          ABI_ARGS=""
+          if [[ "$TARGET_ABI" != "all" ]]; then ABI_ARGS="-PtargetAbi=$TARGET_ABI"; fi
+          ./gradlew testStandardDebugUnitTest $ABI_ARGS --stacktrace --no-daemon --max-workers=2
       - name: Build APK
         run: |
           chmod +x ./gradlew
