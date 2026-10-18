@@ -76,11 +76,11 @@ object VideoScanUtils {
           val file = File(v.path)
           if (!file.exists()) continue
           val meta = app.infinity.mpvz.utils.media.MediaInfoOps.extractBasicMetadata(context, v.uri, v.displayName).getOrNull()
-          if (meta != null && meta.duration > 0L) {
+          if (meta != null && meta.durationMs > 0L) {
             videosMap[key] =
               v.copy(
-                duration = meta.duration,
-                durationFormatted = formatDuration(meta.duration),
+                duration = meta.durationMs,
+                durationFormatted = formatDuration(meta.durationMs),
               )
           }
         } catch (_: Exception) {

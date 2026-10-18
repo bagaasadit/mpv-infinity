@@ -75,7 +75,7 @@ fun SelectionTopBar(
           IconButton(onClick = { showSelectionMenu = true }) {
             Icon(
               imageVector = Icons.RoundedFilled.MoreVert,
-              contentDescription = stringResource(R.string.generic_more),
+              contentDescription = null,
             )
           }
 
@@ -85,7 +85,7 @@ fun SelectionTopBar(
           ) {
             if (onSelectAll != null) {
               DropdownMenuItem(
-                text = { Text(stringResource(R.string.generic_select_all)) },
+                text = { Text(stringResource(R.string.select_all)) },
                 onClick = {
                   showSelectionMenu = false
                   onSelectAll()
@@ -94,7 +94,7 @@ fun SelectionTopBar(
             }
             if (onInvertSelection != null) {
               DropdownMenuItem(
-                text = { Text(stringResource(R.string.generic_invert_selection)) },
+                text = { Text(stringResource(R.string.invert_selection)) },
                 onClick = {
                   showSelectionMenu = false
                   onInvertSelection()
