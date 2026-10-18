@@ -11,28 +11,22 @@ package app.infinity.mpvz.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import app.infinity.mpvz.database.dao.DirectoryScanDao
 import app.infinity.mpvz.database.dao.PlaybackStateDao
 import app.infinity.mpvz.database.dao.PlaylistDao
 import app.infinity.mpvz.database.dao.RecentlyPlayedDao
-import app.infinity.mpvz.database.dao.VideoMetadataDao
-import app.infinity.mpvz.database.entities.DirectoryScanEntity
 import app.infinity.mpvz.database.entities.PlaybackStateEntity
 import app.infinity.mpvz.database.entities.PlaylistEntity
 import app.infinity.mpvz.database.entities.PlaylistItemEntity
 import app.infinity.mpvz.database.entities.RecentlyPlayedEntity
-import app.infinity.mpvz.database.entities.VideoMetadataEntity
 
 @Database(
   entities = [
     PlaybackStateEntity::class,
     RecentlyPlayedEntity::class,
-    VideoMetadataEntity::class,
     PlaylistEntity::class,
     PlaylistItemEntity::class,
-    DirectoryScanEntity::class,
   ],
-  version = 24,
+  version = 25,
   exportSchema = true,
 )
 abstract class MpvInfinityDatabase : RoomDatabase() {
@@ -40,9 +34,5 @@ abstract class MpvInfinityDatabase : RoomDatabase() {
 
   abstract fun recentlyPlayedDao(): RecentlyPlayedDao
 
-  abstract fun videoMetadataDao(): VideoMetadataDao
-
   abstract fun playlistDao(): PlaylistDao
-
-  abstract fun directoryScanDao(): DirectoryScanDao
 }

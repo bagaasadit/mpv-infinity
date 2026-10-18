@@ -1379,7 +1379,7 @@
   <string name="ui_buy_me_a_coffee">コーヒーをおごる</string>
   <string name="ui_if_you_enjoy_mpv_infinity_consider_supporting_its_development_every_bit">Mpv∞を気に入っていただけたら、開発支援をご検討ください。どんな支援も助けになります！</string>
   <string name="ui_support_link">UPI ID</string>
-  <string name="ui_zhinfinity_github">github.com/ZHINFINITY/Mpv-infinity</string>
+  <string name="ui_zhinfinity_github">github.com/bagaasadit/mpv-infinity</string>
   <string name="ui_visit_github">応援を送る</string>
   <string name="ui_auto_check_for_updates">アップデートを自動確認</string>
   <string name="ui_check_on_startup">起動時に確認</string>
@@ -1591,7 +1591,7 @@
   <string name="syncplay_player_status">Syncplay: %1$s（%2$d 人）</string>
   <!-- Additional synchronized strings -->
   <string name="app_name">Mpv∞</string>
-  <string name="github_repo_url">https://github.com/ZHINFINITY/Mpv-infinity</string>
+  <string name="github_repo_url">https://github.com/bagaasadit/mpv-infinity</string>
   <string name="hdr_mode_bt2020">BT.2020</string>
   <string name="hdr_mode_bt2100_hlg">BT.2100 HLG</string>
   <string name="hdr_mode_bt2100_pq">BT.2100 PQ</string>

@@ -1202,18 +1202,7 @@ object SearchablePreferences {
           R.string.pref_appearance_thumbnail_generation_title,
         ),
       )
-      addSearchEntries(
-        category = "Appearance",
-        screen = AppearancePreferencesScreen,
-        anchorItemIndex = 7,
-        SearchEntrySpec(R.string.pref_nav_home_title, listOf("home", "tab", "navigation", "show", "hide")),
-        SearchEntrySpec(R.string.pref_nav_music_title, listOf("music", "audio", "tab", "navigation")),
-        SearchEntrySpec(R.string.pref_nav_recents_title, listOf("recent", "history", "tab", "navigation")),
-        SearchEntrySpec(R.string.pref_nav_playlists_title, listOf("playlist", "tab", "navigation")),
-        SearchEntrySpec(R.string.pref_nav_network_title, listOf("network", "stream", "tab", "navigation")),
-        SearchEntrySpec(R.string.pref_quick_play_fab_title, listOf("quick play", "fab", "floating button", "random")),
-        SearchEntrySpec(R.string.pref_quick_play_fab_direct_title, listOf("quick play", "direct", "random", "chooser")),
-      )
+
       addSearchEntries(
         category = "Appearance",
         screen = AppearancePreferencesScreen,
@@ -1339,7 +1328,6 @@ object SearchablePreferences {
         anchorItemIndex = 1,
         SearchEntrySpec(R.string.ui_include_audio_files, listOf("audio", "files", "browser", "folders", "library")),
         SearchEntrySpec(R.string.ui_minimum_audio_duration, listOf("audio", "minimum", "duration", "short", "filter")),
-        SearchEntrySpec(R.string.pref_music_tabs_title, listOf("music", "library", "tabs", "order", "songs", "albums")),
       )
       addSearchEntries(
         category = "Audio",
@@ -1428,7 +1416,6 @@ object SearchablePreferences {
         category = "Network",
         screen = AdvancedPreferencesScreen,
         anchorItemIndex = 9,
-        SearchEntrySpec(R.string.pref_enable_p2p_streaming_title, listOf("p2p", "torrent", "streaming", "enable")),
         SearchEntrySpec(R.string.pref_enable_hls_proxy_title, listOf("hls", "proxy", "streaming", "network")),
       )
       addSearchEntries(
@@ -1549,7 +1536,7 @@ object SearchablePreferences {
         titleRes = R.string.pref_advanced,
         keywords =
           listOf(
-            "language backup restore storage folder mpv config input conf lua scripts p2p torrent logs verbose history cache fonts",
+            "language backup restore storage folder mpv config input conf lua scripts logs verbose history cache fonts",
             "network streaming ytdlp youtube cookies proxy user agent sponsorblock update configuration editor",
           ),
         category = "Advanced",

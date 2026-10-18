@@ -10,6 +10,14 @@ val localProperties =
     }
   }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties =
+  Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+      keystorePropertiesFile.inputStream().use { load(it) }
+    }
+  }
+
 val targetAbiProp = project.findProperty("targetAbi")?.toString() ?: localProperties.getProperty("targetAbi")
 val enableX86 = project.findProperty("enableX86") != "false"
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
@@ -116,6 +124,30 @@ android {
     }
   }
 
+  signingConfigs {
+    create("release") {
+      val envKeystorePath = System.getenv("SIGNING_KEYSTORE_PATH")
+      val propKeystorePath = keystoreProperties.getProperty("storeFile")
+
+      val resolvedFile =
+        when {
+          !envKeystorePath.isNullOrBlank() -> file(envKeystorePath)
+          !propKeystorePath.isNullOrBlank() -> file(propKeystorePath)
+          else -> null
+        }
+
+      if (resolvedFile != null && resolvedFile.exists()) {
+        storeFile = resolvedFile
+        storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: keystoreProperties.getProperty("storePassword")
+        keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: keystoreProperties.getProperty("keyAlias")
+        keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: keystoreProperties.getProperty("keyPassword")
+        enableV1Signing = true
+        enableV2Signing = true
+        enableV3Signing = true
+      }
+    }
+  }
+
   buildTypes {
     named("release") {
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
@@ -125,7 +157,14 @@ android {
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
       )
-      signingConfig = signingConfigs.getByName("debug")
+      val releaseSigning = signingConfigs.findByName("release")
+      signingConfig =
+        if (releaseSigning?.storeFile?.exists() == true) {
+          releaseSigning
+        } else {
+          logger.lifecycle("⚠️ Release keystore not found. Falling back to debug signing config.")
+          signingConfigs.getByName("debug")
+        }
       ndk {
         debugSymbolLevel = "none"
       }

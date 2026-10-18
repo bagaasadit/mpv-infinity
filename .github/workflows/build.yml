@@ -3,6 +3,7 @@ name: CI/CD Build
 on:
   push:
     branches:
+      - main
       - master
       - fix/native-local-direct-source-4ef92fe
   pull_request:
@@ -72,6 +73,12 @@ jobs:
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew testStandardDebugUnitTest --stacktrace --no-daemon --max-workers=2
 
       - name: Build selected release APKs
         shell: bash

@@ -137,9 +137,10 @@ fun PlayerSheets(
       var showFilePicker by remember { mutableStateOf(false) }
 
       if (showFilePicker) {
-        app.infinity.mpvz.ui.browser.dialogs.FilePickerDialog(
+        app.infinity.mpvz.ui.player.dialogs.ExternalTrackPickerDialog(
           isOpen = true,
           currentPath = savedPickerPath,
+          titleRes = app.infinity.mpvz.R.string.ui_select_subtitle,
           onDismiss = { showFilePicker = false },
           onPathChanged = { path ->
             if (path != null) {
@@ -285,9 +286,10 @@ fun PlayerSheets(
         }
 
       if (showAudioFilePicker) {
-        app.infinity.mpvz.ui.browser.dialogs.FilePickerDialog(
+        app.infinity.mpvz.ui.player.dialogs.ExternalTrackPickerDialog(
           isOpen = true,
           currentPath = savedPickerPath,
+          titleRes = app.infinity.mpvz.R.string.ui_select_audio,
           onDismiss = { showAudioFilePicker = false },
           onPathChanged = { path ->
             if (path != null) {

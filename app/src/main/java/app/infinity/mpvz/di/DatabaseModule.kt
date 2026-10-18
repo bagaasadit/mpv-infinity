@@ -827,6 +827,16 @@ val MIGRATION_23_24 =
     }
   }
 
+val MIGRATION_24_25 =
+  object : Migration(24, 25) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL("DROP TABLE IF EXISTS `directory_scan_index`")
+      db.execSQL("DROP TABLE IF EXISTS `directory_scans`")
+      db.execSQL("DROP TABLE IF EXISTS `video_metadata_cache`")
+      db.execSQL("DROP TABLE IF EXISTS `video_metadata`")
+    }
+  }
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -865,6 +875,7 @@ val DatabaseModule =
           MIGRATION_21_22,
           MIGRATION_22_23,
           MIGRATION_23_24,
+          MIGRATION_24_25,
         ).build()
     }
 
@@ -875,13 +886,6 @@ val DatabaseModule =
     }
 
     single { ThumbnailRepository(androidContext()) }
-
-    single {
-      app.infinity.mpvz.database.repository.VideoMetadataCacheRepository(
-        context = androidContext(),
-        dao = get<MpvInfinityDatabase>().videoMetadataDao(),
-      )
-    }
 
     single {
       PlaylistRepository(

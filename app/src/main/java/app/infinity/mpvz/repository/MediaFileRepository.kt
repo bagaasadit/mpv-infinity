@@ -14,7 +14,7 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import app.infinity.mpvz.database.MpvInfinityDatabase
+
 import app.infinity.mpvz.domain.browser.FileSystemItem
 import app.infinity.mpvz.domain.browser.PathComponent
 import app.infinity.mpvz.domain.media.model.Video
@@ -60,7 +60,6 @@ object MediaFileRepository : KoinComponent {
   private val appearancePreferences: AppearancePreferences by inject()
   private val browserPreferences: BrowserPreferences by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
-  private val database: MpvInfinityDatabase by inject()
 
   private fun currentScanOptions(includeAudioOverride: Boolean? = null): MediaScanOptions =
     MediaScanOptions(
@@ -127,11 +126,7 @@ object MediaFileRepository : KoinComponent {
             currentScanOptions(includeAudioOverride),
             forceFileSystemCheck,
           )
-        val indexedFolders =
-          FolderViewScanner.getIndexedNoMediaFolders(
-            currentScanOptions(includeAudioOverride),
-            database.directoryScanDao(),
-          )
+        val indexedFolders = emptyList<VideoFolder>()
         (mediaStoreFolders + indexedFolders)
           .distinctBy { it.path.lowercase(Locale.ROOT) }
           .sortedBy { it.name.lowercase(Locale.getDefault()) }
@@ -157,8 +152,7 @@ object MediaFileRepository : KoinComponent {
         ).also { onProgress?.invoke(it.size) }
     }
 
-  suspend fun getIndexedNoMediaFolders(): List<VideoFolder> =
-    FolderViewScanner.getIndexedNoMediaFolders(currentScanOptions(), database.directoryScanDao())
+  suspend fun getIndexedNoMediaFolders(): List<VideoFolder> = emptyList()
 
   /**
    * Scans MediaStore for all audio (music) files and groups them by parent folder.
@@ -322,13 +316,7 @@ object MediaFileRepository : KoinComponent {
   fun scanNoMediaFoldersIncrementally(
     context: Context,
     forceDiscovery: Boolean = false,
-  ): Flow<List<VideoFolder>> =
-    FolderViewScanner.scanNoMediaFoldersIncrementally(
-      context = context,
-      options = currentScanOptions(),
-      dao = database.directoryScanDao(),
-      forceDiscovery = forceDiscovery,
-    )
+  ): Flow<List<VideoFolder>> = kotlinx.coroutines.flow.emptyFlow()
 
   /**
    * No-op enrichment - MediaStore already provides all metadata

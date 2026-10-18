@@ -37,20 +37,7 @@ class AudioPreferences(
   val audioStandbyMode = preferenceStore.getBoolean("audio_standby_mode", true)
   val audioStandbyDelaySeconds = preferenceStore.getInt("audio_standby_delay_seconds", 5)
   val audioWavySeekbar = preferenceStore.getBoolean("audio_wavy_seekbar", true)
-  val enabledMusicTabs = preferenceStore.getStringSet(
-    "enabled_music_tabs",
-    setOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
-  )
-  val musicTabOrder = preferenceStore.getObject(
-    key = "music_tab_order",
-    defaultValue = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
-    serializer = { list -> list.joinToString(",") },
-    deserializer = { str ->
-      val parsed = str.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-      val missing = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS") - parsed.toSet()
-      parsed + missing
-    },
-  )
+
 
   init {
     // Consolidate the old audio-only screen-lock switch into the single global setting.

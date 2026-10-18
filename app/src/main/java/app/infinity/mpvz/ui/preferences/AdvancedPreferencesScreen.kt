@@ -583,28 +583,12 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           item {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_p2p_streaming))
+            PreferenceSectionHeader(title = stringResource(R.string.pref_section_network))
           }
 
           item {
             PreferenceCard {
-              val enableP2pStreaming by preferences.enableP2pStreaming.collectAsState()
               val enableHlsProxy by preferences.enableHlsProxy.collectAsState()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_enable_p2p_streaming_title),
-                value = enableP2pStreaming,
-                onValueChange = preferences.enableP2pStreaming::set,
-                title = { Text(stringResource(R.string.pref_enable_p2p_streaming_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_enable_p2p_streaming_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_enable_hls_proxy_title),

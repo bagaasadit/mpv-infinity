@@ -1379,7 +1379,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_buy_me_a_coffee">Invítame a un café</string>
   <string name="ui_if_you_enjoy_mpv_infinity_consider_supporting_its_development_every_bit">Si disfrutas Mpv∞, considera apoyar su desarrollo. ¡Cada aporte ayuda!</string>
   <string name="ui_support_link">ID de UPI</string>
-  <string name="ui_zhinfinity_github">github.com/ZHINFINITY/Mpv-infinity</string>
+  <string name="ui_zhinfinity_github">github.com/bagaasadit/mpv-infinity</string>
   <string name="ui_visit_github">Enviar cariño</string>
   <string name="ui_auto_check_for_updates">Buscar actualizaciones automáticamente</string>
   <string name="ui_check_on_startup">Comprobar al iniciar</string>
@@ -1591,7 +1591,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="syncplay_player_status">Syncplay: %1$s (%2$d usuarios)</string>
   <!-- Additional synchronized strings -->
   <string name="app_name">Mpv∞</string>
-  <string name="github_repo_url">https://github.com/ZHINFINITY/Mpv-infinity</string>
+  <string name="github_repo_url">https://github.com/bagaasadit/mpv-infinity</string>
   <string name="hdr_mode_bt2020">BT.2020</string>
   <string name="hdr_mode_bt2100_hlg">BT.2100 HLG</string>
   <string name="hdr_mode_bt2100_pq">BT.2100 PQ</string>

@@ -50,6 +50,10 @@ jobs:
           cache: gradle
       - name: Install native subtitle build dependencies
         run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool gettext autopoint gperf pkg-config
+      - name: Run unit tests
+        run: |
+          chmod +x ./gradlew
+          ./gradlew testStandardDebugUnitTest --stacktrace --no-daemon --max-workers=2
       - name: Build APK
         run: |
           chmod +x ./gradlew

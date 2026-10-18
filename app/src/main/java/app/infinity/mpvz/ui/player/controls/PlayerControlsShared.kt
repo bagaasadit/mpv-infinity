@@ -645,10 +645,6 @@ fun RenderPlayerButton(
       }
     }
 
-    PlayerButton.CAST -> {
-      // Cast disabled in pure player mode
-    }
-
     PlayerButton.ASPECT_RATIO -> {
       val configOwned = isAnyMpvOptionOwnedByConfig(MpvConfigControlledFeatures.VIDEO_ASPECT)
       ControlsButton(

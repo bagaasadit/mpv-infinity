@@ -98,9 +98,9 @@ import app.infinity.mpvz.preferences.MpvConfigOverridePolicy
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.SubtitlesPreferences
 import app.infinity.mpvz.preferences.VideoSortType
-import app.infinity.mpvz.ui.browser.playlist.ALL_VIDEOS_PLAYLIST_ID
-import app.infinity.mpvz.ui.browser.playlist.buildAllVideosPlaylistEntity
-import app.infinity.mpvz.ui.browser.playlist.isAllVideosPlaylist
+import app.infinity.mpvz.database.entities.ALL_VIDEOS_PLAYLIST_ID
+import app.infinity.mpvz.database.entities.buildAllVideosPlaylistEntity
+import app.infinity.mpvz.database.entities.isAllVideosPlaylist
 import app.infinity.mpvz.ui.player.controls.PlayerControls
 import app.infinity.mpvz.ui.player.components.VideoAmbientBackground
 import app.infinity.mpvz.ui.player.components.rememberVideoAmbientFrame
@@ -4196,9 +4196,24 @@ class PlayerActivity :
    * @return The display name of the file, or empty string if not found
    */
   private fun getFileName(intent: Intent): String {
-    // First check if a custom title/filename was provided via intent extras
-    intent.getStringExtra("title")?.let { return it }
-    intent.getStringExtra("filename")?.let { return it }
+    // Check custom title/filename provided via intent extras by external streaming apps (Nuvio, Stremio, Kodi, Nova, etc.)
+    val extraTitleKeys = arrayOf(
+      Intent.EXTRA_TITLE,
+      "title",
+      "filename",
+      "media_title",
+      "display_name",
+      "name",
+      "video_title",
+      Intent.EXTRA_TEXT,
+    )
+    for (key in extraTitleKeys) {
+      val value = intent.getStringExtra(key)
+        ?: intent.extras?.getCharSequence(key)?.toString()
+      if (!value.isNullOrBlank()) {
+        return value.trim()
+      }
+    }
 
     val uri = extractUriFromIntent(intent) ?: return ""
 

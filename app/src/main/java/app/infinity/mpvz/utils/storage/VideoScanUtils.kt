@@ -18,13 +18,10 @@ import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import android.provider.MediaStore
 import android.util.Log
-import app.infinity.mpvz.database.repository.VideoMetadataCacheRepository
 import app.infinity.mpvz.domain.media.model.Video
 import app.infinity.mpvz.utils.media.VideoResolutionFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import java.io.File
 import java.util.Locale
 import kotlin.math.log10
@@ -34,9 +31,8 @@ import kotlin.math.pow
  * Video Scanning Utilities
  * Handles video file scanning and metadata extraction
  */
-object VideoScanUtils : KoinComponent {
+object VideoScanUtils {
   private const val TAG = "VideoScanUtils"
-  private val metadataCache: VideoMetadataCacheRepository by inject()
 
   // Extensions where MediaStore duration is unreliable (returns 0)
   private val MEDIASTORE_DURATION_UNRELIABLE = setOf("ts", "mts", "m2ts")
@@ -79,7 +75,7 @@ object VideoScanUtils : KoinComponent {
         try {
           val file = File(v.path)
           if (!file.exists()) continue
-          val meta = metadataCache.getOrExtractMetadata(file, v.uri, v.displayName)
+          val meta = app.infinity.mpvz.utils.media.MediaInfoOps.extractMediaInfo(context, v.uri)
           if (meta != null && meta.durationMs > 0L) {
             videosMap[key] =
               v.copy(
@@ -330,13 +326,6 @@ object VideoScanUtils : KoinComponent {
 
       if (filesToProcess.isEmpty()) return
 
-      val metadataMap =
-        metadataCache.getOrExtractMetadataBatch(
-          filesToProcess.map { file ->
-            Triple(file, Uri.fromFile(file), file.name)
-          },
-        )
-
       for (file in filesToProcess) {
         try {
           val path = normalizeStoragePath(file.absolutePath) ?: continue
@@ -346,11 +335,10 @@ object VideoScanUtils : KoinComponent {
           val title = file.nameWithoutExtension
           val fileSize = file.length()
           val dateModified = file.lastModified() / 1000
-          val cachedMetadata = metadataMap[path]
           val isAudio = FileTypeUtils.isAudioFile(file)
-          val duration = cachedMetadata?.durationMs ?: 0L
+          val duration = 0L
           if (isAudio && !options.includesAudioDuration(duration)) continue
-          val resolvedSize = cachedMetadata?.sizeBytes?.takeIf { it > 0 } ?: fileSize
+          val resolvedSize = fileSize
           val mimeType = FileTypeUtils.getMimeTypeFromExtension(file.extension.lowercase())
 
           videosMap[videoKey] =

@@ -64,9 +64,9 @@ import app.infinity.mpvz.preferences.BlacklistScope
 import app.infinity.mpvz.preferences.FoldersPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
-import app.infinity.mpvz.ui.browser.components.BrowserTopBar
-import app.infinity.mpvz.ui.browser.selection.SelectionState
-import app.infinity.mpvz.ui.browser.states.EmptyState
+import app.infinity.mpvz.ui.components.EmptyState
+import app.infinity.mpvz.ui.components.SelectionState
+import app.infinity.mpvz.ui.components.SelectionTopBar
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
 import app.infinity.mpvz.ui.utils.LocalBackStack
@@ -107,7 +107,7 @@ object FoldersPreferencesScreen : Screen {
 
     Scaffold(
       topBar = {
-        BrowserTopBar(
+        SelectionTopBar(
           title = stringResource(R.string.pref_folders_title),
           colors = TopAppBarDefaults.topAppBarColors(),
           forceHeadlineSmall = true,
@@ -796,26 +796,14 @@ private suspend fun scanAllMediaFolders(context: Application): List<VideoFolder>
   val repoFolders = app.infinity.mpvz.repository.MediaFileRepository
     .getAllVideoFoldersFast(context = context, includeAudioOverride = true)
 
-  val songs = try {
-    app.infinity.mpvz.ui.browser.music.MusicLibraryScanner.scanSongs(context)
+  val audioFolders = try {
+    app.infinity.mpvz.repository.MediaFileRepository.getAllAudioFolders(context)
   } catch (_: Exception) {
     emptyList()
   }
 
-  val audioFolderPaths = songs.mapNotNull { java.io.File(it.path).parent }.toSet()
   val existingPaths = repoFolders.map { it.path.lowercase() }.toSet()
-
-  val extraAudioFolders = audioFolderPaths.filter { path -> path.lowercase() !in existingPaths }.map { path ->
-    VideoFolder(
-      bucketId = path,
-      name = path.substringAfterLast('/'),
-      path = path,
-      videoCount = 0,
-      totalSize = 0L,
-      totalDuration = 0L,
-      lastModified = 0L,
-    )
-  }
+  val extraAudioFolders = audioFolders.filter { it.path.lowercase() !in existingPaths }
 
   return (repoFolders + extraAudioFolders).sortedBy { it.name.lowercase() }
 }

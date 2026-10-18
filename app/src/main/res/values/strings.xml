@@ -576,7 +576,7 @@
   <string name="timer_remaining">%s remaining</string>
   <string name="toast_sleep_timer_ended">Sleep timer ended</string>
   <string name="volume_slider_absolute_value" translatable="false">%d</string>
-  <string name="github_repo_url" translatable="false">https://github.com/ZHINFINITY/Mpv-infinity</string>
+  <string name="github_repo_url" translatable="false">https://github.com/bagaasadit/mpv-infinity</string>
   <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
   <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
   <!-- Animation settings -->
@@ -1392,6 +1392,7 @@
   <string name="ui_generate_previews">Generate Previews</string>
   <string name="ui_edit_connection">Edit Connection</string>
   <string name="ui_select_subtitle">Select Subtitle</string>
+  <string name="ui_select_audio">Select Audio Track</string>
   <string name="ui_no_storage_devices_found">No storage devices found</string>
   <string name="ui_no_folders_or_supported_files">No folders or supported files</string>
   <string name="ui_select_folder">Select Folder</string>
@@ -1619,7 +1620,7 @@
   <string name="ui_buy_me_a_coffee">Buy Me a Coffee</string>
   <string name="ui_if_you_enjoy_mpv_infinity_consider_supporting_its_development_every_bit">If you enjoy Mpv∞, consider supporting its development. Every bit helps!</string>
   <string name="ui_support_link">UPI ID</string>
-  <string name="ui_zhinfinity_github">github.com/ZHINFINITY/Mpv-infinity</string>
+  <string name="ui_zhinfinity_github">github.com/bagaasadit/mpv-infinity</string>
   <string name="ui_visit_github">Send Love</string>
   <string name="ui_auto_check_for_updates">Auto Check for Updates</string>
   <string name="ui_check_on_startup">Check on startup</string>

@@ -31,8 +31,6 @@ class AdvancedPreferences(
   val enableLuaScripts = preferenceStore.getBoolean("enable_lua_scripts", false)
   val selectedLuaScripts = preferenceStore.getStringSet("selected_lua_scripts", emptySet())
 
-  val enableP2pStreaming = preferenceStore.getBoolean("enable_p2p_streaming", true)
-
   val enableHlsProxy = preferenceStore.getBoolean("enable_hls_proxy", true)
 
   val enableSmartCollections = preferenceStore.getBoolean("enable_smart_collections", false)

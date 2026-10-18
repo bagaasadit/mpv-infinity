@@ -65,19 +65,6 @@ class AppearancePreferences(
   val showSeekbarOuterContainer = preferenceStore.getBoolean("show_seekbar_outer_container", false)
   val portraitPlaybackControlsPosition =
     preferenceStore.getEnum("portrait_playback_controls_position", PortraitPlaybackControlsPosition.Center)
-  val showHomeTab = preferenceStore.getBoolean("show_home_tab", true)
-  val showMusicTab = preferenceStore.getBoolean("show_music_tab", true)
-  val showRecentsTab = preferenceStore.getBoolean("show_recents_tab", true)
-  val showPlaylistsTab = preferenceStore.getBoolean("show_playlists_tab", true)
-  val showNetworkTab = preferenceStore.getBoolean("show_network_tab", false)
-  val showStreamsTab = preferenceStore.getBoolean("show_streams_tab", false)
-  val showJellyfinTab = preferenceStore.getBoolean("show_jellyfin_tab", false)
-  val showNavidromeTab = preferenceStore.getBoolean("show_navidrome_tab", false)
-  val showAudiobooksTab = preferenceStore.getBoolean("show_audiobooks_tab", false)
-  val autoShowJellyfinTab = preferenceStore.getBoolean("auto_show_jellyfin_tab", true)
-  val showQuickPlayFab = preferenceStore.getBoolean("show_quick_play_fab", true)
-  val quickPlayFabDirect = preferenceStore.getBoolean("quick_play_fab_direct", false)
-
   val topLeftControls =
     preferenceStore.getString(
       "top_left_controls",
@@ -87,7 +74,7 @@ class AppearancePreferences(
   val topRightControls =
     preferenceStore.getString(
       "top_right_controls",
-      "CAST,CURRENT_CHAPTER,DECODER,AUDIO_TRACK,SUBTITLES,MORE_OPTIONS",
+      "CURRENT_CHAPTER,DECODER,AUDIO_TRACK,SUBTITLES,MORE_OPTIONS",
     )
 
   val bottomRightControls =
@@ -105,34 +92,13 @@ class AppearancePreferences(
   val portraitBottomControls =
     preferenceStore.getString(
       "portrait_bottom_controls",
-      "CAST,SCREEN_ROTATION,DECODER,AUDIO_TRACK,SUBTITLES,BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,REPEAT_MODE,SHUFFLE,VIDEO_ZOOM,FRAME_NAVIGATION,CLIP,ASPECT_RATIO,PICTURE_IN_PICTURE,LOCK_CONTROLS,MORE_OPTIONS",
+      "SCREEN_ROTATION,DECODER,AUDIO_TRACK,SUBTITLES,BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,REPEAT_MODE,SHUFFLE,VIDEO_ZOOM,FRAME_NAVIGATION,CLIP,ASPECT_RATIO,PICTURE_IN_PICTURE,LOCK_CONTROLS,MORE_OPTIONS",
     )
 
-  private val castButtonMigrationComplete =
-    preferenceStore.getBoolean("cast_button_migration_complete", false)
   private val clipButtonMigrationComplete =
     preferenceStore.getBoolean("clip_button_migration_complete", false)
 
   init {
-    if (!castButtonMigrationComplete.get()) {
-      val landscapeButtons =
-        listOf(
-          topLeftControls.get(),
-          topRightControls.get(),
-          bottomRightControls.get(),
-          bottomLeftControls.get(),
-        ).flatMap { it.split(',') }
-          .map { it.trim().uppercase() }
-      if ("CAST" !in landscapeButtons) {
-        topRightControls.set("CAST,${topRightControls.get()}")
-      }
-      val portraitButtons = portraitBottomControls.get().split(',').map { it.trim().uppercase() }
-      if ("CAST" !in portraitButtons) {
-        portraitBottomControls.set("CAST,${portraitBottomControls.get()}")
-      }
-      castButtonMigrationComplete.set(true)
-    }
-
     if (!clipButtonMigrationComplete.get()) {
       val landscapeButtons =
         listOf(
@@ -160,6 +126,7 @@ class AppearancePreferences(
     csv
       .splitToSequence(',')
       .map { it.trim().uppercase() }
+      .filter { it != "CAST" && it.isNotBlank() }
       .mapNotNull { name ->
         try {
           PlayerButton.valueOf(name)

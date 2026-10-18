@@ -32,7 +32,6 @@ enum class PlayerButton(
   FRAME_NAVIGATION(Icons.RoundedFilled.Screenshot),
   VIDEO_ZOOM(Icons.RoundedFilled.ZoomIn),
   PICTURE_IN_PICTURE(Icons.RoundedFilled.PictureInPictureAlt),
-  CAST(Icons.RoundedFilled.Cast),
   ASPECT_RATIO(Icons.RoundedFilled.AspectRatio),
   LOCK_CONTROLS(Icons.RoundedFilled.LockOpen),
   VIDEO_QUALITY(Icons.RoundedFilled.Hd),
@@ -81,7 +80,6 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.FRAME_NAVIGATION -> stringResource(R.string.btn_label_frame_nav)
     PlayerButton.VIDEO_ZOOM -> stringResource(R.string.btn_label_zoom)
     PlayerButton.PICTURE_IN_PICTURE -> stringResource(R.string.btn_label_pip)
-    PlayerButton.CAST -> stringResource(R.string.btn_label_cast)
     PlayerButton.ASPECT_RATIO -> stringResource(R.string.btn_label_aspect)
     PlayerButton.LOCK_CONTROLS -> stringResource(R.string.btn_label_lock)
     PlayerButton.VIDEO_QUALITY -> stringResource(R.string.player_video_quality_button)

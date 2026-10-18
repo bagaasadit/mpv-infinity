@@ -71,4 +71,55 @@ class PlaybackModelsTest {
     assertEquals("video/mp4", resolvePlaybackMimeType("  ", "video/mp4"))
     assertNull(resolvePlaybackMimeType(null, " "))
   }
+
+  @Test
+  fun dolbyVisionAndHdrTokensResolveToNativeInAutoMode() {
+    val dvScene =
+      PlaybackItem(
+        stableId = "dv-item",
+        originalUri = "https://debrid.stream/d78a9c8f",
+        title = "Movie.2024.2160p.UHD.BluRay.x265.10bit.TrueHD.7.1.Atmos.DV.mkv",
+        mimeType = "video/x-matroska",
+      )
+    assertEquals(PlaybackEngineMode.NATIVE, resolvePlaybackEngineMode(PlaybackEngineMode.AUTO, dvScene))
+
+    val doviScene =
+      PlaybackItem(
+        stableId = "dovi-item",
+        originalUri = "https://debrid.stream/d78a9c8f",
+        title = "Show.S02E05.DoVi.2160p.mkv",
+        mimeType = "video/x-matroska",
+      )
+    assertEquals(PlaybackEngineMode.NATIVE, resolvePlaybackEngineMode(PlaybackEngineMode.AUTO, doviScene))
+
+    val hdr10Plus =
+      PlaybackItem(
+        stableId = "hdr10-item",
+        originalUri = "https://debrid.stream/d78a9c8f",
+        title = "Film.2023.HDR10+.mkv",
+        mimeType = "video/x-matroska",
+      )
+    assertEquals(PlaybackEngineMode.NATIVE, resolvePlaybackEngineMode(PlaybackEngineMode.AUTO, hdr10Plus))
+  }
+
+  @Test
+  fun falsePositiveWordsDoNotTriggerNativeRoutingInAutoMode() {
+    val adventure =
+      PlaybackItem(
+        stableId = "adv-item",
+        originalUri = "https://debrid.stream/d78a9c8f",
+        title = "Adventure.Time.S01E01.1080p.mkv",
+        mimeType = "video/x-matroska",
+      )
+    assertEquals(PlaybackEngineMode.MPV, resolvePlaybackEngineMode(PlaybackEngineMode.AUTO, adventure))
+
+    val dvdRip =
+      PlaybackItem(
+        stableId = "dvd-item",
+        originalUri = "https://debrid.stream/d78a9c8f",
+        title = "Classic.Show.DVDRip.x264.mkv",
+        mimeType = "video/x-matroska",
+      )
+    assertEquals(PlaybackEngineMode.MPV, resolvePlaybackEngineMode(PlaybackEngineMode.AUTO, dvdRip))
+  }
 }

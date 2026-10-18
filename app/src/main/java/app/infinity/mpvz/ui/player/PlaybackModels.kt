@@ -148,7 +148,11 @@ internal fun PlaybackItem.isDefinitelyAudioOnly(): Boolean =
 internal fun PlaybackItem.isHdrOrDolbyVision(): Boolean {
   if (hdrMetadata == true) return true
   val metadata = sequenceOf(title, mimeType, originalUri, playableUri).filterNotNull().joinToString(" ")
-  return HDR_MARKERS.any { marker -> metadata.contains(marker, ignoreCase = true) }
+  if (SUBSTRING_HDR_MARKERS.any { metadata.contains(it, ignoreCase = true) }) return true
+
+  // Delimited word token check for short acronyms like "DV", "DoVi", "HDR" to prevent false positives (e.g. "adventure")
+  val tokens = metadata.split(DELIMITER_REGEX)
+  return tokens.any { token -> token.lowercase() in EXACT_HDR_TOKENS }
 }
 
 internal fun resolvePlaybackEngineMode(
@@ -168,8 +172,13 @@ internal fun PlaybackItem.isAutoNativeCandidate(): Boolean {
   return UHD_MARKERS.any { marker -> metadata.contains(marker, ignoreCase = true) }
 }
 
-private val HDR_MARKERS =
-  setOf("dolby vision", "dolby-vision", "dolbyvision", "dovi", "hdr10+", "hdr10", "hdr", "hlg")
+private val EXACT_HDR_TOKENS =
+  setOf("dv", "dovi", "hdr", "hdr10", "hdr10+", "hlg", "dvhe", "dvh1", "dav1")
+
+private val SUBSTRING_HDR_MARKERS =
+  setOf("dolby vision", "dolby-vision", "dolbyvision", "hdr10+", "hdr10", "dovi")
+
+private val DELIMITER_REGEX = Regex("[^a-zA-Z0-9+]")
 
 private const val UHD_MIN_DIMENSION = 2160
 private val UHD_MARKERS = setOf("4k", "2160p", "2160", "uhd")

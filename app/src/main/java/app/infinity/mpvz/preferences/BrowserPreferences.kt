@@ -18,9 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-import app.infinity.mpvz.ui.browser.music.MusicSortField
-import app.infinity.mpvz.ui.browser.music.MusicSortOrder
-import app.infinity.mpvz.ui.browser.music.MusicViewMode
+
 
 /**
  * Preferences for the video browser (folder and video lists)
@@ -41,10 +39,6 @@ class BrowserPreferences(
   val videoSortType = preferenceStore.getEnum("video_sort_type", VideoSortType.Title)
   val videoSortOrder = preferenceStore.getEnum("video_sort_order", SortOrder.Ascending)
 
-  // Music view mode and sorting preferences
-  val musicViewMode = preferenceStore.getEnum("music_view_mode", MusicViewMode.LIST)
-  val musicSortField = preferenceStore.getEnum("music_sort_field", MusicSortField.TITLE)
-  val musicSortOrder = preferenceStore.getEnum("music_sort_order", MusicSortOrder.ASCENDING)
 
   val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.AlbumView)
   val dualPaneForTablet = preferenceStore.getBoolean("dual_pane_for_tablet", true)

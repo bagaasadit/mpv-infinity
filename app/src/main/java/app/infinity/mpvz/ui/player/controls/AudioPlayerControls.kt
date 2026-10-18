@@ -108,7 +108,7 @@ import androidx.palette.graphics.Palette
 import app.infinity.mpvz.database.repository.PlaylistRepository
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import app.infinity.mpvz.domain.media.model.Video
-import app.infinity.mpvz.ui.browser.dialogs.AddToPlaylistDialog
+import app.infinity.mpvz.ui.player.dialogs.AddToPlaylistDialog
 import app.infinity.mpvz.ui.player.resolveUri
 import app.infinity.mpvz.ui.player.isDefinitelyAudioOnly
 import app.infinity.mpvz.ui.player.controls.components.MiniAudioVisualizer
