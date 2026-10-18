@@ -52,7 +52,6 @@ import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
 import androidx.documentfile.provider.DocumentFile
 import app.infinity.mpvz.R
-import app.infinity.mpvz.catalog.StreamWatchHistory
 import app.infinity.mpvz.domain.playbackstate.repository.PlaybackStateRepository
 import app.infinity.mpvz.domain.thumbnail.ThumbnailRepository
 import app.infinity.mpvz.preferences.AdvancedPreferences
@@ -697,41 +696,6 @@ object AdvancedPreferencesScreen : Screen {
             }
           }
 
-          item {
-            PreferenceSectionHeader(title = stringResource(R.string.ui_network))
-          }
-
-          item {
-            PreferenceCard {
-              Preference(
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.infinity.mpvz.R.string.ui_yt_dlp_manager),
-                  )
-                },
-                summary = {
-                  Text(
-                    androidx.compose.ui.res.stringResource(
-                      app.infinity.mpvz.R.string.ui_install_and_update_yt_dlp_for_streaming_support,
-                    ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.CloudDownload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = {
-                  backStack.add(YtdlpSettingsScreen)
-                },
-              )
-            }
-          }
-
           // Data & Cache Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_data_cache))
@@ -804,7 +768,6 @@ object AdvancedPreferencesScreen : Screen {
                       runCatching {
                         playbackStateRepository.clearAllPlaybackStates()
                         RecentlyPlayedOps.clearAll()
-                        StreamWatchHistory.clear(context)
                         PlaybackStateEvents.notifyChanged("")
                       }.onSuccess {
                         withContext(Dispatchers.Main) {

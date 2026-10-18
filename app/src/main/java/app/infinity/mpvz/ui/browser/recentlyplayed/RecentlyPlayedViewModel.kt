@@ -17,7 +17,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import app.infinity.mpvz.catalog.StreamWatchHistory
 import app.infinity.mpvz.database.MpvInfinityDatabase
 import app.infinity.mpvz.database.entities.RecentlyPlayedEntity
 import app.infinity.mpvz.database.repository.PlaylistRepository
@@ -358,7 +357,6 @@ class RecentlyPlayedViewModel(
         clearWatchHistory(
           backfillWatchStatistics = { RecentlyPlayedOps.backfillWatchStatistics(context) },
           clearMediaHistory = { RecentlyPlayedOps.clearAll() },
-          clearStreamHistory = { StreamWatchHistory.clear(context) },
         )
       }
     } catch (e: Exception) {

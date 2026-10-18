@@ -32,9 +32,7 @@ import app.infinity.mpvz.R
 /**
  * Shown instead of silently installing/updating yt-dlp in the background before playback
  * (which used to leave the player buffering with no explanation on a link's first play).
- *
- * Mirrors the layout of [app.infinity.mpvz.ui.securefolder.SecureConfirmDialog] /
- * `ConfirmDialog`, but with a third, visually separated action ([onConfigure]) pinned to the
+ * Standard confirmation layout, but with a third, visually separated action ([onConfigure]) pinned to the
  * start of the row so it doesn't get mistaken for a variant of confirm/cancel.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)

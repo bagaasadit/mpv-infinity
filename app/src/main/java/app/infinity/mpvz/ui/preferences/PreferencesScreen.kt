@@ -276,19 +276,6 @@ object PreferencesScreen : Screen {
         ),
       ),
       SettingsSection(
-        title = stringResource(R.string.extra_features_title),
-        tint = colorScheme.onSurfaceVariant,
-        items =
-          listOf(
-            SettingsDestination(
-              title = stringResource(R.string.extra_features_title),
-              summary = stringResource(R.string.extra_features_intro),
-              icon = Icons.RoundedFilled.Tune,
-              screen = ExtraFeaturesScreen,
-            ),
-          ),
-      ),
-      SettingsSection(
         title = stringResource(R.string.pref_section_advanced),
         tint = colorScheme.onSurfaceVariant,
         items =
@@ -300,7 +287,6 @@ object PreferencesScreen : Screen {
                   stringResource(R.string.pref_section_app_language),
                   stringResource(R.string.pref_section_backup_restore),
                   stringResource(R.string.pref_section_mpv_config),
-                  stringResource(R.string.ui_network),
                 ).joinToString(", "),
               icon = Icons.Alternatives.AdvancedSettings,
               screen = AdvancedPreferencesScreen,

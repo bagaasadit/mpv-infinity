@@ -13,10 +13,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import app.infinity.mpvz.data.network.credentials.AndroidNetworkCredentialKey
-import app.infinity.mpvz.data.network.credentials.NetworkCredentialCipher
 import app.infinity.mpvz.database.MpvInfinityDatabase
-import app.infinity.mpvz.database.repository.NetworkStreamEntryRepository
 import app.infinity.mpvz.database.repository.PlaybackStateRepositoryImpl
 import app.infinity.mpvz.database.repository.PlaylistRepository
 import app.infinity.mpvz.database.repository.RecentlyPlayedRepositoryImpl
@@ -28,23 +25,6 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
-import app.infinity.mpvz.database.dao.AudiobookDao
-import app.infinity.mpvz.database.dao.AudiobookshelfServerDao
-import app.infinity.mpvz.database.dao.DownloadItemDao
-import app.infinity.mpvz.database.dao.JellyfinServerDao
-import app.infinity.mpvz.database.dao.NavidromeServerDao
-import app.infinity.mpvz.database.dao.SecureMediaDao
-import app.infinity.mpvz.database.entities.Audiobook
-import app.infinity.mpvz.database.entities.AudiobookEntity
-import app.infinity.mpvz.database.entities.AudiobookTrackEntity
-import app.infinity.mpvz.database.entities.AudiobookshelfServerEntity
-import app.infinity.mpvz.database.entities.DownloadItemEntity
-import app.infinity.mpvz.database.entities.JellyfinServerEntity
-import app.infinity.mpvz.database.entities.NavidromeServerEntity
-import app.infinity.mpvz.database.entities.SecureMediaEntity
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 
 /**
  * Migration from version 1 (v1.0.0) to version 2 (v1.1.0)
@@ -839,6 +819,14 @@ val MIGRATION_22_23 =
     }
   }
 
+val MIGRATION_23_24 =
+  object : Migration(23, 24) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL("DROP TABLE IF EXISTS `network_connections`")
+      db.execSQL("DROP TABLE IF EXISTS `network_stream_entries`")
+    }
+  }
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -876,6 +864,7 @@ val DatabaseModule =
           MIGRATION_20_21,
           MIGRATION_21_22,
           MIGRATION_22_23,
+          MIGRATION_23_24,
         ).build()
     }
 
@@ -894,31 +883,6 @@ val DatabaseModule =
       )
     }
 
-    // MediaFileRepository is a singleton object - no DI needed
-
-    single {
-      get<MpvInfinityDatabase>().networkConnectionDao()
-    }
-
-    single {
-      get<MpvInfinityDatabase>().networkStreamEntryDao()
-    }
-
-    single {
-      NetworkStreamEntryRepository(get())
-    }
-
-    single {
-      NetworkCredentialCipher(AndroidNetworkCredentialKey::getOrCreate)
-    }
-
-    single {
-      app.infinity.mpvz.repository.NetworkRepository(
-        dao = get(),
-        credentialCipher = get(),
-      )
-    }
-
     single {
       PlaylistRepository(
         playlistDao = get<MpvInfinityDatabase>().playlistDao(),
@@ -927,113 +891,4 @@ val DatabaseModule =
         ytdlPreferences = get(),
       )
     }
-
-    single<SecureMediaDao> { NoOpSecureMediaDao }
-
-    single {
-      app.infinity.mpvz.database.repository.SecureFolderRepository(
-        dao = get(),
-      )
-    }
-
-    single<JellyfinServerDao> { NoOpJellyfinServerDao }
-
-    single {
-      app.infinity.mpvz.data.jellyfin.JellyfinClient(
-        httpClient = get(),
-        json = get(),
-      )
-    }
-
-    single {
-      app.infinity.mpvz.repository.JellyfinRepository(
-        dao = get(),
-        client = get(),
-      )
-    }
-
-    single<NavidromeServerDao> { NoOpNavidromeServerDao }
-
-    single {
-      app.infinity.mpvz.data.navidrome.NavidromeClient(
-        httpClient = get(),
-        json = get(),
-      )
-    }
-
-    single {
-      app.infinity.mpvz.repository.NavidromeRepository(
-        dao = get(),
-        client = get(),
-      )
-    }
-
-    single<AudiobookDao> { NoOpAudiobookDao }
-    single<AudiobookshelfServerDao> { NoOpAudiobookshelfServerDao }
-    single<DownloadItemDao> { NoOpDownloadItemDao }
-
-    single {
-      app.infinity.mpvz.data.audiobookshelf.AudiobookshelfClient(
-        httpClient = get(),
-        json = get(),
-      )
-    }
-
-    single {
-      app.infinity.mpvz.repository.AudiobookshelfRepository(
-        dao = get(),
-        client = get(),
-      )
-    }
   }
-
-private object NoOpSecureMediaDao : SecureMediaDao {
-  override fun observeAll(): Flow<List<SecureMediaEntity>> = emptyFlow()
-  override suspend fun getAll(): List<SecureMediaEntity> = emptyList()
-  override suspend fun getById(id: Long): SecureMediaEntity? = null
-  override suspend fun getByIds(ids: List<Long>): List<SecureMediaEntity> = emptyList()
-  override suspend fun insert(entity: SecureMediaEntity): Long = -1L
-  override suspend fun deleteById(id: Long) {}
-  override suspend fun deleteByIds(ids: List<Long>) {}
-  override suspend fun getCount(): Int = 0
-  override fun observeCount(): Flow<Int> = flowOf(0)
-}
-
-private object NoOpJellyfinServerDao : JellyfinServerDao {
-  override fun getAllServers(): Flow<List<JellyfinServerEntity>> = emptyFlow()
-  override suspend fun getServerById(id: Long): JellyfinServerEntity? = null
-  override suspend fun insert(server: JellyfinServerEntity): Long = -1L
-  override suspend fun update(server: JellyfinServerEntity) {}
-  override suspend fun delete(server: JellyfinServerEntity) {}
-  override suspend fun deleteById(id: Long) {}
-}
-
-private object NoOpNavidromeServerDao : NavidromeServerDao {
-  override fun getAllServers(): Flow<List<NavidromeServerEntity>> = emptyFlow()
-  override suspend fun getServerById(id: Long): NavidromeServerEntity? = null
-  override suspend fun insert(server: NavidromeServerEntity): Long = -1L
-  override suspend fun update(server: NavidromeServerEntity) {}
-  override suspend fun delete(server: NavidromeServerEntity) {}
-  override suspend fun deleteById(id: Long) {}
-}
-
-private object NoOpAudiobookshelfServerDao : AudiobookshelfServerDao {
-  override fun getAllServers(): Flow<List<AudiobookshelfServerEntity>> = emptyFlow()
-  override suspend fun getServerById(id: Long): AudiobookshelfServerEntity? = null
-  override suspend fun insert(server: AudiobookshelfServerEntity): Long = -1L
-  override suspend fun update(server: AudiobookshelfServerEntity) {}
-  override suspend fun delete(server: AudiobookshelfServerEntity) {}
-  override suspend fun deleteById(id: Long) {}
-}
-
-private object NoOpAudiobookDao : AudiobookDao()
-
-private object NoOpDownloadItemDao : DownloadItemDao {
-  override fun observeAll(): Flow<List<DownloadItemEntity>> = emptyFlow()
-  override suspend fun getAll(): List<DownloadItemEntity> = emptyList()
-  override suspend fun findById(id: Long): DownloadItemEntity? = null
-  override suspend fun findBySystemDownloadId(systemDownloadId: Long): DownloadItemEntity? = null
-  override suspend fun insert(entity: DownloadItemEntity): Long = -1L
-  override suspend fun update(entity: DownloadItemEntity) {}
-  override suspend fun delete(id: Long) {}
-}

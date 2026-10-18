@@ -12,7 +12,6 @@ package app.infinity.mpvz.utils.history
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
-import app.infinity.mpvz.catalog.StreamWatchHistory
 import app.infinity.mpvz.database.entities.RecentlyPlayedEntity
 import app.infinity.mpvz.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.infinity.mpvz.preferences.AdvancedPreferences
@@ -85,16 +84,7 @@ object RecentlyPlayedOps {
     if (!shouldTrackWatchStatistics(preferences.enableRecentlyPlayed.get(), preferences.enableWatchStatistics.get())) return
     withContext(Dispatchers.IO) {
       val history = repository.getRecentlyPlayed(limit = WatchStatisticsState.MAX_ITEMS)
-      val streamPreferences = context.applicationContext.getSharedPreferences(
-        StreamWatchHistory.PREFERENCES_NAME,
-        Context.MODE_PRIVATE,
-      )
-      val streamHistoryKeys = StreamWatchHistory.keysForDisplay(
-        enabled = true,
-        order = streamPreferences.getString(StreamWatchHistory.ORDER_KEY, "").orEmpty(),
-        fallbackKeys = streamPreferences.getStringSet(StreamWatchHistory.KEYS_KEY, emptySet()).orEmpty(),
-      )
-      WatchStatisticsStore.backfillIfNeeded(context, history, streamHistoryKeys = streamHistoryKeys)
+      WatchStatisticsStore.backfillIfNeeded(context, history)
     }
   }
 

@@ -12,8 +12,6 @@ package app.infinity.mpvz.ui.player
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -28,10 +26,9 @@ internal data class AudioPlaybackResumeSnapshot(
 }
 
 /**
- * PlaybackSession is deliberately process-local. Keep only audio resume data in encrypted app
- * preferences so PlayerActivity can reconstruct it after process death without changing video or
- * audiobook resume behavior. Stream headers are included because authenticated audio URLs may need
- * them to reopen, and this store uses Android Keystore-backed encrypted preferences.
+ * PlaybackSession is deliberately process-local. Keep only audio resume data in app
+ * preferences so PlayerActivity can reconstruct it after process death without changing video
+ * resume behavior.
  */
 internal object AudioPlaybackResumeStore {
   private const val TAG = "AudioPlaybackResumeStore"
@@ -49,11 +46,7 @@ internal object AudioPlaybackResumeStore {
     paused: Boolean,
   ): Boolean {
     val currentItem = queueState.currentItem ?: return false
-    if (!currentItem.isDefinitelyAudioOnly() ||
-      currentItem.audiobook != null ||
-      currentItem.torrentFileIndex != null ||
-      currentItem.requiresTorrentResolution()
-    ) {
+    if (!currentItem.isDefinitelyAudioOnly()) {
       clear(context)
       return false
     }
@@ -103,9 +96,7 @@ internal object AudioPlaybackResumeStore {
         runCatching { preferences.edit().remove(SNAPSHOT_KEY).apply() }
       }.getOrNull()
     val validSnapshot = snapshot?.takeIf { snapshot ->
-        snapshot.currentItem?.let { item ->
-          item.isDefinitelyAudioOnly() && item.audiobook == null && !item.requiresTorrentResolution()
-        } == true
+        snapshot.currentItem?.isDefinitelyAudioOnly() == true
       }
     if (snapshot != null && validSnapshot == null) {
       runCatching { preferences.edit().remove(SNAPSHOT_KEY).apply() }
@@ -122,17 +113,10 @@ internal object AudioPlaybackResumeStore {
     cachedPreferences?.let { return it }
     return synchronized(this) {
       cachedPreferences ?: runCatching {
-        val appContext = context.applicationContext
-        val masterKey = MasterKey.Builder(appContext).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-        EncryptedSharedPreferences.create(
-          appContext,
-          PREFS_NAME,
-          masterKey,
-          EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-          EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        ).also { preferences -> cachedPreferences = preferences }
+        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+          .also { preferences -> cachedPreferences = preferences }
       }.onFailure { error ->
-        Log.e(TAG, "Encrypted playback preferences are unavailable", error)
+        Log.e(TAG, "Audio playback resume preferences are unavailable", error)
       }.getOrNull()
     }
   }

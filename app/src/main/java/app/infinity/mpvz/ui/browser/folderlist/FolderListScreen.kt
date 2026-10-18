@@ -90,7 +90,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.infinity.mpvz.BuildConfig
 import app.infinity.mpvz.R
-import app.infinity.mpvz.domain.audiobook.AudiobookFolderTrack
 import app.infinity.mpvz.domain.browser.FileSystemItem
 import app.infinity.mpvz.domain.media.model.Video
 import app.infinity.mpvz.domain.media.model.VideoFolder
@@ -129,9 +128,6 @@ import app.infinity.mpvz.ui.browser.videolist.VideoListScreen
 import app.infinity.mpvz.ui.components.InlineSearchBar
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
-import app.infinity.mpvz.ui.player.AudiobookPlayback
-import app.infinity.mpvz.ui.player.launchDirectAudiobookFiles
-import app.infinity.mpvz.ui.securefolder.SecureFolderGateScreen
 import app.infinity.mpvz.ui.utils.LocalBackStack
 import app.infinity.mpvz.ui.utils.calculateResponsiveGridSpans
 import app.infinity.mpvz.utils.history.RecentlyPlayedOps
@@ -264,12 +260,6 @@ object FolderListScreen : Screen {
     var renameDialogOpen by rememberSaveable { mutableStateOf(false) }
     val operationProgress by CopyPasteOps.operationProgress.collectAsState()
 
-    // Move-to-Secure-Folder state (moves every video inside the selected folders)
-    val secureFolderRepository = koinInject<app.infinity.mpvz.database.repository.SecureFolderRepository>()
-    val secureFolderPreferences = koinInject<app.infinity.mpvz.preferences.SecureFolderPreferences>()
-    val moveToSecureConfirmOpen = rememberSaveable { mutableStateOf(false) }
-    val moveToSecureProgressOpen = rememberSaveable { mutableStateOf(false) }
-    val secureFolderProgress by secureFolderRepository.progress.collectAsState()
 
     // Search state
     var internalSearchQuery by rememberSaveable { mutableStateOf("") }
@@ -445,34 +435,6 @@ object FolderListScreen : Screen {
         onOperationComplete = { viewModel.refresh() },
       )
 
-    fun moveSelectedFoldersToSecureFolder() {
-      val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-      if (selectedIds.isEmpty()) return
-      moveToSecureProgressOpen.value = true
-      coroutineScope.launch {
-        val allVideos =
-          app.infinity.mpvz.repository.MediaFileRepository
-            .getVideosForBuckets(context, selectedIds, includeAudioOverride = if (audioOnly) true else null)
-        if (allVideos.isNotEmpty()) {
-          val result = secureFolderRepository.moveIn(context, allVideos)
-          result
-            .onSuccess { batch ->
-              val message =
-                if (batch.failedIds.isEmpty()) {
-                  context.getString(R.string.secure_folder_moved_success, batch.succeededIds.size)
-                } else {
-                  context.getString(R.string.secure_folder_moved_partial, batch.succeededIds.size, batch.failedIds.size)
-                }
-              Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }.onFailure {
-              Toast.makeText(context, context.getString(R.string.secure_folder_move_failed), Toast.LENGTH_SHORT).show()
-            }
-        }
-        moveToSecureProgressOpen.value = false
-        selectionManager.clear()
-        viewModel.refresh()
-      }
-    }
 
     val treePickerLauncher =
       rememberLauncherForActivityResult(
@@ -518,7 +480,7 @@ object FolderListScreen : Screen {
 
     // After onboarding the app is fully usable; missing storage only shows an in-place prompt.
     LaunchedEffect(permissionState.status, isPermissionSetupCompleted) {
-      app.infinity.mpvz.ui.browser.MainScreen.updatePermissionState(
+      app.infinity.mpvz.ui.browser.NavigationBarState.updatePermissionState(
         isDenied = !isPermissionSetupCompleted,
       )
     }
@@ -647,8 +609,6 @@ object FolderListScreen : Screen {
               onSettingsClick = {
                 backstack.add(app.infinity.mpvz.ui.preferences.PreferencesScreen)
               },
-              onTitleDoubleTap = { backstack.add(SecureFolderGateScreen) },
-              onTitleLongPress = { backstack.add(SecureFolderGateScreen) },
               showBetaBadge = BuildConfig.IS_PREVIEW_BUILD,
               onRenameClick = null,
               isSingleSelection = selectionManager.isSingleSelection,
@@ -717,15 +677,6 @@ object FolderListScreen : Screen {
               onSelectAll = { selectionManager.selectAll() },
               onInvertSelection = { selectionManager.invertSelection() },
               onDeselectAll = { selectionManager.clear() },
-              onMoveToSecureClick = {
-                if (!secureFolderPreferences.isPinSet()) {
-                  backstack.add(SecureFolderGateScreen)
-                } else if (secureFolderPreferences.dontAskBeforeMove.get()) {
-                  moveSelectedFoldersToSecureFolder()
-                } else {
-                  moveToSecureConfirmOpen.value = true
-                }
-              },
             )
           }
         },
@@ -734,8 +685,7 @@ object FolderListScreen : Screen {
             showQuickPlayFab &&
               !selectionManager.isInSelectionMode &&
               isFabVisible.value &&
-              !app.infinity.mpvz.ui.browser.MainScreen
-                .getPermissionDeniedState() &&
+              !app.infinity.mpvz.ui.browser.NavigationBarState.isPermissionDenied &&
               !(isDualPaneActive && selectedFolderBucketId != null)
 
           FloatingActionButtonMenu(
@@ -902,13 +852,7 @@ object FolderListScreen : Screen {
                         }
                       },
                       onVideoClick = { video ->
-                        if (audiobookMode) {
-                          coroutineScope.launch {
-                            AudiobookPlayback.launchForFile(context, video.path, video.uri.toString())
-                          }
-                        } else {
-                          MediaUtils.playFile(video, context)
-                        }
+                        MediaUtils.playFile(video, context)
                       },
                       mediaLayoutMode = mediaLayoutMode,
                     )
@@ -966,28 +910,7 @@ object FolderListScreen : Screen {
                   selectedFolderBucketId = selectedFolderBucketId,
                   audioOnly = audioOnly,
                   audiobookMode = audiobookMode,
-                  onQuickPlayFolder = if (audiobookMode) {
-                    { folder ->
-                      coroutineScope.launch {
-                        val tracks = MediaFileRepository.getVideosInFolder(
-                          context,
-                          folder.bucketId,
-                          includeAudioOverride = true,
-                        ).asSequence()
-                          .filter { it.isAudio || it.mimeType.startsWith("audio/", ignoreCase = true) }
-                          .map { video ->
-                            AudiobookFolderTrack(
-                              uri = video.uri.toString(),
-                              name = video.displayName,
-                              mimeType = video.mimeType,
-                              sizeBytes = video.size,
-                              durationMs = video.duration,
-                            )
-                          }.toList()
-                        if (tracks.isNotEmpty()) launchDirectAudiobookFiles(context, tracks)
-                      }
-                    }
-                  } else null,
+                  onQuickPlayFolder = null,
                 )
               }
           } else if (isPermissionSetupCompleted) {
@@ -1183,25 +1106,6 @@ object FolderListScreen : Screen {
       )
     }
 
-    // Move to Secure Folder — confirm (skippable via "don't ask again"), then progress
-    app.infinity.mpvz.ui.securefolder.SecureConfirmDialog(
-      isOpen = moveToSecureConfirmOpen.value,
-      title = stringResource(R.string.secure_folder_move_folders_title, selectionManager.selectedCount),
-      subtitle = stringResource(R.string.secure_folder_move_folders_subtitle),
-      dontAskAgain = secureFolderPreferences.dontAskBeforeMove,
-      onConfirm = {
-        moveToSecureConfirmOpen.value = false
-        moveSelectedFoldersToSecureFolder()
-      },
-      onDismiss = { moveToSecureConfirmOpen.value = false },
-    )
-
-    app.infinity.mpvz.ui.securefolder.SecureFolderProgressDialog(
-      isOpen = moveToSecureProgressOpen.value,
-      progress = secureFolderProgress,
-      label = stringResource(R.string.secure_folder_moving_progress),
-      onCancel = { secureFolderRepository.cancelOperation() },
-    )
 
     if (renameDialogOpen && selectionManager.isSingleSelection) {
       val folder = selectionManager.getSelectedItems().firstOrNull()

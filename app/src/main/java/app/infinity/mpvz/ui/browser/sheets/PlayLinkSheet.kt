@@ -48,8 +48,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import app.infinity.mpvz.database.repository.NetworkStreamEntryRepository
-import app.infinity.mpvz.domain.torrent.isTorrentSource
-import app.infinity.mpvz.domain.torrent.normalizeTorrentSource
 import app.infinity.mpvz.preferences.YtdlPreferences
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
@@ -91,7 +89,7 @@ fun PlayLinkSheet(
   val handleConfirm = {
     val url = normalizedInput
     if (url.isNotBlank() && MediaUtils.isURLValid(url)) {
-      val playableSource = normalizeTorrentSource(url) ?: url
+      val playableSource = url
       isSubmitting = true
       coroutineScope.launch {
         try {
@@ -104,7 +102,6 @@ fun PlayLinkSheet(
           val firstEntry = extractedPlaylist?.entries?.firstOrNull()
           val selectedSource = firstEntry?.url ?: playableSource
           val selectedName = firstEntry?.title ?: MediaInfoParser.parseStreamTitle(playableSource)
-          if (!isTorrentSource(selectedSource)) {
             try {
               RecentlyPlayedOps.addRecentlyPlayed(
                 context = context,
@@ -144,7 +141,6 @@ fun PlayLinkSheet(
             } catch (_: Exception) {
               // Playback must still open even if optional history persistence fails.
             }
-          }
           if (extractedPlaylist != null) {
             YtdlpManager.playPlaylist(context, extractedPlaylist, "play_link")
           } else {
@@ -241,40 +237,6 @@ fun PlayLinkSheet(
             text =
               androidx.compose.ui.res
                 .stringResource(app.infinity.mpvz.R.string.generic_cancel),
-            fontWeight = FontWeight.Medium,
-          )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        val linkDownloadCoordinator = koinInject<app.infinity.mpvz.domain.download.LinkDownloadCoordinator>()
-        OutlinedButton(
-          onClick = {
-            val url = normalizedInput
-            if (url.isNotBlank() && MediaUtils.isURLValid(url)) {
-              val playableSource = normalizeTorrentSource(url) ?: url
-              if (isTorrentSource(playableSource)) {
-                // Torrents download through the torrent flow.
-                onPlayLink(playableSource)
-              } else {
-                when (linkDownloadCoordinator.enqueue(playableSource, MediaInfoParser.parseStreamTitle(playableSource))) {
-                  app.infinity.mpvz.domain.download.LinkDownloadCoordinator.Route.UNSUPPORTED ->
-                    android.widget.Toast
-                      .makeText(context, app.infinity.mpvz.R.string.downloads_location_invalid, android.widget.Toast.LENGTH_SHORT)
-                      .show()
-                  else ->
-                    android.widget.Toast
-                      .makeText(context, app.infinity.mpvz.R.string.downloads_started, android.widget.Toast.LENGTH_SHORT)
-                      .show()
-                }
-              }
-              onDismiss()
-            }
-          },
-          enabled = linkInputUrl.isNotBlank() && isLinkInputUrlValid && !isSubmitting,
-        ) {
-          Text(
-            text =
-              androidx.compose.ui.res
-                .stringResource(app.infinity.mpvz.R.string.downloads_download),
             fontWeight = FontWeight.Medium,
           )
         }

@@ -46,8 +46,6 @@ import app.infinity.mpvz.R
 import app.infinity.mpvz.preferences.AudioChannels
 import app.infinity.mpvz.preferences.AudioPlayerOrientation
 import app.infinity.mpvz.preferences.AudioPreferences
-import app.infinity.mpvz.preferences.LyricsTranslationDisplayMode
-import app.infinity.mpvz.data.lyrics.LyricsLanguageOptions
 import app.infinity.mpvz.preferences.AudioVisualizerStyle
 import app.infinity.mpvz.preferences.BrowserPreferences
 import app.infinity.mpvz.preferences.MediaLibraryType
@@ -587,62 +585,7 @@ object AudioPreferencesScreen : Screen {
                 sliderValue = volumeBoostCap.toFloat(),
               )
 
-              PreferenceDivider()
-              Text(
-                text = stringResource(R.string.pref_lyrics_translation_category),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-              )
 
-              val lyricsAutoTranslate by preferences.lyricsAutoTranslate.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_auto_translate),
-                value = lyricsAutoTranslate,
-                onValueChange = { preferences.lyricsAutoTranslate.set(it) },
-                title = { Text(stringResource(R.string.pref_lyrics_auto_translate)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_lyrics_auto_translate_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-              val lyricsTargetLanguage by preferences.lyricsTargetLanguage.collectAsState()
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_target_language),
-                value = lyricsTargetLanguage,
-                onValueChange = { preferences.lyricsTargetLanguage.set(it) },
-                values = LyricsLanguageOptions.ALL_LANGUAGES.map { it.code },
-                valueToText = { AnnotatedString(LyricsLanguageOptions.getDisplayName(it)) },
-                title = { Text(stringResource(R.string.pref_lyrics_target_language)) },
-                summary = {
-                  Text(
-                    text = LyricsLanguageOptions.getDisplayName(lyricsTargetLanguage),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-              val lyricsDisplayMode by preferences.lyricsTranslationDisplayMode.collectAsState()
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_display_mode),
-                value = lyricsDisplayMode,
-                onValueChange = { preferences.lyricsTranslationDisplayMode.set(it) },
-                values = LyricsTranslationDisplayMode.entries,
-                valueToText = { AnnotatedString(resources.getString(it.title)) },
-                title = { Text(stringResource(R.string.pref_lyrics_display_mode)) },
-                summary = {
-                  Text(
-                    text = stringResource(lyricsDisplayMode.title),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
             }
           }
         }

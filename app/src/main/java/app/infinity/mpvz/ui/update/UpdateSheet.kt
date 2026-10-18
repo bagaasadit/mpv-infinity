@@ -46,7 +46,6 @@ import app.infinity.mpvz.R
 import app.infinity.mpvz.domain.update.Release
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
-import com.mikepenz.markdown.m3.Markdown
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -118,8 +117,10 @@ fun UpdateSheet(
           color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Markdown(
-          content = release.body.ifBlank { stringResource(R.string.update_no_release_notes) },
+        Text(
+          text = release.body.ifBlank { stringResource(R.string.update_no_release_notes) },
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(16.dp))

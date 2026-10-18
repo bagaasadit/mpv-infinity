@@ -77,10 +77,7 @@ import app.infinity.mpvz.preferences.AppearancePreferences
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
-import app.infinity.mpvz.ui.browser.MainScreen
-import app.infinity.mpvz.ui.browser.NavigationBarState
 import app.infinity.mpvz.ui.home.PurePlayerHomeScreen
-import app.infinity.mpvz.ui.browser.components.MiniPlayer
 import app.infinity.mpvz.ui.player.NavigationAnimStyle
 import app.infinity.mpvz.ui.theme.DarkMode
 import app.infinity.mpvz.ui.theme.MpvInfinityTheme
@@ -217,7 +214,6 @@ class MainActivity : AppCompatActivity() {
     setContent {
       // Set up theme and edge-to-edge display
       val dark by appearancePreferences.darkMode.collectAsState()
-      val networkStreamingEnabled by appearancePreferences.showNetworkTab.collectAsState()
       val sessionState by PlaybackSession.state.collectAsState()
       val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
       val autoPiPOnNavigation by playerPreferences.autoPiPOnNavigation.collectAsState()
@@ -237,7 +233,6 @@ class MainActivity : AppCompatActivity() {
         enableVideoMiniPlayer,
         autoPiPOnNavigation,
         trackListNode,
-        NavigationBarState.isMiniPlayerVisible,
       ) {
         pipHelper.updatePictureInPictureParams()
       }
@@ -258,20 +253,6 @@ class MainActivity : AppCompatActivity() {
           }
         }
         applyEdgeToEdge(isDarkMode)
-      }
-
-      // Auto-connect to saved network connections.
-      // Gated behind both the user setting and a per-process flag so we only
-      // run SMB/FTP/WebDAV handshakes once per cold start, and only after the
-      // first frame has drawn (post-delay(500)). Previously this fired on every
-      // MainActivity recreation (config change, process restart, etc.) and
-      // re-handshaked every auto-connect entry, wasting battery and bandwidth
-      // even if the user never opened the Network tab.
-      // See issue 1.6 in the startup audit.
-      LaunchedEffect(networkStreamingEnabled) {
-        if (networkStreamingEnabled) {
-          (application as? App)?.autoConnectNetworksOnce()
-        }
       }
 
       if (isPipMode || isExpandingFromPip) {
@@ -381,7 +362,6 @@ class MainActivity : AppCompatActivity() {
     val isServiceRunning = MediaPlaybackService.isForegroundActive()
     val sessionState = PlaybackSession.state.value
     val isMediaActive = isServiceRunning && sessionState.currentItem != null &&
-      NavigationBarState.isMiniPlayerVisible &&
       sessionState.phase != PlaybackPhase.IDLE &&
       sessionState.phase != PlaybackPhase.UNINITIALIZED &&
       sessionState.phase != PlaybackPhase.ERROR
@@ -507,7 +487,6 @@ class MainActivity : AppCompatActivity() {
     val sessionState = PlaybackSession.state.value
     return isServiceRunning &&
       sessionState.currentItem != null &&
-      NavigationBarState.isMiniPlayerVisible &&
       sessionState.phase != PlaybackPhase.IDLE &&
       sessionState.phase != PlaybackPhase.UNINITIALIZED &&
       sessionState.phase != PlaybackPhase.ERROR
@@ -635,71 +614,6 @@ class MainActivity : AppCompatActivity() {
               screenNavTransition(forward = false, style = appNavStyle, speed = animSpeed)
             },
           )
-
-          val miniPlayerConfig = LocalConfiguration.current
-          val isPortrait = miniPlayerConfig.orientation == Configuration.ORIENTATION_PORTRAIT
-          val isTablet = miniPlayerConfig.smallestScreenWidthDp >= 600
-          val isDualPane = NavigationBarState.isDualPaneFolderSelected
-
-          val miniPlayerModifier =
-            when {
-              // Dual-pane tablets: the mini player lives inside the 2nd (right) pane.
-              isDualPane ->
-                Modifier
-                  .align(Alignment.BottomEnd)
-                  .fillMaxWidth(0.6f)
-                  .windowInsetsPadding(WindowInsets.navigationBars)
-                  .padding(bottom = 12.dp, start = 12.dp, end = 12.dp)
-
-              // Portrait phones: full width with a small side margin. During selection,
-              // lift the mini player above the edit actions instead of covering them.
-              isPortrait && !isTablet ->
-                Modifier
-                  .align(Alignment.BottomCenter)
-                  .fillMaxWidth()
-                  .windowInsetsPadding(WindowInsets.navigationBars)
-                  .padding(
-                    start = 12.dp,
-                    end = 12.dp,
-                    bottom =
-                      (if (NavigationBarState.isNavBarVisible) {
-                        NavigationBarState.navigationBarClearance
-                      } else {
-                        12.dp
-                      }) +
-                        (if (NavigationBarState.isInSelectionMode) {
-                          NavigationBarState.selectionBarClearance
-                        } else {
-                          0.dp
-                        }),
-                  )
-
-              // Landscape/tablet single-pane: sit on the right side of the nav bar,
-              // which slides left when the mini player appears.
-              else -> {
-                val isNavBarOnScreen = NavigationBarState.isNavBarVisible
-                val navBarLeft = if (NavigationBarState.navbarLeftOffset > 0.dp) NavigationBarState.navbarLeftOffset else 16.dp
-                val navBarWidth = if (NavigationBarState.navbarWidth > 0.dp) NavigationBarState.navbarWidth else 320.dp
-                val startPadding = if (isNavBarOnScreen) (navBarLeft + navBarWidth + 12.dp) else 12.dp
-                val bottomPadding = if (NavigationBarState.isInSelectionMode) {
-                  NavigationBarState.selectionBarClearance
-                } else {
-                  12.dp
-                }
-
-                Modifier
-                  .align(Alignment.BottomStart)
-                  .padding(
-                    start = startPadding,
-                    end = 12.dp,
-                  )
-                  .fillMaxWidth()
-                  .windowInsetsPadding(WindowInsets.navigationBars)
-                  .padding(bottom = bottomPadding)
-              }
-            }
-
-          MiniPlayer(modifier = miniPlayerModifier)
         }
       }
 

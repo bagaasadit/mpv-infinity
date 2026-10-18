@@ -16,9 +16,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.Surface
-import app.infinity.mpvz.data.network.proxy.HlsStreamingProxy
-import app.infinity.mpvz.data.network.proxy.NetworkStreamingProxy
-import app.infinity.mpvz.domain.network.NetworkPlaybackUri
 import app.infinity.mpvz.preferences.MpvConfigOverridePolicy
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -118,17 +115,6 @@ object PlaybackSession : MPVLib.EventObserver {
     UNKNOWN,
   }
 
-  private data class NetworkStreamRegistration(
-    val proxy: NetworkStreamingProxy? = null,
-    val hlsProxy: HlsStreamingProxy? = null,
-    val streamId: String,
-  )
-
-  private data class ResolvedPlayable(
-    val uri: String,
-    val registration: NetworkStreamRegistration? = null,
-  )
-
   /**
    * Video decoding is intentionally disabled while Android has no render surface. Keep the track
    * id process-wide so Activity recreation (for example notification re-entry) cannot lose it.
@@ -157,17 +143,12 @@ object PlaybackSession : MPVLib.EventObserver {
   private var desiredVideoOutput = "gpu"
   private var activeCoreConfigurationKey: String? = null
   private var attachedSurfaceOwner: Any? = null
-  private var activeNetworkStream: NetworkStreamRegistration? = null
-  private val auxiliaryNetworkStreams = linkedMapOf<String, NetworkStreamRegistration>()
   private var suspendedVideoTrack: SuspendedVideoTrack? = null
   private var deferredVideoSelectionGeneration: Long? = null
   private var pendingStopClearQueue = false
   private var desiredPaused = true
   private var loadedGeneration = 0L
   private var loadedPlaybackItem: PlaybackItem? = null
-  private var loadedAudiobookEnded = false
-  private var loadedAudiobookDurationMs = 0L
-  private var speedBeforeAudiobook: Float? = null
   private var defaultUserAgent: String? = null
   private var pendingPositionRestoreGeneration = 0L
   private var pendingPositionRestoreOverride: Pair<Long, PlaybackPositionRestoreOverride>? = null
@@ -393,7 +374,6 @@ object PlaybackSession : MPVLib.EventObserver {
         return@withCore
       }
 
-      AudiobookPlayback.capture()
       loadedPlaybackItem = null
 
       val nextGeneration = _state.value.generation + 1L
@@ -588,19 +568,13 @@ object PlaybackSession : MPVLib.EventObserver {
 
   fun setRepeatMode(repeatMode: RepeatMode) {
     nativeLock.withLock {
-      _queue.value = PlaybackQueueReducer.setRepeatMode(
-        _queue.value,
-        if (_queue.value.currentItem?.audiobook != null) RepeatMode.OFF else repeatMode,
-      )
+      _queue.value = PlaybackQueueReducer.setRepeatMode(_queue.value, repeatMode)
     }
   }
 
   fun setShuffleEnabled(enabled: Boolean) {
     nativeLock.withLock {
-      _queue.value = PlaybackQueueReducer.setShuffleEnabled(
-        _queue.value,
-        enabled && _queue.value.currentItem?.audiobook == null,
-      )
+      _queue.value = PlaybackQueueReducer.setShuffleEnabled(_queue.value, enabled)
     }
   }
 
@@ -622,27 +596,6 @@ object PlaybackSession : MPVLib.EventObserver {
       _queue.value = next
       updateState { it.copy(currentItem = next.currentItem) }
       next.currentItem
-    }
-
-  internal fun seekAudiobookTrack(
-    bookId: Long,
-    trackId: Long,
-    positionMs: Long,
-    expectedGeneration: Long,
-    resumePlayback: Boolean = false,
-  ): Boolean =
-    nativeLock.withLock {
-      val current = _state.value
-      if (current.generation != expectedGeneration || current.currentItem?.audiobook?.bookId != bookId ||
-        current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
-      ) return@withLock false
-      val index = _queue.value.items.indexOfFirst { it.audiobook == AudiobookPlaybackInfo(bookId, trackId) }
-      if (index < 0) return@withLock false
-      val paused = !resumePlayback && (MPVLib.getPropertyBoolean("pause") ?: current.paused)
-      val item = selectQueueItem(index) ?: return@withLock false
-      if (load(item, initialPositionSeconds = positionMs.coerceAtLeast(0) / 1000.0) < 0) return@withLock false
-      setPropertyBoolean("pause", paused)
-      true
     }
 
   fun playQueueItem(index: Int): PlaybackItem? =
@@ -679,46 +632,20 @@ object PlaybackSession : MPVLib.EventObserver {
     flattenEditions: Boolean = false,
     commit: ((() -> Long) -> Long)? = null,
   ): Long {
-    val resolved = resolvePlayableUri(item)
-    return try {
-      var previous: NetworkStreamRegistration? = null
-      var previousAuxiliary = emptyList<NetworkStreamRegistration>()
-      val performCommit = {
-        nativeLock.withLock {
-          val generation =
-            load(
-              playableUri = resolved.uri,
-              item = item,
-              restoreSavedPosition = restoreSavedPosition,
-              positionRestoreOverride = positionRestoreOverride,
-              initialPositionSeconds = initialPositionSeconds,
-              flattenEditions = flattenEditions,
-            )
-          if (generation >= 0L) {
-            previous = activeNetworkStream
-            activeNetworkStream = resolved.registration
-            previousAuxiliary = auxiliaryNetworkStreams.values.toList()
-            auxiliaryNetworkStreams.clear()
-          }
-          generation
-        }
+    val resolvedUri = resolvePlayableUri(item)
+    val performCommit = {
+      nativeLock.withLock {
+        load(
+          playableUri = resolvedUri,
+          item = item,
+          restoreSavedPosition = restoreSavedPosition,
+          positionRestoreOverride = positionRestoreOverride,
+          initialPositionSeconds = initialPositionSeconds,
+          flattenEditions = flattenEditions,
+        )
       }
-      val generation = commit?.invoke(performCommit) ?: performCommit()
-      if (generation < 0L) {
-        resolved.registration?.let(::releaseNetworkStream)
-        generation
-      } else {
-        val previousRegistration = previous
-        if (previousRegistration != null && previousRegistration != resolved.registration) {
-          releaseNetworkStream(previousRegistration)
-        }
-        previousAuxiliary.forEach(::releaseNetworkStream)
-        generation
-      }
-    } catch (error: Throwable) {
-      resolved.registration?.let(::releaseNetworkStream)
-      throw error
     }
+    return commit?.invoke(performCommit) ?: performCommit()
   }
 
   private fun load(
@@ -731,16 +658,8 @@ object PlaybackSession : MPVLib.EventObserver {
   ): Long =
     withCore(default = -1L) {
       if (_state.value.phase == PlaybackPhase.STOPPING) return@withCore -1L
-      AudiobookPlayback.capture()
       loadedPlaybackItem = null
       val resolvedItem = item ?: PlaybackItem.fromUri(playableUri)
-      if (resolvedItem.audiobook != null) AudiobookPlayback.ensureStarted()
-      if (resolvedItem.audiobook == null && speedBeforeAudiobook != null) {
-        if (!MpvConfigOverridePolicy.isOwnedByMpvConf("speed")) {
-          MPVLib.setPropertyDouble("speed", speedBeforeAudiobook!!.toDouble())
-        }
-        speedBeforeAudiobook = null
-      }
       val videoSelection = resolvedItem.videoSelection(_state.value.surfaceAttached)
       // A preceding surface detach may have left the outgoing file at vid=no. Select video in the
       // load command only when Android has already attached a valid render Surface; otherwise
@@ -839,32 +758,6 @@ object PlaybackSession : MPVLib.EventObserver {
 
   fun isCurrentGeneration(generation: Long): Boolean = generation > 0L && _state.value.generation == generation
 
-  internal fun audiobookProgress(reachedEnd: Boolean = false): AudiobookProgress? = withCore(null) {
-    val book = loadedPlaybackItem?.audiobook ?: return@withCore null
-    val current = _state.value
-    if (loadedGeneration != current.generation || current.phase == PlaybackPhase.STOPPING) return@withCore null
-    if (!reachedEnd && current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return@withCore null
-    if (reachedEnd) loadedAudiobookEnded = true
-    val position = if (reachedEnd) loadedAudiobookDurationMs else {
-      val seconds = MPVLib.getPropertyDouble("time-pos")?.takeIf { it.isFinite() } ?: return@withCore null
-      (seconds * 1000).toLong().coerceAtLeast(0)
-    }
-    AudiobookProgress(
-      book,
-      position,
-      loadedAudiobookEnded || MPVLib.getPropertyBoolean("eof-reached") == true,
-      android.os.SystemClock.elapsedRealtimeNanos(),
-    )
-  }
-
-  internal fun applyAudiobookSpeed(generation: Long, speed: Float) = withCore(Unit) {
-    if (_state.value.generation != generation || _state.value.currentItem?.audiobook == null ||
-      MpvConfigOverridePolicy.isOwnedByMpvConf("speed")
-    ) return@withCore
-    if (speedBeforeAudiobook == null) speedBeforeAudiobook = MPVLib.getPropertyDouble("speed")?.toFloat() ?: 1f
-    MPVLib.setPropertyDouble("speed", speed.coerceIn(0.1f, 4f).toDouble())
-  }
-
   fun isPositionRestorePending(generation: Long): Boolean =
     nativeLock.withLock {
       generation > 0L && pendingPositionRestoreGeneration == generation
@@ -916,7 +809,6 @@ object PlaybackSession : MPVLib.EventObserver {
     if (MpvConfigOverridePolicy.shouldSuppress(command)) return
     withCore(Unit) {
       if (command.firstOrNull() == "seek") {
-        loadedAudiobookEnded = false
         beginSeekAudioGuardLocked()
       }
       if (handleAmbientShaderCommandLocked(command)) return@withCore
@@ -1023,7 +915,6 @@ object PlaybackSession : MPVLib.EventObserver {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     withCore(Unit) {
       if (property == "pause") {
-        AudiobookPlayback.onPauseRequested(value)
         desiredPaused = value
         // Loading may include an asynchronous saved-position restore. Record user/service intent
         // now, then apply it once the load owner publishes READY.
@@ -1070,7 +961,6 @@ object PlaybackSession : MPVLib.EventObserver {
           MPVLib.getPropertyBoolean("pause") ?: desiredPaused
       }
       val nextPaused = !currentPaused
-      AudiobookPlayback.onPauseRequested(nextPaused)
       desiredPaused = nextPaused
       if (_state.value.phase != PlaybackPhase.LOADING) {
         MPVLib.setPropertyBoolean("pause", nextPaused)
@@ -1129,41 +1019,6 @@ object PlaybackSession : MPVLib.EventObserver {
 
   fun setThumbnailJavaVM(context: Context) {
     withCore(Unit) { MPVLib.setThumbnailJavaVM(context.applicationContext) }
-  }
-
-  /**
-   * Registers a network sidecar (for example an external subtitle) under this media generation.
-   * Sidecars are released automatically on the next load, stop, shutdown, or core destruction.
-   */
-  fun registerAuxiliaryNetworkStream(
-    connectionId: Long,
-    filePath: String,
-    fileSize: Long = -1L,
-    mimeType: String = "application/octet-stream",
-    expectedGeneration: Long? = null,
-  ): String? =
-    nativeLock.withLock {
-      if (!initialized || (expectedGeneration != null && _state.value.generation != expectedGeneration)) {
-        return@withLock null
-      }
-
-      val proxy = NetworkStreamingProxy.getInstance()
-      val streamId = "sidecar-${streamSequence.incrementAndGet()}"
-      val uri =
-        proxy.registerStream(
-          streamId = streamId,
-          connectionId = connectionId,
-          filePath = filePath,
-          fileSize = fileSize,
-          mimeType = mimeType,
-        )
-      auxiliaryNetworkStreams[uri] = NetworkStreamRegistration(proxy = proxy, streamId = streamId)
-      uri
-    }
-
-  fun unregisterAuxiliaryNetworkStream(uri: String) {
-    val registration = nativeLock.withLock { auxiliaryNetworkStreams.remove(uri) }
-    registration?.let(::releaseNetworkStream)
   }
 
   override fun eventProperty(property: String) {
@@ -1257,9 +1112,6 @@ object PlaybackSession : MPVLib.EventObserver {
             }
             loadedGeneration = current.generation
             loadedPlaybackItem = current.currentItem
-            loadedAudiobookEnded = false
-            loadedAudiobookDurationMs = ((MPVLib.getPropertyDouble("duration") ?: 0.0) * 1000).toLong().coerceAtLeast(0)
-            current.currentItem?.let { AudiobookPlayback.onFileLoaded(it, current.generation) }
             val restoringPosition = pendingPositionRestoreGeneration == current.generation
             val appliedPaused = restoringPosition || desiredPaused
             // Track/decoder replacement is now complete. Apply the latest user/service intent
@@ -1321,7 +1173,6 @@ object PlaybackSession : MPVLib.EventObserver {
             }
             if (current.activeGeneration == current.generation) {
               val reason = parseEndFileReason(data)
-              if (reason == EndFileReason.EOF) AudiobookPlayback.capture(reachedEnd = true)
               if (reason == EndFileReason.REDIRECT && loadedGeneration != current.generation) {
                 // Redirects emit END_FILE before mpv starts the resolved target. Preserve LOADING;
                 // the following START_FILE belongs to the same app-level generation.
@@ -1361,10 +1212,6 @@ object PlaybackSession : MPVLib.EventObserver {
           }
           MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
             loadedPlaybackItem = null
-            loadedAudiobookEnded = false
-            loadedAudiobookDurationMs = 0L
-            releaseActiveNetworkStream()
-            releaseAuxiliaryNetworkStreams()
             suspendedVideoTrack = null
             deferredVideoSelectionGeneration = null
             desiredPaused = true
@@ -1691,62 +1538,25 @@ object PlaybackSession : MPVLib.EventObserver {
    * them; the registration is retained as the active stream until the next playback transition.
    */
   fun resolvePlayableUriForNative(item: PlaybackItem): String {
-    releaseActiveNetworkStream()
     // Keep MediaStore content URIs for Media3. ContentDataSource can obtain the provider's
     // descriptor directly; converting this back to file:// reintroduces the slow FUSE path.
     if (item.playableUri.startsWith("content://")) return item.playableUri
     if (item.originalUri.startsWith("content://")) return item.originalUri
-    val resolved = resolvePlayableUri(item)
-    nativeLock.withLock { activeNetworkStream = resolved.registration }
-    return resolved.uri
+    return resolvePlayableUri(item)
   }
 
-  private fun resolvePlayableUri(item: PlaybackItem): ResolvedPlayable {
-    val reference =
-      NetworkPlaybackUri.parse(item.playableUri)
-        ?: item.networkSource?.let { source ->
-          NetworkPlaybackUri.parse(NetworkPlaybackUri.create(source.connectionId, source.relativePath))
-        }
-    if (reference != null) {
-      val proxy = NetworkStreamingProxy.getInstance()
-      val streamId = "playback-${streamSequence.incrementAndGet()}"
-      val uri =
-        proxy.registerStream(
-          streamId = streamId,
-          connectionId = reference.connectionId,
-          filePath = reference.path.value,
-          mimeType = item.mimeType ?: "application/octet-stream",
-        )
-      return ResolvedPlayable(uri, NetworkStreamRegistration(proxy = proxy, streamId = streamId))
-    }
-
-    if (M3uPlaybackPolicy.shouldProxyHls(item.playableUri, item.mimeType)) {
-      val hlsProxy = HlsStreamingProxy.getInstance()
-      val streamId = "hls-${streamSequence.incrementAndGet()}"
-      val userAgent = PlaybackHttpHeaders.userAgent(item.headers)
-      val uri =
-        hlsProxy.registerStream(
-          streamId = streamId,
-          sourceUrl = item.playableUri,
-          headers = item.headers,
-          userAgent = userAgent,
-        )
-      Log.d(TAG, "Routing HLS stream through HlsStreamingProxy: $uri")
-      return ResolvedPlayable(uri, NetworkStreamRegistration(hlsProxy = hlsProxy, streamId = streamId))
-    }
-
+  private fun resolvePlayableUri(item: PlaybackItem): String {
     // fd:// descriptors are single-use: mpv consumes and closes them on their first load. Replays
     // of queue items or persisted sessions must re-open a fresh descriptor from the content URI.
     if (item.playableUri.startsWith("fd://") && item.originalUri.startsWith("content://")) {
       val context = applicationContext ?: error("Application context is unavailable for content URI playback")
       val refreshedUri =
-        Uri.parse(NetworkPlaybackUri.normalize(item.originalUri)).openContentFd(context)
+        Uri.parse(item.originalUri).openContentFd(context)
           ?: error("Unable to reopen content URI for playback")
-      return ResolvedPlayable(refreshedUri)
+      return refreshedUri
     }
 
     // Resolve a local path for native integrations that cannot consume content:// directly.
-    // Native Media3 uses resolvePlayableUriForNative above and deliberately retains content://.
     val context = applicationContext
     if (context != null) {
       val localPath = sequenceOf(item.playableUri, item.originalUri)
@@ -1757,44 +1567,12 @@ object PlaybackSession : MPVLib.EventObserver {
         .firstOrNull()
       if (localPath != null) {
         Log.d(TAG, "Using direct local path for Native Media3: $localPath")
-        return ResolvedPlayable(localPath)
+        return localPath
       }
     }
-    if (item.playableUri.startsWith("content://")) return ResolvedPlayable(item.playableUri)
-    if (item.originalUri.startsWith("content://")) return ResolvedPlayable(item.originalUri)
-    return ResolvedPlayable(item.playableUri)
-  }
-
-  private fun releaseActiveNetworkStream() {
-    val registration = nativeLock.withLock { activeNetworkStream.also { activeNetworkStream = null } }
-    registration?.let(::releaseNetworkStream)
-  }
-
-  private fun releaseActiveNetworkStreamLocked() {
-    val registration = activeNetworkStream
-    activeNetworkStream = null
-    registration?.let(::releaseNetworkStream)
-  }
-
-  private fun releaseAuxiliaryNetworkStreams() {
-    val registrations =
-      nativeLock.withLock {
-        auxiliaryNetworkStreams.values.toList().also { auxiliaryNetworkStreams.clear() }
-      }
-    registrations.forEach(::releaseNetworkStream)
-  }
-
-  private fun releaseAuxiliaryNetworkStreamsLocked() {
-    val registrations = auxiliaryNetworkStreams.values.toList()
-    auxiliaryNetworkStreams.clear()
-    registrations.forEach(::releaseNetworkStream)
-  }
-
-  private fun releaseNetworkStream(registration: NetworkStreamRegistration) {
-    runCatching {
-      registration.proxy?.unregisterStream(registration.streamId)
-      registration.hlsProxy?.unregisterStream(registration.streamId)
-    }.onFailure { error -> Log.w(TAG, "Failed to release network stream", error) }
+    if (item.playableUri.startsWith("content://")) return item.playableUri
+    if (item.originalUri.startsWith("content://")) return item.originalUri
+    return item.playableUri
   }
 
   private fun observerSnapshot(): List<MPVLib.EventObserver> = observers.toList()

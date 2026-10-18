@@ -21,12 +21,8 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Log
 import android.util.LruCache
-import app.infinity.mpvz.data.network.client.NetworkMimeTypes
-import app.infinity.mpvz.data.network.proxy.NetworkStreamingProxy
 import app.infinity.mpvz.domain.media.model.Video
-import app.infinity.mpvz.domain.network.NetworkConnection
 import app.infinity.mpvz.preferences.ThumbnailMode
-import app.infinity.mpvz.repository.NetworkRepository
 import app.infinity.mpvz.ui.player.resolveLocalPath
 import `is`.xyz.mpv.FastThumbnails
 import kotlinx.coroutines.CancellationException
@@ -86,9 +82,6 @@ class ThumbnailRepository(
     KoinJavaComponent.get<app.infinity.mpvz.preferences.BrowserPreferences>(
       app.infinity.mpvz.preferences.BrowserPreferences::class.java,
     )
-  }
-  private val networkRepository by lazy {
-    KoinJavaComponent.get<NetworkRepository>(NetworkRepository::class.java)
   }
 
   private val memoryCache: LruCache<String, Bitmap>
@@ -1062,32 +1055,22 @@ class ThumbnailRepository(
     path: String,
     widthPx: Int,
     heightPx: Int,
-    connection: NetworkConnection? = null,
+    connection: Any? = null,
     fileSize: Long = -1L,
     mimeType: String? = null,
     lastModified: Long = 0L,
   ): Bitmap? =
     withContext(Dispatchers.IO) {
       if (!appearancePreferences.showNetworkThumbnails.get()) return@withContext null
+      if (!isHttpUrl(path)) return@withContext null
 
-      val identity = networkThumbnailIdentity(path, connection, fileSize, lastModified)
+      val identity = "direct|$path|$fileSize|$lastModified"
       val memKey = networkThumbnailMemoryKey(identity, widthPx, heightPx)
       synchronized(memoryCache) { memoryCache.get(memKey) }?.let { return@withContext it }
       ongoingOperations[memKey]?.let { return@withContext it.await() }
 
       val candidate =
         async(start = CoroutineStart.LAZY) {
-          if (!isHttpUrl(path)) {
-            return@async getNonHttpNetworkThumbnail(
-              path = path,
-              connection = connection,
-              widthPx = widthPx,
-              heightPx = heightPx,
-              identity = identity,
-              fileSize = fileSize,
-              mimeType = mimeType,
-            )
-          }
 
           if (hasRecentNetworkThumbnailFailure(identity)) {
             android.util.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
@@ -1160,91 +1143,7 @@ class ThumbnailRepository(
     path: String,
     widthPx: Int,
     heightPx: Int,
-  ): Bitmap? {
-    val connection = networkRepository.getConnectionById(connectionId) ?: return null
-    return getThumbnailForNetworkPath(
-      path = path,
-      widthPx = widthPx,
-      heightPx = heightPx,
-      connection = connection,
-    )
-  }
-
-  private suspend fun getNonHttpNetworkThumbnail(
-    path: String,
-    connection: NetworkConnection?,
-    widthPx: Int,
-    heightPx: Int,
-    identity: String,
-    fileSize: Long,
-    mimeType: String?,
-  ): Bitmap? {
-    if (hasRecentNetworkThumbnailFailure(identity)) {
-      android.util.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
-      return null
-    }
-
-    val memKey = networkThumbnailMemoryKey(identity, widthPx, heightPx)
-    val diskKey = networkThumbnailDiskKey(identity)
-
-    // Memory cache hit
-    synchronized(memoryCache) { memoryCache.get(memKey) }?.let { return it }
-
-    // Disk cache hit
-    readBitmapFromDisk(diskKey, network = true)?.let { bitmap ->
-      val scaled = scaleBitmap(bitmap, widthPx, heightPx)
-      synchronized(memoryCache) { memoryCache.put(memKey, scaled) }
-      return scaled
-    }
-
-    val strategy =
-      browserPreferences.thumbnailMode.get().toThumbnailStrategy(
-        browserPreferences.thumbnailFramePosition.get(),
-      )
-    // A remote WebDAV MKV cannot satisfy a second random seek from the bounded thumbnail probe.
-    // Use one first-frame decode here; normal playback remains seek-capable through the full proxy.
-    val networkStrategy = ThumbnailStrategy.FirstFrame
-
-    // WebDAV providers are intentionally not probed for media metadata here. Resolve a
-    // poster from the public, keyless Cinemeta catalog using only the filename, then keep
-    // the existing authenticated frame extraction as a fallback.
-    // Prefer the provider-safe poster. Keep frame extraction only for smaller files where
-    // the fallback cannot create the large range-read/cache buildup seen on remuxes.
-    val bitmap =
-      getCinemetaPoster(path, widthPx, heightPx)
-        ?: networkGenerationSemaphore.withPermit {
-            (
-              if (connection != null) {
-                extractNetworkVideoFrameViaProxy(
-                  path = path,
-                  connection = connection,
-                  strategy = networkStrategy,
-                  targetWidth = widthPx,
-                  targetHeight = heightPx,
-                  fileSize = fileSize,
-                  mimeType = mimeType,
-                )
-              } else {
-                generateFastNetworkThumbnail(path, widthPx, heightPx)
-              }
-            )?.let { scaleBitmap(it, widthPx, heightPx) }
-          }
-
-    if (bitmap == null) {
-      android.util.Log.w("ThumbnailRepository", "All strategies failed for network path $path")
-      networkThumbnailFailedAt[identity] = SystemClock.elapsedRealtime()
-      return null
-    }
-
-    networkThumbnailFailedAt.remove(identity)
-
-    // Write to disk cache
-    writeBitmapToDisk(diskKey, bitmap, network = true)
-
-    synchronized(memoryCache) { memoryCache.put(memKey, bitmap) }
-    _thumbnailReadyKeys.tryEmit(memKey)
-    return bitmap
-  }
+  ): Bitmap? = getThumbnailForNetworkPath(path, widthPx, heightPx)
 
   private suspend fun getCinemetaPoster(path: String, widthPx: Int, heightPx: Int): Bitmap? =
     withContext(Dispatchers.IO) {
@@ -1391,78 +1290,20 @@ class ThumbnailRepository(
     return resolved
   }
 
-  private suspend fun extractNetworkVideoFrameViaProxy(
-    path: String,
-    connection: NetworkConnection,
-    strategy: ThumbnailStrategy,
-    targetWidth: Int,
-    targetHeight: Int,
-    fileSize: Long,
-    mimeType: String?,
-  ): Bitmap? {
-    val proxy = NetworkStreamingProxy.getInstance()
-    val streamId = "thumb_${path.hashCode()}_${System.nanoTime()}"
-
-    return try {
-      val localUrl =
-        proxy.registerStream(
-          streamId = streamId,
-          connection = connection,
-          filePath = path,
-          fileSize = fileSize.coerceAtLeast(-1L),
-          mimeType = mimeType ?: NetworkMimeTypes.forFileName(path) ?: "application/octet-stream",
-        )
-      val thumbnailUrl = Uri.parse(localUrl).buildUpon()
-        .appendQueryParameter("thumbnail", "1")
-        .build()
-
-      // FastThumbnails uses the MPV demuxer and performs seekable range reads through the
-      // authenticated proxy. MediaMetadataRetriever cannot reliably decode large remote MKVs:
-      // it requests the Matroska cues and clusters as hidden random reads and often blocks for
-      // tens of seconds or returns no bitmap at all.
-      generateFastNetworkThumbnail(thumbnailUrl.toString(), targetWidth, targetHeight)
-        ?: extractNetworkVideoFrame(
-        url = thumbnailUrl.toString(),
-        strategy = strategy,
-        targetWidth = targetWidth.takeIf { it > 0 },
-        targetHeight = targetHeight.takeIf { it > 0 },
-      )
-    } catch (cancellation: CancellationException) {
-      throw cancellation
-    } catch (_: Exception) {
-      null
-    } finally {
-      proxy.unregisterStream(streamId)
-    }
-  }
-
   /** The memory-cache key used by [getThumbnailForNetworkPath]. */
   fun thumbnailKeyForNetworkPath(
     path: String,
     widthPx: Int,
     heightPx: Int,
-    connection: NetworkConnection? = null,
+    connection: Any? = null,
     fileSize: Long = -1L,
     lastModified: Long = 0L,
   ): String =
     networkThumbnailMemoryKey(
-      networkThumbnailIdentity(path, connection, fileSize, lastModified),
+      "direct|$path|$fileSize|$lastModified",
       widthPx,
       heightPx,
     )
-
-  private fun networkThumbnailIdentity(
-    path: String,
-    connection: NetworkConnection?,
-    fileSize: Long,
-    lastModified: Long,
-  ): String {
-    val endpoint =
-      connection?.let {
-        "${it.id}|${it.protocol.name}|${it.host.lowercase()}|${it.port}|${it.path}|${it.useHttps}"
-      } ?: "direct"
-    return "$endpoint|$path|$fileSize|$lastModified"
-  }
 
   private fun networkThumbnailMemoryKey(
     identity: String,

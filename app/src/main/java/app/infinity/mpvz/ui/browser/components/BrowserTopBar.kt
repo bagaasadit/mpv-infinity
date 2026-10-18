@@ -99,7 +99,6 @@ fun BrowserTopBar(
   additionalActions: @Composable RowScope.() -> Unit = { },
   onTitleLongPress: (() -> Unit)? = null,
   onTitleDoubleTap: (() -> Unit)? = null,
-  onMoveToSecureClick: (() -> Unit)? = null,
   useRemoveIcon: Boolean = false,
   onAddToPlaylistClick: (() -> Unit)? = null,
   onRestoreClick: (() -> Unit)? = null,
@@ -124,7 +123,6 @@ fun BrowserTopBar(
       onSelectAll = onSelectAll,
       onInvertSelection = onInvertSelection,
       onDeselectAll = onDeselectAll,
-      onMoveToSecure = onMoveToSecureClick,
       onRestore = onRestoreClick,
       modifier = modifier,
       useRemoveIcon = useRemoveIcon,
@@ -415,7 +413,6 @@ private fun SelectionTopBar(
   modifier: Modifier = Modifier,
   useRemoveIcon: Boolean = false,
   onAddToPlaylist: (() -> Unit)? = null,
-  onMoveToSecure: (() -> Unit)? = null,
   onRestore: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   windowInsets: WindowInsets? = null,
@@ -632,20 +629,6 @@ private fun SelectionTopBar(
       }
 
 
-      // Move to Secure Folder icon
-      if (onMoveToSecure != null) {
-        IconButton(
-          onClick = onMoveToSecure,
-          modifier = Modifier.padding(horizontal = 1.dp),
-        ) {
-          Icon(
-            Icons.RoundedFilled.Lock,
-            contentDescription = stringResource(R.string.secure_folder_move_to),
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurface,
-          )
-        }
-      }
 
       // Blacklist icon
       if (onBlacklist != null) {

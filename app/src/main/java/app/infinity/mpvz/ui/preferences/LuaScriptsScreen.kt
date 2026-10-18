@@ -184,21 +184,6 @@ object LuaScriptsScreen : Screen {
           },
         )
       },
-      floatingActionButton = {
-        FloatingActionButton(
-          onClick = { backStack.add(LuaScriptEditorScreen(scriptName = null)) },
-          containerColor = MaterialTheme.colorScheme.primary,
-        ) {
-          Icon(
-            imageVector = Icons.RoundedFilled.Add,
-            contentDescription =
-              androidx.compose.ui.res.stringResource(
-                app.infinity.mpvz.R.string.ui_create_new_script,
-              ),
-            tint = MaterialTheme.colorScheme.onPrimary,
-          )
-        }
-      },
     ) { padding ->
       LazyColumn(
         modifier =
@@ -210,8 +195,7 @@ object LuaScriptsScreen : Screen {
             start = MaterialTheme.spacing.medium,
             top = MaterialTheme.spacing.medium,
             end = MaterialTheme.spacing.medium,
-            // Extra clearance so the FAB doesn't overlap the last item
-            bottom = MaterialTheme.spacing.medium + 80.dp,
+            bottom = MaterialTheme.spacing.medium,
           ),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
@@ -262,15 +246,6 @@ object LuaScriptsScreen : Screen {
                         androidx.compose.ui.res.stringResource(
                           app.infinity.mpvz.R.string.generic_share,
                         ),
-                      tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                  }
-                  IconButton(onClick = { backStack.add(LuaScriptEditorScreen(scriptName = scriptName)) }) {
-                    Icon(
-                      imageVector = Icons.RoundedFilled.Edit,
-                      contentDescription =
-                        androidx.compose.ui.res
-                          .stringResource(app.infinity.mpvz.R.string.ui_edit),
                       tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                   }

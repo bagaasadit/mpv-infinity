@@ -13,9 +13,6 @@ import app.infinity.mpvz.ui.player.DeclaredPlaybackMediaKind
 import app.infinity.mpvz.ui.player.PlaybackPhase
 import app.infinity.mpvz.ui.player.PlaybackSession
 import app.infinity.mpvz.ui.player.declaredMediaKind
-import app.infinity.mpvz.domain.torrent.TorrentStreamingState
-import app.infinity.mpvz.domain.torrent.formatTorrentBytes
-import app.infinity.mpvz.domain.torrent.formatTorrentSpeed
 
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.os.Debug
@@ -122,10 +119,8 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import app.infinity.mpvz.R
 import app.infinity.mpvz.preferences.AdvancedPreferences
-import app.infinity.mpvz.preferences.AiPreferences
 import app.infinity.mpvz.preferences.AppearancePreferences
 import app.infinity.mpvz.preferences.AudioPreferences
-import app.infinity.mpvz.preferences.DEFAULT_SUBTITLE_FONT_FAMILY
 import app.infinity.mpvz.preferences.DecoderPreferences
 import app.infinity.mpvz.preferences.PlayerButton
 import app.infinity.mpvz.preferences.PlayerPreferences
@@ -145,7 +140,6 @@ import app.infinity.mpvz.ui.player.PlayerActivity
 import app.infinity.mpvz.ui.player.PlayerUpdates
 import app.infinity.mpvz.ui.player.PlayerViewModel
 import app.infinity.mpvz.ui.player.PlaybackEngineMode
-import app.infinity.mpvz.ui.player.AudiobookPlayback
 import app.infinity.mpvz.ui.player.Sheets
 import app.infinity.mpvz.ui.player.VideoOpenAnimationOverlay
 import app.infinity.mpvz.ui.player.buildControlsEnterH
@@ -161,7 +155,6 @@ import app.infinity.mpvz.ui.player.controls.components.SeekPlayerUpdate
 import app.infinity.mpvz.ui.player.controls.components.SeekbarWithTimers
 import app.infinity.mpvz.ui.player.controls.components.SlideToUnlock
 import app.infinity.mpvz.ui.player.controls.components.TextPlayerUpdate
-import app.infinity.mpvz.ui.player.controls.components.TranslatedSubtitleText
 import app.infinity.mpvz.ui.player.controls.components.VolumeSlider
 import app.infinity.mpvz.ui.player.controls.components.playerButtonBorderColor
 import app.infinity.mpvz.ui.player.controls.components.playerButtonContainerColor
@@ -208,9 +201,6 @@ fun PlayerControls(
   val spacing = MaterialTheme.spacing
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
-  val aiPreferences = koinInject<AiPreferences>()
-  val aiEnabled by aiPreferences.enabled.collectAsState()
-  val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
   val forceDarkButtonBackground by appearancePreferences.forceDarkPlayerButtonsBackground.collectAsState()
   val playerControlsTheme by appearancePreferences.playerControlsTheme.collectAsState()
@@ -239,33 +229,6 @@ fun PlayerControls(
   val mpvSubtitleScale by PlaybackSession.propFloat["sub-scale"].collectAsState()
   val mpvOsdWidth by PlaybackSession.propInt["osd-width"].collectAsState()
   val mpvOsdHeight by PlaybackSession.propInt["osd-height"].collectAsState()
-  val subtitleFontContext = LocalContext.current
-  val translatedSubtitleFontFamily by produceState<androidx.compose.ui.text.font.FontFamily>(
-    initialValue = androidx.compose.ui.text.font.FontFamily.SansSerif,
-    key1 = "$subtitleFont:$subtitleBold:$subtitleItalic",
-  ) {
-    val family = subtitleFont.trim().ifBlank { DEFAULT_SUBTITLE_FONT_FAMILY }
-    val typefaceStyle = when {
-      subtitleBold && subtitleItalic -> android.graphics.Typeface.BOLD_ITALIC
-      subtitleBold -> android.graphics.Typeface.BOLD
-      subtitleItalic -> android.graphics.Typeface.ITALIC
-      else -> android.graphics.Typeface.NORMAL
-    }
-    if (family == DEFAULT_SUBTITLE_FONT_FAMILY) {
-      value = androidx.compose.ui.text.font.FontFamily.SansSerif
-    } else {
-      val custom = withContext(Dispatchers.IO) {
-        loadCustomFontEntries(subtitleFontContext).firstOrNull {
-          it.familyName.equals(family, ignoreCase = true)
-        }
-      }
-      value = custom?.let {
-        androidx.compose.ui.text.font.FontFamily(android.graphics.Typeface.createFromFile(it.file))
-      } ?: androidx.compose.ui.text.font.FontFamily(
-        android.graphics.Typeface.create(family, typefaceStyle),
-      )
-    }
-  }
   val decoderPreferences = koinInject<DecoderPreferences>()
   val playbackEngine by decoderPreferences.playbackEngine.collectAsState()
   val showSystemStatusBar by playerPreferences.showSystemStatusBar.collectAsState()
@@ -292,19 +255,12 @@ fun PlayerControls(
   val showSeekTime by playerPreferences.showSeekTimeWhileSeeking.collectAsState()
   val showBufferedRange by playerPreferences.showBufferedRange.collectAsState()
   val showChapterIndicators by playerPreferences.showChapterIndicators.collectAsState()
-  val torrentState by viewModel.torrentState.collectAsState()
   val videoOpenAnimState by viewModel.videoOpenAnimationState.collectAsState()
   val showLoadingCircle by playerPreferences.showLoadingCircle.collectAsState()
-  val embeddedTranslatedSubtitle by viewModel.embeddedTranslatedSubtitle.collectAsState()
-
-  val isTorrentConnecting = torrentState is TorrentStreamingState.Connecting
-  val isTorrentStreaming = torrentState is TorrentStreamingState.Streaming
   val bufferingState =
     rememberBufferingState(
       enabled = showLoadingCircle,
-      // A torrent that has not produced a playable range yet never reaches mpv, so the engine's own
-      // connecting phase has to drive the spinner directly.
-      forceVisible = isTorrentConnecting || playbackSessionState.phase == PlaybackPhase.LOADING,
+      forceVisible = playbackSessionState.phase == PlaybackPhase.LOADING,
     )
   val isMpvBuffering = bufferingState.isCacheStall
   val safeAreaWindow by playerPreferences.safeAreaWindow.collectAsState()
@@ -427,38 +383,8 @@ fun PlayerControls(
   } else {
     mpvChapters
   }
-  val audiobookChapters by AudiobookPlayback.chapters.collectAsStateWithLifecycle()
-  val activeAudiobook by AudiobookPlayback.book.collectAsStateWithLifecycle()
-  val currentPlaybackItem = playbackQueue.currentItem
-  val audiobookChapterIndex = remember(
-    currentPlaybackItem?.audiobook,
-    audiobookChapters,
-    activeAudiobook?.tracks,
-    precisePosition,
-    chapters,
-  ) {
-    val info = currentPlaybackItem?.audiobook
-    if (info == null || audiobookChapters.isEmpty()) {
-      -1
-    } else {
-      val active = AudiobookPlayback.currentChapter()
-      val activeIndex = active?.let { playing ->
-        audiobookChapters.indexOfFirst { it.trackId == playing.trackId && it.startMs == playing.startMs }
-      } ?: -1
-      if (activeIndex >= 0) {
-        activeIndex
-      } else {
-        val book = activeAudiobook?.takeIf { it.book.id == info.bookId }
-        val seconds = book?.positionInBook(info.trackId, (precisePosition * 1000).toLong())?.div(1000f)
-          ?: precisePosition
-        chapters.indexOfLast { it.start <= seconds }
-      }
-    }
-  }
   val currentChapter = if (nativeEngineActive) {
     chapters.indexOfLast { it.start <= nativeSnapshot.positionMs / 1000f }.takeIf { it >= 0 }
-  } else if (audiobookChapterIndex >= 0) {
-    audiobookChapterIndex
   } else {
     mpvCurrentChapter
   }
@@ -522,9 +448,7 @@ fun PlayerControls(
         chapters = chapters.toImmutableList(),
         onSeekToChapter = {
           val selectedChapter = chapters.getOrNull(it)
-          if (currentPlaybackItem?.audiobook != null && selectedChapter != null) {
-            viewModel.seekToPlaybackChapter(selectedChapter)
-          } else if (nativeEngineActive && selectedChapter != null) {
+          if (nativeEngineActive && selectedChapter != null) {
             activity?.nativeSeekTo((selectedChapter.start * 1000.0).toLong())
             activity?.nativeUnpause()
           } else {
@@ -777,7 +701,6 @@ fun PlayerControls(
           val (bottomRightControls, bottomLeftControls) = createRefs()
           val playerPauseButton = createRef()
           val bufferingIndicator = createRef()
-          val translatedSubtitle = createRef()
           val skipSegmentChip = createRef()
           val seekbar = createRef()
           val (playerUpdates) = createRefs()
@@ -917,15 +840,6 @@ fun PlayerControls(
 
           val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
           val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
-          val isTranslatingSub by viewModel.isTranslatingSub.collectAsState()
-          val translationProgress by viewModel.translationProgress.collectAsState()
-          val translationStatus by viewModel.translationStatus.collectAsState()
-          val translatingTrackName by viewModel.translatingTrackName.collectAsState()
-          val isRealtimeSubsActive by viewModel.isRealtimeSubsActive.collectAsState()
-          val realtimeSubsLanguage by viewModel.realtimeSubsLanguage.collectAsState()
-          val isGeneratingSubtitles by viewModel.isGeneratingSubtitles.collectAsState()
-          val subtitleGenerationProgress by viewModel.subtitleGenerationProgress.collectAsState()
-          val subtitleGenerationStatus by viewModel.subtitleGenerationStatus.collectAsState()
 
           // Overlay visibility — Groups 2 & 5
           val showHoldSpeedOverlay by playerPreferences.showHoldSpeedOverlay.collectAsState()
@@ -966,57 +880,6 @@ fun PlayerControls(
             }
             delay(2000)
             viewModel.playerUpdate.update { PlayerUpdates.None }
-          }
-
-          AnimatedVisibility(
-            visible = embeddedTranslatedSubtitle != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.constrainAs(translatedSubtitle) {
-              linkTo(parent.start, parent.end)
-              val configuredOffset = with(density) {
-                val heightPx = (mpvOsdHeight ?: controlsLayoutHeightPx.takeIf { it > 0 } ?: 720).toFloat()
-                (((100 - (mpvSubtitlePosition ?: subtitlePosition)).coerceIn(0, 100) / 100f) * heightPx).toDp()
-              }
-              bottom.linkTo(parent.bottom, configuredOffset)
-            },
-          ) {
-            embeddedTranslatedSubtitle?.takeIf { it.isNotBlank() }?.let { translated ->
-              val translatedFontSize = with(density) {
-                val osdHeightPx = (mpvOsdHeight ?: controlsLayoutHeightPx.takeIf { it > 0 } ?: 720).toFloat()
-                val fontSizePx =
-                  (mpvSubtitleFontSize ?: subtitleFontSize) *
-                    (osdHeightPx / 720f) *
-                    (mpvSubtitleScale ?: subtitleScale)
-                (fontSizePx / density.density).coerceIn(8f, 120f).sp
-              }
-              TranslatedSubtitleText(
-                text = translated,
-                modifier =
-                  Modifier
-                    .fillMaxWidth(
-                      ((1f -
-                        2f * (mpvSubtitleMarginX ?: 25).toFloat() /
-                          (mpvOsdWidth ?: 1280).toFloat())
-                        .coerceIn(0.45f, 1f))
-                        .coerceAtMost(0.86f),
-                    ).padding(horizontal = 0.dp),
-                fontSize = translatedFontSize,
-                textColor = Color(subtitleTextColor),
-                backgroundColor = Color(subtitleBackgroundColor),
-                outlineColor = Color(subtitleBorderColor),
-                outlineWidth = subtitleBorderSize.toFloat(),
-                shadowOffset = subtitleShadowOffset.toFloat(),
-                bold = subtitleBold,
-                italic = subtitleItalic,
-                fontFamily = translatedSubtitleFontFamily,
-                textAlign = when (subtitleJustification.name.lowercase()) {
-                  "left" -> androidx.compose.ui.text.style.TextAlign.Start
-                  "right" -> androidx.compose.ui.text.style.TextAlign.End
-                  else -> androidx.compose.ui.text.style.TextAlign.Center
-                },
-              )
-            }
           }
 
           AnimatedVisibility(
@@ -1503,16 +1366,6 @@ fun PlayerControls(
               val cacheSeconds = bufferingState.cacheSeconds
               val bufferText =
                 when {
-                  isTorrentConnecting -> {
-                    (torrentState as TorrentStreamingState.Connecting).phase
-                  }
-                  isTorrentStreaming -> {
-                    val streamState = torrentState as TorrentStreamingState.Streaming
-                    val speed = app.infinity.mpvz.domain.torrent.formatTorrentSpeed(streamState.downloadSpeed)
-                    val peers = "${streamState.peers} peers"
-                    val progress = "${(streamState.bufferProgress * 100).toInt()}%"
-                    "$speed | $peers | $progress"
-                  }
                   // mpv only reports a fill target while it is actually holding playback for cache.
                   isMpvBuffering && cachePercent != null && cachePercent in 1..99 ->
                     "Buffering $cachePercent%"
@@ -1955,8 +1808,6 @@ fun PlayerControls(
                   }
                 },
           ) {
-            val showAiIndicators = aiEnabled
-            val showRealtimeSubs = aiEnabled && realtimeSubsEnabled
             if (isPortrait) {
               TopPlayerControlsPortrait(
                 mediaTitle = mediaTitle,
@@ -1964,11 +1815,6 @@ fun PlayerControls(
                 onBackPress = onBackPress,
                 onOpenSheet = onOpenSheet,
                 viewModel = viewModel,
-                isTranslatingSub = showAiIndicators && isTranslatingSub,
-                isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
-                realtimeSubsLanguage = realtimeSubsLanguage,
-                translationStatus = translationStatus,
-                translatingTrackName = translatingTrackName,
               )
             } else {
               TopLeftPlayerControlsLandscape(
@@ -1977,11 +1823,6 @@ fun PlayerControls(
                 onBackPress = onBackPress,
                 onOpenSheet = onOpenSheet,
                 viewModel = viewModel,
-                isTranslatingSub = showAiIndicators && isTranslatingSub,
-                isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
-                realtimeSubsLanguage = realtimeSubsLanguage,
-                translationStatus = translationStatus,
-                translatingTrackName = translatingTrackName,
               )
             }
           }
@@ -2426,6 +2267,14 @@ private data class CustomStatsSnapshot(
   val tempRiseText: String,
 )
 
+private fun formatByteSize(bytes: Long): String =
+  when {
+    bytes >= 1_073_741_824 -> String.format(java.util.Locale.ROOT, "%.2f GB", bytes / 1_073_741_824.0)
+    bytes >= 1_048_576 -> String.format(java.util.Locale.ROOT, "%.1f MB", bytes / 1_048_576.0)
+    bytes >= 1_024 -> String.format(java.util.Locale.ROOT, "%.0f KB", bytes / 1_024.0)
+    else -> "$bytes B"
+  }
+
 @Composable
 private fun CustomStatsPageSixOverlay(
   viewModel: PlayerViewModel,
@@ -2433,7 +2282,6 @@ private fun CustomStatsPageSixOverlay(
 ) {
   val context = LocalContext.current.applicationContext
   val activity = LocalActivity.current as? PlayerActivity
-  val torrentState by viewModel.torrentState.collectAsState()
   val isHdrOutputEnabled by viewModel.isHdrScreenOutputEnabled.collectAsState()
   val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
   val hdrOutputText =
@@ -2523,10 +2371,10 @@ private fun CustomStatsPageSixOverlay(
       val processMemoryText =
         String.format(
           processMemoryFormat,
-          formatTorrentBytes(memorySnapshot.totalPssBytes),
-          formatTorrentBytes(memorySnapshot.javaHeapUsedBytes),
-          formatTorrentBytes(memorySnapshot.javaHeapMaxBytes),
-          formatTorrentBytes(memorySnapshot.nativeHeapBytes),
+          formatByteSize(memorySnapshot.totalPssBytes),
+          formatByteSize(memorySnapshot.javaHeapUsedBytes),
+          formatByteSize(memorySnapshot.javaHeapMaxBytes),
+          formatByteSize(memorySnapshot.nativeHeapBytes),
         )
       val cacheDurationSeconds =
         runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-duration") }
@@ -2583,8 +2431,8 @@ private fun CustomStatsPageSixOverlay(
         null -> "unknown"
       }
       val cacheReadRateText =
-        cacheReadBytesPerSecond?.let { "${formatTorrentBytes(it.toLong())}/s" } ?: "?"
-      val cacheMaxText = cacheMaxBytes?.let(::formatTorrentBytes) ?: "?"
+        cacheReadBytesPerSecond?.let { "${formatByteSize(it.toLong())}/s" } ?: "?"
+      val cacheMaxText = cacheMaxBytes?.let(::formatByteSize) ?: "?"
       val hlsBitrate = runCatching { PlaybackSession.getPropertyString("hls-bitrate") }.getOrNull() ?: "?"
       val isNativeActive = activity?.isNativeEngineActive() == true
       val currentNativeSnapshot = activity?.nativePlaybackSnapshot?.value ?: NativePlaybackSnapshot()
@@ -2597,8 +2445,8 @@ private fun CustomStatsPageSixOverlay(
           String.format(
             playbackCacheFormat,
             cacheDurationSeconds,
-            formatTorrentBytes(packetCacheBytes),
-            formatTorrentBytes(fileCacheBytes),
+            formatByteSize(packetCacheBytes),
+            formatByteSize(fileCacheBytes),
           )
         }
       val cacheActivityText =
@@ -2762,104 +2610,6 @@ private fun CustomStatsPageSixOverlay(
       valueStyle,
     )
     OutlinedLabeled("Audio", "${stats.audio} | HDR: ${stats.hdrActive}", labelStyle, valueStyle)
-
-    when (val currentTorrentState = torrentState) {
-      is TorrentStreamingState.Connecting -> {
-        Spacer(modifier = Modifier.height(2.dp))
-        OutlinedText(stringResource(R.string.diagnostics_torrent_header), style = headerStyle)
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_peer_status),
-              stringResource(
-                R.string.diagnostics_torrent_peers_value,
-                currentTorrentState.peers,
-                currentTorrentState.seeds,
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_transfer),
-              stringResource(
-                R.string.diagnostics_torrent_transfer_value,
-                formatTorrentSpeed(currentTorrentState.downloadSpeed),
-                formatTorrentSpeed(currentTorrentState.uploadSpeed),
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-        }
-      }
-      is TorrentStreamingState.Streaming -> {
-        val fileSize = currentTorrentState.fileSize.coerceAtLeast(0L)
-        val downloadedBytes = currentTorrentState.downloadedBytes.coerceAtLeast(0L).coerceAtMost(fileSize)
-        val bufferProgress =
-          currentTorrentState.bufferProgress
-            .takeIf { it.isFinite() }
-            ?.coerceIn(0f, 1f)
-            ?: 0f
-        Spacer(modifier = Modifier.height(2.dp))
-        OutlinedText(stringResource(R.string.diagnostics_torrent_header), style = headerStyle)
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_peer_status),
-              stringResource(
-                R.string.diagnostics_torrent_peers_value,
-                currentTorrentState.peers,
-                currentTorrentState.seeds,
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_loaded),
-              stringResource(
-                R.string.diagnostics_torrent_loaded_value,
-                formatTorrentBytes(downloadedBytes),
-                formatTorrentBytes(fileSize),
-                (bufferProgress * 100f).roundToInt(),
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-        }
-        OutlinedLabeled(
-          stringResource(R.string.diagnostics_torrent_transfer),
-          stringResource(
-            R.string.diagnostics_torrent_transfer_value,
-            formatTorrentSpeed(currentTorrentState.downloadSpeed),
-            formatTorrentSpeed(currentTorrentState.uploadSpeed),
-          ),
-          labelStyle,
-          valueStyle,
-        )
-        LinearProgressIndicator(
-          progress = { bufferProgress },
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .height(3.dp)
-              .padding(vertical = 0.5.dp),
-        )
-      }
-      is TorrentStreamingState.Error,
-      TorrentStreamingState.Idle,
-      -> Unit
-    }
 
     Spacer(modifier = Modifier.height(2.dp))
     OutlinedText(stringResource(R.string.diagnostics_power_thermals_header), style = headerStyle)

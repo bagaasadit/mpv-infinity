@@ -34,11 +34,9 @@ import app.infinity.mpvz.R
 /**
  * Progress UI shown while [YtdlpManager.runInstall] runs, triggered from
  * [YtdlpInstallPromptDialog]'s Install action. There's no byte-level progress from the
- * installer, so this shows an indeterminate bar plus the latest log line, same idea as
- * [app.infinity.mpvz.ui.securefolder.SecureFolderProgressDialog] but without a percentage.
+ * installer, so this shows an indeterminate bar plus the latest log line.
  *
- * Not dismissable by back-press or outside-tap — [onCancel] is the only way out while busy,
- * same as the secure-folder progress dialog.
+ * Not dismissable by back-press or outside-tap — [onCancel] is the only way out while busy.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable

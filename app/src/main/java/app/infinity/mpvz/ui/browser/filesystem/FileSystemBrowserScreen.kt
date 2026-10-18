@@ -352,22 +352,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
     isPermissionSetupCompleted,
   ) {
     if (isAtRoot) {
-      try {
-        val mainScreenObj = app.infinity.mpvz.ui.browser.MainScreen
-
-        // Update all MainScreen states in one call to reduce overhead
-        mainScreenObj.updateBottomBarVisibility(showBottomNavigation)
-        mainScreenObj.updateSelectionState(
-          isInSelectionMode = isInSelectionMode,
-          isOnlyVideosSelected = true,
-          selectionManager = if (onlyVideosSelected) selectionManager else null,
+        val navBarState = app.infinity.mpvz.ui.browser.NavigationBarState
+        navBarState.updateBottomBarVisibility(showBottomNavigation)
+        navBarState.updateSelectionState(
+          inSelectionMode = isInSelectionMode,
+          onlyVideos = true,
         )
-        mainScreenObj.updatePermissionState(
+        navBarState.updatePermissionState(
           isDenied = !isPermissionSetupCompleted,
         )
-      } catch (e: Exception) {
-        Log.e("FileSystemBrowserScreen", "Failed to update MainScreen state", e)
-      }
     }
   }
 
@@ -375,13 +368,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   DisposableEffect(Unit) {
     onDispose {
       if (isAtRoot) {
-        try {
-          val mainScreenObj = app.infinity.mpvz.ui.browser.MainScreen
-          // Restore bottom navigation when leaving the screen
-          mainScreenObj.updateBottomBarVisibility(true)
-        } catch (e: Exception) {
-          Log.e("FileSystemBrowserScreen", "Failed to restore MainScreen bottom bar visibility", e)
-        }
+        app.infinity.mpvz.ui.browser.NavigationBarState.updateBottomBarVisibility(true)
       }
     }
   }
@@ -649,8 +636,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             showQuickPlayFab &&
               !isInSelectionMode &&
               isFabVisible.value &&
-              !app.infinity.mpvz.ui.browser.MainScreen
-                .getPermissionDeniedState()
+              !app.infinity.mpvz.ui.browser.NavigationBarState.isPermissionDenied
 
           FloatingActionButtonMenu(
             modifier =

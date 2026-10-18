@@ -46,15 +46,6 @@ class BrowserPreferences(
   val musicSortField = preferenceStore.getEnum("music_sort_field", MusicSortField.TITLE)
   val musicSortOrder = preferenceStore.getEnum("music_sort_order", MusicSortOrder.ASCENDING)
 
-  // Network sorting preferences
-  val networkSortType = preferenceStore.getEnum("network_sort_type", NetworkSortType.Title)
-  val networkSortOrder = preferenceStore.getEnum("network_sort_order", SortOrder.Ascending)
-  val networkLayoutMode = preferenceStore.getEnum("network_layout_mode", MediaLayoutMode.LIST)
-  val jellyfinLayoutMode = preferenceStore.getEnum("jellyfin_layout_mode", MediaLayoutMode.GRID)
-  val audiobookSortType = preferenceStore.getEnum("audiobook_sort_type", AudiobookSortType.Title)
-  val audiobookSortOrder = preferenceStore.getEnum("audiobook_sort_order", SortOrder.Ascending)
-  val audiobookLayoutMode = preferenceStore.getEnum("audiobook_layout_mode", MediaLayoutMode.GRID)
-
   val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.AlbumView)
   val dualPaneForTablet = preferenceStore.getBoolean("dual_pane_for_tablet", true)
 
@@ -194,23 +185,6 @@ enum class VideoSortType {
       }
 }
 
-/**
- * Network sorting options
- */
-enum class NetworkSortType {
-  Title,
-  Date,
-  Size,
-  ;
-
-  val displayName: String
-    get() =
-      when (this) {
-        Title -> "Title"
-        Date -> "Date"
-        Size -> "Size"
-      }
-}
 
 /**
  * Folder view mode options
@@ -256,25 +230,6 @@ enum class MediaLayoutMode {
       }
 }
 
-enum class AudiobookSortType {
-  Title,
-  Author,
-  Duration,
-  Progress,
-  LastPlayed,
-  DateAdded,
-  ;
-
-  val displayName: String
-    get() = when (this) {
-      Title -> "Title"
-      Author -> "Author"
-      Duration -> "Duration"
-      Progress -> "Progress"
-      LastPlayed -> "Recent"
-      DateAdded -> "Date Added"
-    }
-}
 
 enum class MediaLibraryType {
   Video,

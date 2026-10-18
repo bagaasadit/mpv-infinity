@@ -168,25 +168,6 @@ fun PlayerSheets(
         )
       }
 
-      val isTranslating by viewModel.isTranslatingSub.composeCollectAsState()
-      val translationProgress by viewModel.translationProgress.composeCollectAsState()
-      val translationStatus by viewModel.translationStatus.composeCollectAsState()
-      val translatingTrackId by viewModel.translatingTrackId.composeCollectAsState()
-      val translatingTrackName by viewModel.translatingTrackName.composeCollectAsState()
-      val isGeneratingSubtitles by viewModel.isGeneratingSubtitles.composeCollectAsState()
-      val subtitleGenerationProgress by viewModel.subtitleGenerationProgress.composeCollectAsState()
-      val subtitleGenerationStatus by viewModel.subtitleGenerationStatus.composeCollectAsState()
-      val aiPreferences = koinInject<app.infinity.mpvz.preferences.AiPreferences>()
-      val aiEnabled by aiPreferences.enabled.collectAsState()
-      val translationProvider by aiPreferences.embeddedSubtitleTranslationProvider.collectAsState()
-      val embeddedTranslationAvailable = aiEnabled || translationProvider == "Google Translate"
-      val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
-      val translationEnabled by aiPreferences.playerSubtitleTranslationEnabled.collectAsState()
-      val autoTranslateLanguages by aiPreferences.autoTranslateLanguages.collectAsState()
-      val embeddedTranslationLanguage by aiPreferences.embeddedSubtitleTargetLanguage.collectAsState()
-      val selectedEmbeddedLanguage =
-        embeddedTranslationLanguage.ifBlank { autoTranslateLanguages.split(",").firstOrNull { it.isNotBlank() }?.trim().orEmpty() }
-
       val subtitlesOff = subtitles.none { isSubtitleSelected(it.id) }
 
       SubtitlesSheet(
@@ -201,28 +182,6 @@ fun PlayerSheets(
         delayControlEnabled = setOf("sub-delay", "sub-speed").any { it !in configOwnedOptions },
         onOpenOnlineSearch = { onShowSheet(Sheets.OnlineSubtitleSearch) },
         onDismissRequest = onDismissRequest,
-        onTranslateSubtitle = { track, lang -> viewModel.translateSubtitle(track, lang) },
-        onGenerateSubtitle = { viewModel.generateSubtitles("", "") },
-        onCancelTranslation = { viewModel.cancelTranslation() },
-        isTranslating = isTranslating,
-        translationProgress = translationProgress,
-        translationStatus = translationStatus,
-        translationEnabled = embeddedTranslationAvailable && translationEnabled,
-        onToggleTranslation = {
-          val enabled = !translationEnabled
-          aiPreferences.playerSubtitleTranslationEnabled.set(enabled)
-          if (!enabled) viewModel.resetEmbeddedSubtitleTranslation()
-        },
-        isGeneratingSubtitles = isGeneratingSubtitles,
-        subtitleGenerationProgress = subtitleGenerationProgress,
-        subtitleGenerationStatus = subtitleGenerationStatus,
-        translatingTrackId = translatingTrackId,
-        translatingTrackName = translatingTrackName,
-        autoTranslateLanguages = autoTranslateLanguages,
-        embeddedTranslationLanguage = selectedEmbeddedLanguage,
-        onEmbeddedTranslationLanguageChange = { aiPreferences.embeddedSubtitleTargetLanguage.set(it) },
-        aiEnabled = embeddedTranslationAvailable,
-        realtimeSubsEnabled = realtimeSubsEnabled,
         subtitlesOff = subtitlesOff,
         onDisableSubtitles = {
           if (activeEngine == PlaybackEngineMode.NATIVE) {
@@ -593,25 +552,6 @@ fun PlayerSheets(
         selectedStyle = audioVisualizerStyle,
         onSelectStyle = { audioPreferences.audioVisualizerStyle.set(it) },
         onDismissRequest = onDismissRequest,
-      )
-    }
-
-    Sheets.Lyrics -> {
-      app.infinity.mpvz.ui.player.controls.components.sheets.LyricsSheet(
-        viewModel = viewModel,
-        onDismiss = onDismissRequest,
-      )
-    }
-
-    Sheets.AudiobookRewind,
-    Sheets.AudiobookSleepTimer -> {
-      app.infinity.mpvz.ui.player.controls.components.sheets.AudiobookSheet(
-        sheet = sheetShown,
-        onChapterEnd = {
-          viewModel.sleepAtCurrentChapterEnd()
-          onDismissRequest()
-        },
-        onDismiss = onDismissRequest,
       )
     }
   }

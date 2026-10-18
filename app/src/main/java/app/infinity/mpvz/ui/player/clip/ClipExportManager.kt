@@ -16,7 +16,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import app.infinity.mpvz.data.network.proxy.NetworkStreamingProxy
 import app.infinity.mpvz.domain.network.NetworkPlaybackUri
 import app.infinity.mpvz.ui.player.PlaybackItem
 import app.infinity.mpvz.ui.player.PlaybackSession
@@ -211,27 +210,6 @@ object ClipExportManager {
     // fd:// was only required by the removed native libmpv exporter.
     if (contentUri != null) {
       return ResolvedSource(uri = contentUri)
-    }
-
-    val networkReference =
-      NetworkPlaybackUri.parse(item.playableUri)
-        ?: item.networkSource?.let { source ->
-          NetworkPlaybackUri.parse(NetworkPlaybackUri.create(source.connectionId, source.relativePath))
-        }
-    if (networkReference != null) {
-      val proxy = NetworkStreamingProxy.getInstance()
-      val streamId = "clip-${streamSequence.incrementAndGet()}"
-      val uri =
-        proxy.registerStream(
-          streamId = streamId,
-          connectionId = networkReference.connectionId,
-          filePath = networkReference.path.value,
-          mimeType = item.mimeType ?: "application/octet-stream",
-        )
-      return ResolvedSource(
-        uri = uri,
-        close = { runCatching { proxy.unregisterStream(streamId) } },
-      )
     }
 
     val source = item.playableUri.ifBlank { item.originalUri }

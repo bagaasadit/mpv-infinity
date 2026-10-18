@@ -17,7 +17,6 @@ import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.infinity.mpvz.domain.media.model.Video
-import app.infinity.mpvz.domain.torrent.isTorrentSource
 import app.infinity.mpvz.ui.player.PlaybackIdentity
 import app.infinity.mpvz.ui.player.PlaybackItem
 import app.infinity.mpvz.ui.player.PlayerActivity
@@ -450,12 +449,11 @@ object MediaUtils {
    * Network errors are detected when MPV attempts to open the stream.
    */
   fun isURLValid(url: String): Boolean =
-    isTorrentSource(url) ||
-      url.toUri().let { uri ->
-        val structureOk =
-          uri.isHierarchical && !uri.isRelative && (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
-        structureOk && Utils.PROTOCOLS.contains(uri.scheme)
-      }
+    url.toUri().let { uri ->
+      val structureOk =
+        uri.isHierarchical && !uri.isRelative && (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
+      structureOk && Utils.PROTOCOLS.contains(uri.scheme)
+    }
 
   /**
    * Share videos via system share sheet.

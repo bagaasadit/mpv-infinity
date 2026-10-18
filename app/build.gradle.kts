@@ -269,7 +269,6 @@ dependencies {
 
   implementation(libs.seeker)
   implementation(libs.compose.prefs)
-  implementation(libs.markdown.renderer.m3)
 
   implementation(libs.accompanist.permissions)
 
@@ -280,11 +279,8 @@ dependencies {
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.okhttp)
-  implementation(libs.retrofit)
-  implementation(libs.retrofit.kotlinx.serialization)
   implementation(libs.coil.compose)
   implementation(libs.coil.network.okhttp)
-  implementation(libs.androidx.security.crypto)
   implementation(libs.jsoup)
   implementation(libs.androidx.media3.common)
   implementation(libs.androidx.media3.exoplayer)
@@ -309,18 +305,7 @@ dependencies {
   "noVulkanImplementation"(files("libs/mpvlib-no-vulkun.aar"))
   "fongmiImplementation"(files("libs/mpvlib-fongmi.aar"))
 
-  // Network protocol libraries
-  implementation(libs.smbj)
-  implementation(libs.commons.net)
-  implementation(libs.jsch)
-  implementation(libs.sardine.android) {
-    exclude(group = "xpp3", module = "xpp3")
-  }
-  implementation(libs.libarchive.android)
-  implementation(libs.nanohttpd)
-  implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
-  implementation(libs.androidx.biometric)
 }
 
 // ---------------- Git helpers ----------------

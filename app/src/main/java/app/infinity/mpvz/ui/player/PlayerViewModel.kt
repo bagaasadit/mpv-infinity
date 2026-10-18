@@ -41,11 +41,6 @@ import app.infinity.mpvz.domain.anime4k.Anime4KManager
 import app.infinity.mpvz.domain.autocrop.AutoCropAnalyzer
 import app.infinity.mpvz.domain.autocrop.AutoCropEdges
 import app.infinity.mpvz.domain.hdr.HdrToysManager
-import app.infinity.mpvz.domain.network.NetworkPlaybackUri
-import app.infinity.mpvz.domain.torrent.TorrentStreamingState
-import app.infinity.mpvz.domain.torrent.formatTorrentSpeed
-import app.infinity.mpvz.domain.syncplay.SyncplayFile
-import app.infinity.mpvz.domain.syncplay.SyncplayPlaybackState
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import app.infinity.mpvz.preferences.AudioChannels
 import app.infinity.mpvz.preferences.AudioPreferences
@@ -60,8 +55,6 @@ import app.infinity.mpvz.preferences.SubtitlesPreferences
 import app.infinity.mpvz.repository.IntroDbLookupOutcome
 import app.infinity.mpvz.repository.IntroDbLookupRequest
 import app.infinity.mpvz.repository.IntroDbRepository
-import app.infinity.mpvz.repository.ai.EmbeddedSubtitleTranslator
-import app.infinity.mpvz.repository.ai.SubtitleGenerationService
 import app.infinity.mpvz.repository.subtitle.OnlineSubtitle
 import app.infinity.mpvz.repository.subtitle.OnlineSubtitleOrchestrator
 import app.infinity.mpvz.repository.subtitle.OnlineSubtitleSearchMode
@@ -196,23 +189,15 @@ class PlayerViewModel : ViewModel(),
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
-  private val aiPreferences: app.infinity.mpvz.preferences.AiPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
   private val hdrToysManager: HdrToysManager by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.infinity.mpvz.database.dao.PlaybackStateDao by inject()
-  private val aiService: app.infinity.mpvz.repository.ai.AiService by inject()
-  private val embeddedSubtitleTranslator: EmbeddedSubtitleTranslator by inject()
-  private val subtitleGenerationService: SubtitleGenerationService by inject()
-  private val realtimeSubtitleService: app.infinity.mpvz.repository.ai.RealtimeSubtitleService by inject()
   private val wyzieRepository: WyzieSearchRepository by inject()
   private val onlineSubtitleOrchestrator: OnlineSubtitleOrchestrator by inject()
   private val introDbRepository: IntroDbRepository by inject()
-  val syncplayManager: app.infinity.mpvz.domain.syncplay.SyncplayManager by inject()
-  private val lyricsRepository: app.infinity.mpvz.repository.lyrics.LyricsRepository by inject()
-  private val lyricsTranslationService: app.infinity.mpvz.data.lyrics.LyricsTranslationService by inject()
   private val introMarkerCachePrefs by lazy {
     appContext.getSharedPreferences(INTRO_MARKER_CACHE_PREFS, Context.MODE_PRIVATE)
   }
@@ -282,52 +267,6 @@ class PlayerViewModel : ViewModel(),
 
   private val _isOnlineSectionExpanded = MutableStateFlow(true)
   val isOnlineSectionExpanded: StateFlow<Boolean> = _isOnlineSectionExpanded.asStateFlow()
-
-  private val _isTranslatingSub = MutableStateFlow(false)
-  val isTranslatingSub: StateFlow<Boolean> = _isTranslatingSub.asStateFlow()
-
-  private val _translatingTrackId = MutableStateFlow<Int?>(null)
-  val translatingTrackId: StateFlow<Int?> = _translatingTrackId.asStateFlow()
-
-  private val _translatingTrackName = MutableStateFlow("")
-  val translatingTrackName: StateFlow<String> = _translatingTrackName.asStateFlow()
-
-  private val _translationProgress = MutableStateFlow(0f)
-  val translationProgress: StateFlow<Float> = _translationProgress.asStateFlow()
-
-  private val _translationStatus = MutableStateFlow("")
-  val translationStatus: StateFlow<String> = _translationStatus.asStateFlow()
-  private val _embeddedTranslatedSubtitle = MutableStateFlow<String?>(null)
-  val embeddedTranslatedSubtitle: StateFlow<String?> = _embeddedTranslatedSubtitle.asStateFlow()
-  private var embeddedCueTranslationJob: Job? = null
-  private var embeddedTranslationRequestId = 0L
-  private var lastEmbeddedCue = ""
-  private var nativeSubtitleHiddenForTranslation = false
-  private var nativeSubtitleVisibilityListener: ((Boolean) -> Unit)? = null
-
-  private val _isGeneratingSubtitles = MutableStateFlow(false)
-  val isGeneratingSubtitles: StateFlow<Boolean> = _isGeneratingSubtitles.asStateFlow()
-
-  private val _subtitleGenerationProgress = MutableStateFlow(0f)
-  val subtitleGenerationProgress: StateFlow<Float> = _subtitleGenerationProgress.asStateFlow()
-
-  private val _subtitleGenerationStatus = MutableStateFlow("")
-  val subtitleGenerationStatus: StateFlow<String> = _subtitleGenerationStatus.asStateFlow()
-
-  private val _isRealtimeSubsActive = MutableStateFlow(false)
-  val isRealtimeSubsActive: StateFlow<Boolean> = _isRealtimeSubsActive.asStateFlow()
-
-  private val _realtimeSubsLanguage = MutableStateFlow("")
-  val realtimeSubsLanguage: StateFlow<String> = _realtimeSubsLanguage.asStateFlow()
-
-  private val _realtimeSubsProgress = MutableStateFlow(0f)
-  val realtimeSubsProgress: StateFlow<Float> = _realtimeSubsProgress.asStateFlow()
-
-  private val _torrentState = MutableStateFlow<TorrentStreamingState>(TorrentStreamingState.Idle)
-  val torrentState: StateFlow<TorrentStreamingState> = _torrentState.asStateFlow()
-
-  private var realtimeSubsJob: Job? = null
-  private var realtimeSrtFile: java.io.File? = null
 
   private var playlistMetadataJob: Job? = null
   private var controlsVisibleForPolling = false
@@ -712,26 +651,7 @@ class PlayerViewModel : ViewModel(),
     nativeExternalSubtitleTracks.value = emptyList()
   }
 
-  fun setNativeSubtitleVisibilityListener(listener: ((Boolean) -> Unit)?) {
-    nativeSubtitleVisibilityListener = listener
-  }
 
-  /** Re-applies the translation visibility state after switching playback engines. */
-  fun syncNativeSubtitleVisibility() {
-    // The listener parameter is `hidden`, not `visible`. Passing the inverse here hid Native's
-    // SubtitleView on every MPV -> Native handoff when translation was not active.
-    nativeSubtitleVisibilityListener?.invoke(nativeSubtitleHiddenForTranslation)
-  }
-
-  /** Clears the old MPV translation before Native starts emitting its own subtitle cues. */
-  fun prepareNativeEngineHandoffForTranslation() {
-    if (!aiPreferences.playerSubtitleTranslationEnabled.get()) return
-    clearEmbeddedSubtitleTranslationCue(native = true)
-    if (!nativeSubtitleHiddenForTranslation) {
-      nativeSubtitleVisibilityListener?.invoke(true)
-      nativeSubtitleHiddenForTranslation = true
-    }
-  }
 
   fun setNativeAudioToggleListener(listener: ((Int) -> Unit)?) {
     nativeAudioToggleListener = listener
@@ -954,12 +874,8 @@ class PlayerViewModel : ViewModel(),
       }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val chapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
-    combine(mpvChapters, nativeChapters, nativeEngineActive, AudiobookPlayback.chapters) { mpv, native, nativeActive, audiobookChapters ->
+    combine(mpvChapters, nativeChapters, nativeEngineActive) { mpv, native, nativeActive ->
       when {
-        PlaybackSession.state.value.currentItem?.audiobook != null && audiobookChapters.isNotEmpty() ->
-          audiobookChapters.map { chapter ->
-            Segment(chapter.title, chapter.bookStartMs / 1000f)
-          }
         nativeActive && native.isNotEmpty() -> native
         else -> mpv
       }
@@ -972,35 +888,6 @@ class PlayerViewModel : ViewModel(),
   val equalizerState = MutableStateFlow(EqualizerState())
   private val audioEqualizerManager = AudioEqualizerManager()
   private var equalizerMpvDebounceJob: Job? = null
-
-  data class LyricsUiState(
-    val isLoading: Boolean = false,
-    val isTranslating: Boolean = false,
-    val isTranslationActive: Boolean = false,
-    val targetLanguage: String = "en",
-    val lyrics: app.infinity.mpvz.domain.lyrics.Lyrics? = null,
-    val originalLyrics: app.infinity.mpvz.domain.lyrics.Lyrics? = null,
-    val embeddedLyrics: app.infinity.mpvz.domain.lyrics.Lyrics? = null,
-    val onlineLyrics: app.infinity.mpvz.domain.lyrics.Lyrics? = null,
-    val activeLineIndex: Int = -1,
-    val selectedSource: app.infinity.mpvz.domain.lyrics.LyricsSourceType = app.infinity.mpvz.domain.lyrics.LyricsSourceType.EMBEDDED,
-    val availableSources: List<app.infinity.mpvz.domain.lyrics.LyricsSourceType> = emptyList(),
-    val syncOffsetMs: Int = 0,
-    val errorMessage: String? = null,
-  )
-
-  val lyricsUiState = MutableStateFlow(LyricsUiState())
-
-  private data class LyricsLoadRequest(
-    val path: String,
-    val title: String,
-    val artist: String,
-    val durationSeconds: Int,
-  )
-
-  private var lyricsLoadJob: Job? = null
-  private var lyricsTranslateJob: Job? = null
-  private var lastLyricsLoadRequest: LyricsLoadRequest? = null
 
   fun setEqualizerEnabled(enabled: Boolean) {
     equalizerState.value = equalizerState.value.copy(isEnabled = enabled)
@@ -1033,264 +920,8 @@ class PlayerViewModel : ViewModel(),
     }
   }
 
-  fun loadLyricsForCurrentTrack(forceRefresh: Boolean = false) {
-    val path = PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename") ?: return
-    if (path.isBlank()) return
 
-    val title = currentMediaTitle.takeIf { it.isNotBlank() }
-      ?: PlaybackSession.getPropertyString("metadata/by-key/Title")
-      ?: PlaybackSession.getPropertyString("media-title")
-      ?: ""
 
-    val artist = PlaybackSession.getPropertyString("metadata/by-key/Artist")
-      ?: PlaybackSession.getPropertyString("metadata/by-key/ARTIST")
-      ?: PlaybackSession.getPropertyString("metadata/by-key/album_artist")
-      ?: ""
-
-    val duration = PlaybackSession.getPropertyInt("duration") ?: 0
-    val request = LyricsLoadRequest(path, title, artist, duration)
-    if (!forceRefresh && request == lastLyricsLoadRequest) return
-    lastLyricsLoadRequest = request
-
-    lyricsUiState.value = lyricsUiState.value.copy(isLoading = true, errorMessage = null, syncOffsetMs = 0)
-
-    // Cancel any in-flight lyrics load/translate for the previous track, otherwise a slow
-    // fetch for the old song can resolve after the new song's fetch and overwrite it with
-    // stale (previous track's) lyrics.
-    lyricsLoadJob?.cancel()
-    lyricsTranslateJob?.cancel()
-
-    lyricsLoadJob = viewModelScope.launch(Dispatchers.IO) {
-      val result = lyricsRepository.loadLyricsForTrack(
-        mediaPath = path,
-        title = title,
-        artist = artist,
-        durationSeconds = duration,
-        forceRefresh = forceRefresh,
-      )
-
-      // The track may have changed again while this fetch was in-flight; only apply the
-      // result if we're still on the same track (extra guard on top of job cancellation).
-      val stillCurrentPath = PlaybackSession.getPropertyString("path")
-        ?: PlaybackSession.getPropertyString("stream-open-filename")
-      if (stillCurrentPath != path) return@launch
-
-      val activeIndex = app.infinity.mpvz.utils.media.LyricsUtils.getActiveLineIndex(
-        syncedLines = result.activeLyrics?.synced,
-        positionMs = (precisePosition.value * 1000).toLong(),
-        offsetMs = 0,
-      )
-      val autoTranslate = audioPreferences.lyricsAutoTranslate.get()
-      val defaultTargetLang = audioPreferences.lyricsTargetLanguage.get().ifBlank { "en" }
-
-      lyricsUiState.value = lyricsUiState.value.copy(
-        isLoading = false,
-        isTranslationActive = false,
-        targetLanguage = defaultTargetLang,
-        lyrics = result.activeLyrics,
-        originalLyrics = result.activeLyrics,
-        embeddedLyrics = result.embeddedLyrics,
-        onlineLyrics = result.onlineLyrics,
-        activeLineIndex = activeIndex,
-        selectedSource = result.selectedSource,
-        availableSources = result.availableSources,
-        syncOffsetMs = 0,
-      )
-
-      val hasSynced = result.activeLyrics?.synced?.isNotEmpty() == true
-
-      if (autoTranslate && hasSynced) {
-        translateLyrics(defaultTargetLang)
-      }
-    }
-  }
-
-  fun switchLyricsSource(sourceType: app.infinity.mpvz.domain.lyrics.LyricsSourceType) {
-    val path = PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename") ?: return
-    if (path.isBlank()) return
-
-    val current = lyricsUiState.value
-    val autoTranslate = audioPreferences.lyricsAutoTranslate.get()
-    val defaultTargetLang = audioPreferences.lyricsTargetLanguage.get().ifBlank { "en" }
-
-    if (sourceType == app.infinity.mpvz.domain.lyrics.LyricsSourceType.ONLINE && current.onlineLyrics == null) {
-      lyricsUiState.value = current.copy(
-        isLoading = true,
-        selectedSource = app.infinity.mpvz.domain.lyrics.LyricsSourceType.ONLINE,
-        lyrics = null,
-        originalLyrics = null,
-      )
-      lyricsLoadJob?.cancel()
-      lyricsTranslateJob?.cancel()
-      lyricsLoadJob = viewModelScope.launch(Dispatchers.IO) {
-        val title = currentMediaTitle.takeIf { it.isNotBlank() }
-          ?: PlaybackSession.getPropertyString("metadata/by-key/Title")
-          ?: PlaybackSession.getPropertyString("media-title")
-          ?: ""
-        val artist = PlaybackSession.getPropertyString("metadata/by-key/Artist")
-          ?: PlaybackSession.getPropertyString("metadata/by-key/ARTIST")
-          ?: PlaybackSession.getPropertyString("metadata/by-key/album_artist")
-          ?: ""
-        val duration = PlaybackSession.getPropertyInt("duration") ?: 0
-
-        val online = lyricsRepository.fetchOnlineLyrics(title, artist, duration)
-
-        val updatedSources = (current.availableSources + app.infinity.mpvz.domain.lyrics.LyricsSourceType.ONLINE).distinct()
-        val activeLyrics = online ?: current.embeddedLyrics
-        val activeIndex = app.infinity.mpvz.utils.media.LyricsUtils.getActiveLineIndex(
-          syncedLines = activeLyrics?.synced,
-          positionMs = (precisePosition.value * 1000).toLong(),
-          offsetMs = current.syncOffsetMs,
-        )
-        val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
-
-        lyricsUiState.value = current.copy(
-          isLoading = false,
-          isTranslationActive = false,
-          onlineLyrics = online,
-          lyrics = activeLyrics,
-          originalLyrics = activeLyrics,
-          selectedSource = if (online != null) app.infinity.mpvz.domain.lyrics.LyricsSourceType.ONLINE else current.selectedSource,
-          availableSources = updatedSources,
-          activeLineIndex = activeIndex,
-        )
-
-        if (autoTranslate && hasSynced) {
-          translateLyrics(defaultTargetLang)
-        }
-      }
-      return
-    }
-
-    val updatedResult = lyricsRepository.switchSource(path, sourceType)
-    if (updatedResult != null) {
-      val activeLyrics = updatedResult.activeLyrics
-      val activeIndex = app.infinity.mpvz.utils.media.LyricsUtils.getActiveLineIndex(
-        syncedLines = activeLyrics?.synced,
-        positionMs = (precisePosition.value * 1000).toLong(),
-        offsetMs = current.syncOffsetMs,
-      )
-      val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
-
-      lyricsUiState.value = current.copy(
-        lyrics = activeLyrics,
-        originalLyrics = activeLyrics,
-        isTranslationActive = false,
-        selectedSource = updatedResult.selectedSource,
-        activeLineIndex = activeIndex,
-      )
-
-      if (autoTranslate && hasSynced) {
-        translateLyrics(defaultTargetLang)
-      }
-    }
-  }
-
-  fun adjustLyricsSyncOffset(deltaMs: Int) {
-    val newOffset = lyricsUiState.value.syncOffsetMs + deltaMs
-    lyricsUiState.value = lyricsUiState.value.copy(syncOffsetMs = newOffset)
-    updateLyricsActiveLine()
-  }
-
-  fun resetLyricsSyncOffset() {
-    lyricsUiState.value = lyricsUiState.value.copy(syncOffsetMs = 0)
-    updateLyricsActiveLine()
-  }
-
-  fun updateLyricsActiveLine() {
-    val state = lyricsUiState.value
-    val synced = state.lyrics?.synced ?: return
-    val posMs = (precisePosition.value * 1000).toLong()
-    val index = app.infinity.mpvz.utils.media.LyricsUtils.getActiveLineIndex(synced, posMs, state.syncOffsetMs)
-    if (index != state.activeLineIndex) {
-      lyricsUiState.value = state.copy(activeLineIndex = index)
-    }
-  }
-
-  fun translateLyrics(targetLang: String? = null) {
-    val current = lyricsUiState.value
-    val baseLyrics = current.originalLyrics ?: current.lyrics ?: return
-    val lang = targetLang ?: audioPreferences.lyricsTargetLanguage.get().ifBlank { "en" }
-    val path = PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename") ?: ""
-
-    audioPreferences.lyricsAutoTranslate.set(true)
-    audioPreferences.lyricsTargetLanguage.set(lang)
-
-    lyricsUiState.value = current.copy(
-      isTranslating = true,
-      targetLanguage = lang,
-      originalLyrics = current.originalLyrics ?: current.lyrics,
-      errorMessage = null,
-    )
-
-    lyricsTranslateJob?.cancel()
-    lyricsTranslateJob = viewModelScope.launch(Dispatchers.IO) {
-      val outcome = lyricsTranslationService.translateLyrics(
-        lyrics = baseLyrics,
-        targetLanguage = lang,
-        cacheKey = path,
-      )
-
-      // Bail out if the track changed while translation was in-flight, so a slow
-      // translation for the previous song can't overwrite the new song's lyrics.
-      val stillCurrentPath = PlaybackSession.getPropertyString("path")
-        ?: PlaybackSession.getPropertyString("stream-open-filename")
-      if (stillCurrentPath != path) return@launch
-
-      if (!outcome.isSuccessful) {
-        lyricsUiState.value = lyricsUiState.value.copy(
-          isTranslating = false,
-          isTranslationActive = false,
-          lyrics = baseLyrics,
-          errorMessage = appContext.getString(R.string.lyrics_translation_failed),
-        )
-        return@launch
-      }
-
-      val translated = outcome.lyrics
-      val activeIndex = app.infinity.mpvz.utils.media.LyricsUtils.getActiveLineIndex(
-        syncedLines = translated.synced,
-        positionMs = (precisePosition.value * 1000).toLong(),
-        offsetMs = current.syncOffsetMs,
-      )
-      lyricsUiState.value = lyricsUiState.value.copy(
-        isTranslating = false,
-        isTranslationActive = true,
-        lyrics = translated,
-        activeLineIndex = activeIndex,
-        errorMessage =
-          if (outcome.isComplete) null else appContext.getString(R.string.lyrics_translation_partial),
-      )
-    }
-  }
-
-  fun toggleLyricsTranslation() {
-    val current = lyricsUiState.value
-    if (current.isTranslationActive || current.isTranslating) {
-      showOriginalLyrics()
-    } else {
-      translateLyrics()
-    }
-  }
-
-  fun showOriginalLyrics() {
-    audioPreferences.lyricsAutoTranslate.set(false)
-    lyricsTranslateJob?.cancel()
-    val current = lyricsUiState.value
-    val original = current.originalLyrics ?: current.lyrics ?: return
-    val activeIndex = app.infinity.mpvz.utils.media.LyricsUtils.getActiveLineIndex(
-      syncedLines = original.synced,
-      positionMs = (precisePosition.value * 1000).toLong(),
-      offsetMs = current.syncOffsetMs,
-    )
-    lyricsUiState.value = current.copy(
-      isTranslating = false,
-      isTranslationActive = false,
-      lyrics = original,
-      activeLineIndex = activeIndex,
-      errorMessage = null,
-    )
-  }
 
   fun setEqualizerVolumeBoost(db: Int) {
     if (equalizerState.value.volumeBoostDb != db) {
@@ -1797,31 +1428,6 @@ class PlayerViewModel : ViewModel(),
         reconcileHdrModeWithRenderer()
       }
     }
-    syncplayManager.playbackStateProvider = { currentSyncplayPlaybackState() }
-    syncplayManager.fileInfoProvider = { currentSyncplayFileInfo() }
-    syncplayManager.onRemotePause = { shouldPause ->
-      viewModelScope.launch(playbackStateDispatcher) {
-        val currentlyPaused = PlaybackSession.getPropertyBoolean("pause") ?: false
-        if (currentlyPaused != shouldPause) {
-          if (!shouldPause) {
-            val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
-            if (!focusGranted) return@launch
-          }
-          PlaybackSession.setPropertyBoolean("pause", shouldPause)
-          if (shouldPause) {
-            withContext(Dispatchers.Main) { host.abandonAudioFocus() }
-          }
-        }
-      }
-    }
-    syncplayManager.onRemoteSeek = { pos ->
-      viewModelScope.launch(Dispatchers.IO) {
-        val currentPos = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0
-        if (kotlin.math.abs(currentPos - pos) > 0.75) {
-          PlaybackSession.command("seek", pos.toString(), "absolute+exact")
-        }
-      }
-    }
 
     // Single adaptive polling loop for playback position.
     //  1. An event-driven collect on PlaybackSession.propInt["time-pos"]
@@ -1860,7 +1466,6 @@ class PlayerViewModel : ViewModel(),
             val posFloat = time.toFloat()
             if (_precisePosition.value != posFloat) {
               _precisePosition.value = posFloat
-              updateLyricsActiveLine()
             }
             maybeAutoSkipIntro(time)
           }
@@ -1922,7 +1527,6 @@ class PlayerViewModel : ViewModel(),
           // the new duration is known.
           refreshChapterDerivedSegments(chapters.value)
           checkPendingIntroLookup()
-          syncplayManager.updateFileInfo(currentSyncplayFileInfo())
 
           // --- AMBIENT FIX: Adapt shader to new file dimensions by @Chinna95P ---
           if (_isAmbientEnabled.value) {
@@ -2072,7 +1676,6 @@ class PlayerViewModel : ViewModel(),
     disableAmbientShader()
     _isMpvCoreReady.value = false
     isMpvReadyForCustomButtons = false
-    runCatching { syncplayManager.clearPlayerBindings() }
     mpvStateCollectorsJob?.cancel()
     mpvStateCollectorsJob = null
     androidSystemInfoBridgeJob?.cancel()
@@ -2203,70 +1806,8 @@ class PlayerViewModel : ViewModel(),
         current
       }
     }
-    syncplayManager.updateFileInfo(currentSyncplayFileInfo())
     applyEqualizerMpvFilters()
-    loadLyricsForCurrentTrack()
     scheduleAutoCropAnalysis()
-  }
-
-  fun updateTorrentState(state: TorrentStreamingState) {
-    _torrentState.value = state
-  }
-
-  fun torrentBufferingText(state: TorrentStreamingState): String =
-    when (state) {
-      is TorrentStreamingState.Idle -> ""
-      is TorrentStreamingState.Connecting -> state.phase
-      is TorrentStreamingState.Streaming -> {
-        val speed = formatTorrentSpeed(state.downloadSpeed)
-        val peers = "${state.peers} peers"
-        val progress = "${(state.bufferProgress * 100).toInt()}%"
-        "$speed | $peers | $progress"
-      }
-      is TorrentStreamingState.Error -> state.message.ifBlank { "Torrent error" }
-    }
-
-  private fun currentSyncplayPlaybackState(): SyncplayPlaybackState =
-    SyncplayPlaybackState(
-      position =
-        runCatching { PlaybackSession.getPropertyDouble("time-pos") }.getOrNull()
-          ?: precisePosition.value.toDouble(),
-      paused =
-        runCatching { PlaybackSession.getPropertyBoolean("pause") }.getOrNull()
-          ?: (paused ?: true),
-    )
-
-  private fun currentSyncplayFileInfo(): SyncplayFile? {
-    val name =
-      listOfNotNull(
-        runCatching { PlaybackSession.getPropertyString("filename") }.getOrNull(),
-        currentMediaTitle,
-        runCatching { PlaybackSession.getPropertyString("media-title") }.getOrNull(),
-        runCatching { PlaybackSession.getPropertyString("stream-open-filename") }
-          .getOrNull()
-          ?.substringAfterLast('/'),
-        runCatching { PlaybackSession.getPropertyString("path") }
-          .getOrNull()
-          ?.substringAfterLast('/'),
-      ).map { it.trim() }
-        .firstOrNull { it.isNotBlank() }
-        ?: return null
-
-    val durationSeconds =
-      runCatching { PlaybackSession.getPropertyDouble("duration") }.getOrNull()?.takeIf { it > 0.0 }
-        ?: _preciseDuration.value.toDouble().takeIf { it > 0.0 }
-        ?: 0.0
-    val sizeBytes =
-      listOfNotNull(
-        runCatching { PlaybackSession.getPropertyDouble("file-size")?.toLong() }.getOrNull(),
-        runCatching { PlaybackSession.getPropertyDouble("stream-end")?.toLong() }.getOrNull(),
-      ).firstOrNull { it > 0L } ?: 0L
-
-    return SyncplayFile(
-      duration = durationSeconds,
-      name = name,
-      size = JsonPrimitive(sizeBytes),
-    )
   }
 
   private fun setupCustomButtons() {
@@ -2882,437 +2423,7 @@ class PlayerViewModel : ViewModel(),
     }
   }
 
-  private var translationJob: Job? = null
 
-  fun clearEmbeddedSubtitleTranslationCue(native: Boolean = false) {
-    embeddedTranslationRequestId += 1L
-    embeddedCueTranslationJob = null
-    lastEmbeddedCue = ""
-    _embeddedTranslatedSubtitle.value = null
-
-    // A blank cue is emitted while changing tracks and while seeking. When translation
-    // is enabled, keep text subtitles hidden during that gap; the next non-empty cue
-    // below starts a fresh request. Restoring visibility here causes the original cue
-    // to flash/show while the translated overlay is empty.
-    if (aiPreferences.playerSubtitleTranslationEnabled.get()) {
-      if (native) {
-        nativeSubtitleVisibilityListener?.invoke(true)
-      } else {
-        PlaybackSession.setPropertyBoolean("sub-visibility", false)
-      }
-      nativeSubtitleHiddenForTranslation = true
-    } else {
-      if (native) nativeSubtitleVisibilityListener?.invoke(false)
-      else PlaybackSession.setPropertyBoolean("sub-visibility", true)
-      nativeSubtitleHiddenForTranslation = false
-    }
-  }
-
-  fun resetEmbeddedSubtitleTranslation() {
-    embeddedTranslationRequestId += 1L
-    embeddedCueTranslationJob = null
-    lastEmbeddedCue = ""
-    _translationStatus.value = ""
-    _embeddedTranslatedSubtitle.value = null
-    // Always restore both subtitle renderers. The hidden flag can be false when the
-    // translation request is cancelled before its result arrives, but either renderer may
-    // already have been hidden by the translation handoff.
-    PlaybackSession.setPropertyBoolean("sub-visibility", true)
-    nativeSubtitleVisibilityListener?.invoke(false)
-    nativeSubtitleHiddenForTranslation = false
-  }
-
-  fun translateEmbeddedSubtitleCue(rawCue: String, native: Boolean = false) {
-    val cue = rawCue.trim()
-    if (cue.isBlank()) {
-      if (aiPreferences.playerSubtitleTranslationEnabled.get()) clearEmbeddedSubtitleTranslationCue(native)
-      else resetEmbeddedSubtitleTranslation()
-      return
-    }
-    if (cue == lastEmbeddedCue || !aiPreferences.playerSubtitleTranslationEnabled.get()) return
-    val target =
-      (aiPreferences.embeddedSubtitleTargetLanguage.get().trim().takeIf { it.isNotBlank() }
-        ?: aiPreferences.autoTranslateLanguages.get().split(",").firstOrNull { it.isNotBlank() }?.trim())
-        ?: java.util.Locale.getDefault().language.ifBlank { "en" }
-    lastEmbeddedCue = cue
-    _embeddedTranslatedSubtitle.value = null
-    // Suppress the original text cue immediately. This prevents the embedded subtitle
-    // from appearing while the translation request is in flight; image-based subtitles
-    // never enter this method and therefore retain their existing rendering behavior.
-    if (native) {
-      nativeSubtitleVisibilityListener?.invoke(true)
-    } else {
-      PlaybackSession.setPropertyBoolean("sub-visibility", false)
-    }
-    nativeSubtitleHiddenForTranslation = true
-    val requestId = ++embeddedTranslationRequestId
-    embeddedCueTranslationJob = viewModelScope.launch(Dispatchers.IO) {
-      _translationStatus.value = "Translating embedded subtitle…"
-      val provider = aiPreferences.embeddedSubtitleTranslationProvider.get().trim()
-      val result =
-        if (provider.isBlank() || provider.equals("Google Translate", ignoreCase = true)) {
-          embeddedSubtitleTranslator.translateGoogle(cue, target)
-        } else {
-          aiService.generateWithAi(
-            cue,
-            app.infinity.mpvz.repository.ai.AiTask.TRANSLATE,
-            "Translate only into $target. Return only the translated subtitle text; preserve line breaks and do not add commentary.",
-          )
-        }
-      result.onSuccess { translated ->
-        withContext(Dispatchers.Main.immediate) {
-          if (requestId == embeddedTranslationRequestId && cue == lastEmbeddedCue) {
-            val cleanedTranslation = translated.trim().takeIf { it.isNotBlank() }
-            if (cleanedTranslation != null && !translationMatchesOriginal(cue, cleanedTranslation, target)) {
-              if (native && !nativeSubtitleHiddenForTranslation) {
-                nativeSubtitleVisibilityListener?.invoke(true)
-                nativeSubtitleHiddenForTranslation = true
-              }
-              if (!native && !nativeSubtitleHiddenForTranslation) {
-                PlaybackSession.setPropertyBoolean("sub-visibility", false)
-                nativeSubtitleHiddenForTranslation = true
-              }
-              _embeddedTranslatedSubtitle.value = cleanedTranslation
-            } else {
-              // Keep the native subtitle visible when it is already in the requested language.
-              // This preserves the original font, outline, position, and line layout exactly.
-              _embeddedTranslatedSubtitle.value = null
-              if (native && nativeSubtitleHiddenForTranslation) {
-                nativeSubtitleVisibilityListener?.invoke(false)
-                nativeSubtitleHiddenForTranslation = false
-              }
-              if (!native && nativeSubtitleHiddenForTranslation) {
-                PlaybackSession.setPropertyBoolean("sub-visibility", true)
-                nativeSubtitleHiddenForTranslation = false
-              }
-            }
-          }
-          if (requestId == embeddedTranslationRequestId) _translationStatus.value = ""
-        }
-      }.onFailure {
-        if (requestId == embeddedTranslationRequestId) {
-          withContext(Dispatchers.Main.immediate) {
-            _embeddedTranslatedSubtitle.value = null
-            _translationStatus.value = ""
-            if (!aiPreferences.playerSubtitleTranslationEnabled.get()) {
-              if (native) nativeSubtitleVisibilityListener?.invoke(false)
-              else PlaybackSession.setPropertyBoolean("sub-visibility", true)
-              nativeSubtitleHiddenForTranslation = false
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private fun translationMatchesOriginal(original: String, translated: String, target: String): Boolean {
-    fun normalized(value: String) = value.trim().split(Regex("\\s+")).joinToString(" ")
-    if (normalized(original).equals(normalized(translated), ignoreCase = true)) return true
-    val language = target.trim().lowercase().substringBefore('-').substringBefore('_')
-    return language in setOf("ar", "ara") && original.any { it in '\u0600'..'\u06ff' }
-  }
-
-  fun translateSubtitle(
-    track: TrackNode,
-    targetLanguage: String,
-  ) {
-    val externalPath = track.externalFilename ?: return
-    val uriString = mpvPathToUriMap[externalPath] ?: externalPath
-
-    // Convert file path to proper URI if needed
-    val uri =
-      if (uriString.startsWith("/")) {
-        File(uriString).toUri()
-      } else {
-        Uri.parse(uriString)
-      }
-
-    translationJob?.cancel()
-    translationJob =
-      viewModelScope.launch(Dispatchers.IO) {
-        _isTranslatingSub.value = true
-        _translatingTrackId.value = track.id
-        _translatingTrackName.value =
-          getFileNameFromUri(uri)?.let { it.substringBeforeLast(".") }?.lowercase() ?: "subtitle"
-        _translationProgress.value = 0f
-        _translationStatus.value = "Preparing translation"
-
-        try {
-          val content =
-            appContext.contentResolver.openInputStream(uri)?.use {
-              it.readBytes().decodeToString()
-            } ?: throw Exception("Could not read subtitle file")
-
-          val originalFileName = getFileNameFromUri(uri) ?: "subtitle.srt"
-          val extension = originalFileName.substringAfterLast('.', "srt")
-
-          val result =
-            aiService.translateSubtitle(content, targetLanguage, extension) { progress ->
-              _translationProgress.value = progress.progress
-              _translationStatus.value =
-                buildString {
-                  append(if (progress.isResuming) "Resuming" else "Translating")
-                  append(" ${progress.completedChunks}/${progress.totalChunks}")
-                }
-            }
-
-          result
-            .onSuccess { translatedContent ->
-              val baseName = originalFileName.substringBeforeLast(".").ifBlank { "subtitle" }
-              val sanitizedLang = targetLanguage.replace(" ", "_").ifBlank { "translated" }
-              val newFileName = "$baseName.$sanitizedLang.AI.$extension"
-
-              val savedUri =
-                saveTranslatedSubtitle(uri, newFileName, extension, targetLanguage, translatedContent)
-                  ?: throw Exception("Could not save translated subtitle")
-
-              withContext(Dispatchers.Main) {
-                addSubtitle(savedUri, select = true)
-                showToast("Translation complete: $newFileName")
-              }
-            }.onFailure { error ->
-              withContext(Dispatchers.Main) {
-                showToast("Translation failed: ${error.message}")
-              }
-            }
-        } catch (e: Exception) {
-          withContext(Dispatchers.Main) {
-            showToast("Error: ${e.message}")
-          }
-        } finally {
-          _isTranslatingSub.value = false
-          _translatingTrackId.value = null
-          _translatingTrackName.value = ""
-          _translationProgress.value = 0f
-          _translationStatus.value = ""
-          translationJob = null
-        }
-      }
-  }
-
-  fun cancelTranslation() {
-    translationJob?.cancel()
-    translationJob = null
-    _isTranslatingSub.value = false
-    _translatingTrackId.value = null
-    _translatingTrackName.value = ""
-    _translationProgress.value = 0f
-    _translationStatus.value = ""
-    val cacheDir = java.io.File(appContext.filesDir, "ai_translation_cache")
-    if (cacheDir.exists()) {
-      cacheDir.listFiles()?.forEach { it.delete() }
-      cacheDir.delete()
-    }
-    showToast("Translation cancelled")
-  }
-
-  fun generateSubtitles(
-    language: String,
-    outputFormat: String = "srt",
-  ) {
-    val videoUri = currentVideoUriForSubtitleGeneration()
-    if (videoUri == null) {
-      showToast("Could not find current video path")
-      return
-    }
-
-    val actualLanguage = if (language.isBlank()) aiPreferences.sttLanguage.get().ifBlank { "en" } else language
-    val actualFormat = if (outputFormat.isBlank()) aiPreferences.subtitleGenerationOutputFormat.get() else outputFormat
-
-    viewModelScope.launch(Dispatchers.IO) {
-      _isGeneratingSubtitles.value = true
-      _subtitleGenerationProgress.value = 0f
-      _subtitleGenerationStatus.value = "Preparing audio"
-
-      try {
-        val result =
-          subtitleGenerationService.generateSubtitles(
-            videoUri = videoUri,
-            language = actualLanguage,
-            outputFormat = actualFormat,
-          ) { progress ->
-            _subtitleGenerationProgress.value = progress.progress
-            _subtitleGenerationStatus.value = progress.stage
-          }
-
-        result
-          .onSuccess { generated ->
-            val baseName = currentMediaTitle.substringBeforeLast(".").ifBlank { "video" }
-            val sanitizedLang = actualLanguage.replace(" ", "_")
-            val newFileName = "$baseName.$sanitizedLang.AI.${generated.extension}"
-            val savedUri =
-              saveTranslatedSubtitle(videoUri, newFileName, generated.extension, sanitizedLang, generated.content)
-                ?: throw Exception("Could not save generated subtitles")
-            withContext(Dispatchers.Main) {
-              addSubtitle(savedUri, select = true)
-              showToast("Generated subtitles: $newFileName")
-            }
-          }.onFailure { error ->
-            withContext(Dispatchers.Main) {
-              showToast("Subtitle generation failed: ${error.message}")
-            }
-          }
-      } catch (e: Exception) {
-        withContext(Dispatchers.Main) {
-          showToast("Subtitle generation error: ${e.message}")
-        }
-      } finally {
-        _isGeneratingSubtitles.value = false
-        _subtitleGenerationProgress.value = 0f
-        _subtitleGenerationStatus.value = ""
-      }
-    }
-  }
-
-  private fun currentVideoUriForSubtitleGeneration(): Uri? {
-    val media = host.currentMediaLookupHint()?.takeIf { it.isNotBlank() } ?: return null
-    return if (media.startsWith("/")) File(media).toUri() else Uri.parse(media)
-  }
-
-  fun startRealtimeSubtitles(language: String) {
-    val videoUri = currentVideoUriForSubtitleGeneration()
-    if (videoUri == null) {
-      showToast("Could not find current video path")
-      return
-    }
-    val videoDurationMs = (_preciseDuration.value * 1000f).toLong()
-    if (videoDurationMs <= 0) {
-      showToast("Video duration unknown")
-      return
-    }
-
-    realtimeSrtFile = java.io.File.createTempFile("realtime_subs_", ".srt", appContext.cacheDir)
-
-    _isRealtimeSubsActive.value = true
-    _realtimeSubsLanguage.value = language
-    _realtimeSubsProgress.value = 0f
-
-    realtimeSubtitleService.start(
-      videoUri = videoUri,
-      videoDurationMs = videoDurationMs,
-      language = language,
-      scope = viewModelScope,
-      onProgress = { progress ->
-        _realtimeSubsProgress.value = progress.chunkIndex.toFloat() / progress.totalChunks.coerceAtLeast(1)
-        _translationStatus.value = "Chunk ${progress.chunkIndex + 1}/${progress.totalChunks}"
-      },
-      onNewContent = { srtContent ->
-        realtimeSrtFile?.writeText(srtContent)
-        val srtPath = realtimeSrtFile?.absolutePath ?: return@start
-        viewModelScope.launch(Dispatchers.Main) {
-          if (realtimeSrtFileAdded) {
-            PlaybackSession.command("sub-reload", srtPath)
-          } else {
-            PlaybackSession.command("sub-add", srtPath, "select")
-            realtimeSrtFileAdded = true
-          }
-        }
-      },
-      onComplete = {
-        _isRealtimeSubsActive.value = false
-        _realtimeSubsLanguage.value = ""
-        _realtimeSubsProgress.value = 0f
-        _translationStatus.value = ""
-        realtimeSrtFile = null
-        showToast("Real-time subtitles complete")
-      },
-      onError = { error ->
-        _isRealtimeSubsActive.value = false
-        _realtimeSubsLanguage.value = ""
-        _realtimeSubsProgress.value = 0f
-        _translationStatus.value = ""
-        showToast("Real-time subtitles error: $error")
-      },
-    )
-  }
-
-  fun stopRealtimeSubtitles(showToastMessage: Boolean = true) {
-    val wasActive = _isRealtimeSubsActive.value
-    realtimeSubtitleService.stop()
-    _isRealtimeSubsActive.value = false
-    _realtimeSubsLanguage.value = ""
-    _realtimeSubsProgress.value = 0f
-    _translationStatus.value = ""
-    realtimeSrtFile?.delete()
-    realtimeSrtFile = null
-    realtimeSrtFileAdded = false
-    if (showToastMessage && wasActive) {
-      showToast("Real-time subtitles stopped")
-    }
-  }
-
-  private var realtimeSrtFileAdded = false
-
-  private fun saveTranslatedSubtitle(
-    originalUri: Uri,
-    newFileName: String,
-    extension: String,
-    targetLanguage: String,
-    translatedContent: String,
-  ): Uri? {
-    if (originalUri.scheme == "file") {
-      val parent = originalUri.path?.let { File(it).parentFile }
-      if (parent?.exists() == true) {
-        val saved = File(parent, newFileName).also { it.writeText(translatedContent) }.toUri()
-        // Clean up common buggy patterns: .AI.ext, lang.AI.ext, ..AI.ext
-        listOf(
-          ".AI.$extension",
-          "$targetLanguage.AI.$extension",
-          "..AI.$extension",
-        ).filter { it.isNotBlank() }.forEach { pattern ->
-          val buggy = File(parent, pattern)
-          if (buggy.exists() && buggy.name != newFileName) buggy.delete()
-        }
-        return saved
-      }
-    }
-
-    if (originalUri.scheme == "content") {
-      val sourceDocument = DocumentFile.fromSingleUri(appContext, originalUri)
-      val parentDocument = sourceDocument?.parentFile
-      if (parentDocument?.canWrite() == true) {
-        val mimeType =
-          MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
-            ?: "text/plain"
-        val targetDocument =
-          parentDocument.findFile(newFileName)
-            ?: parentDocument.createFile(mimeType, newFileName)
-
-        if (targetDocument != null) {
-          appContext.contentResolver.openOutputStream(targetDocument.uri)?.use { output ->
-            output.write(translatedContent.toByteArray())
-          }
-          // Clean up common buggy patterns
-          listOf(
-            ".AI.$extension",
-            "$targetLanguage.AI.$extension",
-            "..AI.$extension",
-          ).filter { it.isNotBlank() }.forEach { pattern ->
-            parentDocument.findFile(pattern)?.let { buggy ->
-              if (buggy.uri != targetDocument.uri) buggy.delete()
-            }
-          }
-          return targetDocument.uri
-        }
-      }
-    }
-
-    val fallbackDir = appContext.getExternalFilesDir(null) ?: appContext.filesDir
-    val backupFile =
-      File(File(fallbackDir, "Subtitles"), newFileName).apply {
-        parentFile?.mkdirs()
-      }
-    backupFile.writeText(translatedContent)
-    // Clean up common buggy patterns in fallback dir
-    val backupParent = backupFile.parentFile
-    if (backupParent != null) {
-      listOf(".AI.$extension", "$targetLanguage.AI.$extension", "..AI.$extension").filter { it.isNotBlank() }.forEach { pattern ->
-        val buggy = File(backupParent, pattern)
-        if (buggy.exists() && buggy.name != newFileName) buggy.delete()
-      }
-    }
-    return backupFile.toUri()
-  }
 
   private fun scanLocalSubtitles(mediaTitle: String) {
     viewModelScope.launch(Dispatchers.IO) {
@@ -3368,10 +2479,6 @@ class PlayerViewModel : ViewModel(),
 
   fun setMediaTitle(mediaTitle: String) {
     if (currentMediaTitle != mediaTitle) {
-      // A translated cue and the hidden-renderer flag belong to the previous media item.
-      // Clear both before the next file starts so its first subtitle can trigger a fresh
-      // translation request and the original renderer is not left hidden by stale state.
-      resetEmbeddedSubtitleTranslation()
       currentMediaTitle = mediaTitle
       lastAutoSelectedMediaTitle = null
       introLookupJob?.cancel()
@@ -3383,7 +2490,6 @@ class PlayerViewModel : ViewModel(),
       // Reset subtitle hash when media changes.
       _videoHash.value = null
       scanLocalSubtitles(mediaTitle)
-      syncplayManager.updateFileInfo(currentSyncplayFileInfo())
 
       skippedSegments.clear()
       chapterDerivedSegments = emptyList()
@@ -3469,11 +2575,6 @@ class PlayerViewModel : ViewModel(),
       host.nativeSeekTo((seekTarget * 1000.0).toLong().coerceAtLeast(0L))
     } else {
       PlaybackSession.setPropertyDouble("time-pos", seekTarget)
-      syncplayManager.updatePlayerState(
-        seekTarget,
-        PlaybackSession.getPropertyBoolean("pause") ?: false,
-        doSeek = true,
-      )
     }
     showToast(if (auto) "${segment.label} (auto)" else segment.label)
   }
@@ -4320,10 +3421,8 @@ class PlayerViewModel : ViewModel(),
         val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
         if (!focusGranted) return@launch
         PlaybackSession.setPropertyBoolean("pause", false)
-        syncplayManager.updatePlayerState(precisePosition.value.toDouble(), false, doSeek = false)
       } else {
         PlaybackSession.setPropertyBoolean("pause", true)
-        syncplayManager.updatePlayerState(precisePosition.value.toDouble(), true, doSeek = false)
         withContext(Dispatchers.Main) { host.abandonAudioFocus() }
       }
     }
@@ -4336,7 +3435,6 @@ class PlayerViewModel : ViewModel(),
     }
     viewModelScope.launch(playbackStateDispatcher) {
       PlaybackSession.setPropertyBoolean("pause", true)
-      syncplayManager.updatePlayerState(precisePosition.value.toDouble(), true, doSeek = false)
       withContext(Dispatchers.Main) { host.abandonAudioFocus() }
     }
   }
@@ -4350,7 +3448,6 @@ class PlayerViewModel : ViewModel(),
       val focusGranted = withContext(Dispatchers.Main) { host.requestAudioFocus() }
       if (!focusGranted) return@launch
       PlaybackSession.setPropertyBoolean("pause", false)
-      syncplayManager.updatePlayerState(precisePosition.value.toDouble(), false, doSeek = false)
     }
   }
 
@@ -4441,45 +3538,17 @@ class PlayerViewModel : ViewModel(),
 
   fun seekAudioTo(positionSeconds: Float) {
     if (!positionSeconds.isFinite()) return
-    if (PlaybackSession.state.value.currentItem?.audiobook != null) {
-      AudiobookPlayback.seekInBook((positionSeconds * 1000f).toLong())
-    } else {
-      seekTo(positionSeconds.toInt(), fast = false)
-    }
+    seekTo(positionSeconds.toInt(), fast = false)
   }
 
   fun seekToPlaybackChapter(chapter: Segment) {
-    if (PlaybackSession.state.value.currentItem?.audiobook != null) {
-      AudiobookPlayback.seekInBook((chapter.start * 1000f).toLong())
-    } else {
-      PlaybackSession.setPropertyInt("chapter", chapters.value.indexOf(chapter).coerceAtLeast(0))
-      unpause()
-    }
+    PlaybackSession.setPropertyInt("chapter", chapters.value.indexOf(chapter).coerceAtLeast(0))
+    unpause()
   }
 
   fun stepPlaybackChapter(offset: Int) {
     if (offset !in setOf(-1, 1)) return
-    if (PlaybackSession.state.value.currentItem?.audiobook == null) {
-      if (offset < 0) playPrevious() else playNext()
-      return
-    }
-    val progress = PlaybackSession.audiobookProgress() ?: return
-    val audiobookChapters = chapters.value
-    val book = AudiobookPlayback.book.value?.takeIf { it.book.id == progress.item.bookId }
-    val positionInBook = book?.positionInBook(progress.item.trackId, progress.positionMs) ?: progress.positionMs
-    val current = audiobookChapters.lastOrNull { it.start * 1000f <= positionInBook } ?: return
-    val index = audiobookChapters.indexOf(current)
-    val target = if (offset < 0 && positionInBook - (current.start * 1000f).toLong() > 3000L) current
-      else audiobookChapters.getOrNull(index + offset)
-    target?.let { AudiobookPlayback.seekInBook((it.start * 1000f).toLong(), resumePlayback = true) }
-  }
-
-  fun sleepAtCurrentChapterEnd() {
-    val progress = PlaybackSession.audiobookProgress() ?: return
-    val chapter = AudiobookPlayback.currentChapter() ?: return
-    if (chapter.trackId == progress.item.trackId && chapter.endMs > progress.positionMs) {
-      AudiobookPlayback.setTimer(null, chapter.endMs)
-    }
+    if (offset < 0) playPrevious() else playNext()
   }
 
   fun nativePlaybackPositionSeconds(): Double = hostReference.get()?.nativePlaybackPositionSeconds() ?: 0.0
@@ -4559,11 +3628,6 @@ class PlayerViewModel : ViewModel(),
       val seekMode =
         if (!fast && playerPreferences.usePreciseSeeking.get()) "absolute+exact" else "absolute+keyframes"
       PlaybackSession.command("seek", clampedPosition.toString(), seekMode)
-      syncplayManager.updatePlayerState(
-        clampedPosition.toDouble(),
-        PlaybackSession.getPropertyBoolean("pause") ?: false,
-        doSeek = true,
-      )
     }
   }
 
@@ -4643,11 +3707,6 @@ class PlayerViewModel : ViewModel(),
           val synchronizedPosition = targetPosition ?: requestedTarget
 
           PlaybackSession.command("seek", seekValue, seekMode)
-          syncplayManager.updatePlayerState(
-            synchronizedPosition,
-            PlaybackSession.getPropertyBoolean("pause") ?: false,
-            doSeek = true,
-          )
         }
       }
   }
@@ -5720,8 +4779,6 @@ class PlayerViewModel : ViewModel(),
         if (correctedFrames > 0) delay(FRAME_SEEK_CORRECTION_SETTLE_MS)
 
         updateFrameInfo()
-        val actualPosition = PlaybackSession.getPropertyDouble("time-pos") ?: refinedPosition
-        syncplayManager.updatePlayerState(actualPosition, true, doSeek = true)
       }
   }
 
@@ -6280,12 +5337,7 @@ class PlayerViewModel : ViewModel(),
     host.playNextQueueItem()
   }
 
-  fun playNextAudiobook() {
-    val currentBookId = PlaybackSession.state.value.currentItem?.audiobook?.bookId ?: return
-    viewModelScope.launch {
-      AudiobookPlayback.launchNextBook(appContext, currentBookId)
-    }
-  }
+
 
   fun playPrevious() {
     host.playPreviousQueueItem()
@@ -7005,14 +6057,10 @@ class PlayerViewModel : ViewModel(),
     // automatic scope cancellation happens after onCleared(), and a dispatcher worker that is
     // still unwinding can otherwise retain this ViewModel (observed in LeakCanary).
     hostReference.clear()
-    nativeSubtitleVisibilityListener = null
-    realtimeSubtitleService.stop()
     subtitleSearchJob?.cancel()
     subtitleSearchJob = null
     mediaSearchJob?.cancel()
     mediaSearchJob = null
-    embeddedCueTranslationJob?.cancel()
-    realtimeSubsJob?.cancel()
     playlistMetadataJob?.cancel()
     introLookupJob?.cancel()
     autoCropJob?.cancel()
@@ -7021,8 +6069,6 @@ class PlayerViewModel : ViewModel(),
     androidSystemInfoBridgeJob?.cancel()
     customButtonsSetupJob?.cancel()
     equalizerMpvDebounceJob?.cancel()
-    lyricsLoadJob?.cancel()
-    lyricsTranslateJob?.cancel()
     timerJob?.cancel()
     videoHashJob?.cancel()
     ambientDebounceJob?.cancel()
@@ -7030,29 +6076,18 @@ class PlayerViewModel : ViewModel(),
     seekPreviewJob?.cancel()
     frameSeekJob?.cancel()
     frameNavigationCollapseJob?.cancel()
-    translationJob?.cancel()
     viewModelScope.cancel()
-    if (nativeSubtitleHiddenForTranslation) {
-      PlaybackSession.setPropertyBoolean("sub-visibility", true)
-      nativeSubtitleHiddenForTranslation = false
-    }
+
     // Deterministic cleanup of resources that previously relied on GC.
     // viewModelScope is auto-cancelled by ViewModel, but the following
     // resources are not coroutine-scoped and need explicit release.
     // See issue 2.1 in the leak audit.
-
-    // Stop the realtime subtitle service and delete its temp .srt file.
-    // Without this the file lingers in cacheDir until the system reclaims
-    // it, and the service may keep an active session open.
-    runCatching { stopRealtimeSubtitles(showToastMessage = false) }
-
 
     // The metadataCache (Pair<String, String> entries) is small and
     // bounded at 100 entries, so it is not urgent to clear, but clearing
     // here keeps the working set fresh for the next session.
     runCatching { metadataCache.evictAll() }
 
-    runCatching { syncplayManager.clearPlayerBindings() }
     runCatching { audioEqualizerManager.release() }
     _isAmbientLifecycleActive.value = false
     runCatching { disableAmbientShader() }

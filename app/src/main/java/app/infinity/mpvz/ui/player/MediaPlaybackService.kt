@@ -47,7 +47,6 @@ import app.infinity.mpvz.database.entities.PlaybackStateEntity
 import app.infinity.mpvz.database.repository.PlaylistRepository
 import app.infinity.mpvz.domain.playbackstate.repository.PlaybackStateRepository
 import app.infinity.mpvz.domain.thumbnail.EmbeddedArtworkResolver
-import app.infinity.mpvz.domain.torrent.TorrentStreamingEngine
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import app.infinity.mpvz.preferences.AudioPreferences
 import app.infinity.mpvz.preferences.BrowserPreferences
@@ -227,7 +226,6 @@ class MediaPlaybackService :
   private val gesturePreferences: GesturePreferences by inject()
   private val playlistRepository: PlaylistRepository by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
-  private val torrentStreamingEngine: TorrentStreamingEngine by inject()
 
   private var mediaIdentifier = ""
   private var mediaTitle = ""
@@ -977,7 +975,6 @@ class MediaPlaybackService :
     if (!force && !canHandleTransportAction()) return
     handingBackToActivity = false
     schedulePlaybackStateSave(force = true)
-    torrentStreamingEngine.stopStream()
     PlaybackSession.stop(clearQueue = true)
     paused = true
     mediaSession.setPlaybackState(
@@ -998,7 +995,6 @@ class MediaPlaybackService :
     // service's asynchronous onDestroy() callback reaches here.
     if (mpvAccessReleased || activityForeground || handingBackToActivity) return
     if (PlaybackSession.state.value.surfaceAttached) return
-    torrentStreamingEngine.stopStream()
     PlaybackSession.stop(clearQueue = false)
   }
 

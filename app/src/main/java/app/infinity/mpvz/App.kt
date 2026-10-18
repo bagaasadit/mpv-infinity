@@ -19,7 +19,6 @@ import android.util.Log
 import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import app.infinity.mpvz.database.repository.VideoMetadataCacheRepository
 import app.infinity.mpvz.di.DatabaseModule
 import app.infinity.mpvz.di.FileManagerModule
 import app.infinity.mpvz.di.PreferencesModule
@@ -28,11 +27,9 @@ import app.infinity.mpvz.preferences.DecoderPreferences
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.presentation.crash.CrashActivity
 import app.infinity.mpvz.presentation.crash.GlobalExceptionHandler
-import app.infinity.mpvz.repository.NetworkRepository
 import app.infinity.mpvz.ui.player.PlaybackPhase
 import app.infinity.mpvz.ui.player.PlaybackSession
 import app.infinity.mpvz.ui.player.PlayerActivity
-import `is`.xyz.mpv.FastThumbnails
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,22 +41,16 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
-import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(KoinExperimentalAPI::class)
 class App :
   Application(),
   Application.ActivityLifecycleCallbacks {
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-  private val networkAutoConnectStarted = AtomicBoolean(false)
-  private val metadataMaintenanceStarted = AtomicBoolean(false)
-  private val fastThumbnailsStarted = AtomicBoolean(false)
   private var startedActivityCount = 0
 
   companion object {
     private const val TAG = "App"
-    private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
-    private const val THUMBNAIL_WARMUP_DELAY_MS = 1_500L
     private const val IDLE_MPV_CORE_GRACE_MS = 3L * 60L * 1000L
   }
 
@@ -74,7 +65,6 @@ class App :
         DatabaseModule,
         FileManagerModule,
         app.infinity.mpvz.di.domainModule,
-        app.infinity.mpvz.di.DownloadModule,
       )
     }
     if (!BuildConfig.MPV_SUPPORTS_VULKAN) {
@@ -135,9 +125,7 @@ class App :
 
   override fun onActivityStarted(activity: Activity) {
     if (startedActivityCount++ == 0) {
-      getKoin().get<app.infinity.mpvz.domain.syncplay.SyncplayManager>().onAppForegrounded()
-      // Background workers (FastThumbnails and SQLite metadata maintenance) disabled
-      // to keep pure player startup instant and main-thread 120Hz smooth.
+      // App foregrounded
     }
   }
 
@@ -145,7 +133,6 @@ class App :
     startedActivityCount = (startedActivityCount - 1).coerceAtLeast(0)
     if (startedActivityCount == 0 && !activity.isChangingConfigurations) {
       pauseVideoWhenBackgroundPlaybackDisabled(activity)
-      getKoin().get<app.infinity.mpvz.domain.syncplay.SyncplayManager>().onAppBackgrounded()
     }
   }
 
@@ -229,65 +216,6 @@ class App :
           Log.d(TAG, "Destroying libmpv after idle grace period")
           PlaybackSession.destroy()
         }
-      }
-    }
-  }
-
-  private fun scheduleFastThumbnailWarmupOnce() {
-    if (!fastThumbnailsStarted.compareAndSet(false, true)) return
-    applicationScope.launch(Dispatchers.Default) {
-      try {
-        delay(THUMBNAIL_WARMUP_DELAY_MS)
-        FastThumbnails.initialize(this@App)
-      } catch (cancellation: CancellationException) {
-        fastThumbnailsStarted.set(false)
-        throw cancellation
-      } catch (error: Exception) {
-        fastThumbnailsStarted.set(false)
-        Log.w(TAG, "Deferred FastThumbnails initialization failed", error)
-      }
-    }
-  }
-
-  private fun scheduleMetadataMaintenanceOnce() {
-    if (!metadataMaintenanceStarted.compareAndSet(false, true)) return
-    applicationScope.launch(Dispatchers.IO) {
-      try {
-        delay(POST_START_MAINTENANCE_DELAY_MS)
-        val metadataCache: VideoMetadataCacheRepository = getKoin().get()
-        metadataCache.performMaintenance()
-      } catch (cancellation: CancellationException) {
-        metadataMaintenanceStarted.set(false)
-        throw cancellation
-      } catch (error: Exception) {
-        metadataMaintenanceStarted.set(false)
-        Log.w(TAG, "Deferred metadata maintenance failed", error)
-      }
-    }
-  }
-
-  /** Starts saved-share auto-connect in process scope so Activity recreation cannot cancel it. */
-  internal fun autoConnectNetworksOnce() {
-    if (!networkAutoConnectStarted.compareAndSet(false, true)) return
-
-    applicationScope.launch {
-      try {
-        delay(500)
-        val repository = getKoin().get<NetworkRepository>()
-        repository.getAutoConnectConnections().forEach { connection ->
-          Log.d(TAG, "Auto-connecting to network share: ${connection.name}")
-          repository
-            .connect(connection)
-            .onFailure { error ->
-              Log.e(TAG, "Auto-connect failed for ${connection.name}: ${error.message}")
-            }
-        }
-      } catch (cancellation: CancellationException) {
-        networkAutoConnectStarted.set(false)
-        throw cancellation
-      } catch (error: Exception) {
-        networkAutoConnectStarted.set(false)
-        Log.e(TAG, "Failed to auto-connect saved network shares", error)
       }
     }
   }

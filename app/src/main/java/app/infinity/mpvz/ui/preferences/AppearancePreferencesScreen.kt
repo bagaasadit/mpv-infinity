@@ -774,11 +774,6 @@ object AppearancePreferencesScreen : Screen {
               val showMusicTab by preferences.showMusicTab.collectAsState()
               val showRecentsTab by preferences.showRecentsTab.collectAsState()
               val showPlaylistsTab by preferences.showPlaylistsTab.collectAsState()
-              val showNetworkTab by preferences.showNetworkTab.collectAsState()
-              val showStreamsTab by preferences.showStreamsTab.collectAsState()
-              val showJellyfinTab by preferences.showJellyfinTab.collectAsState()
-              val showNavidromeTab by preferences.showNavidromeTab.collectAsState()
-              val showAudiobooksTab by preferences.showAudiobooksTab.collectAsState()
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_nav_home_title),
@@ -833,97 +828,6 @@ object AppearancePreferencesScreen : Screen {
                 summary = {
                   Text(
                     text = stringResource(id = R.string.pref_nav_playlists_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_nav_network_title),
-                value = showNetworkTab,
-                onValueChange = preferences.showNetworkTab::set,
-                title = { Text(text = stringResource(id = R.string.pref_nav_network_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(id = R.string.pref_nav_network_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_nav_streams_title),
-                value = showStreamsTab,
-                onValueChange = preferences.showStreamsTab::set,
-                title = { Text(text = stringResource(id = R.string.pref_nav_streams_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(id = R.string.pref_nav_streams_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_nav_jellyfin_title),
-                value = showJellyfinTab,
-                onValueChange = preferences.showJellyfinTab::set,
-                title = { Text(text = stringResource(id = R.string.pref_nav_jellyfin_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(id = R.string.pref_nav_jellyfin_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_nav_navidrome_title),
-                value = showNavidromeTab,
-                onValueChange = preferences.showNavidromeTab::set,
-                title = { Text(text = stringResource(id = R.string.pref_nav_navidrome_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(id = R.string.pref_nav_navidrome_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_nav_audiobooks_title),
-                value = showAudiobooksTab,
-                onValueChange = preferences.showAudiobooksTab::set,
-                title = { Text(text = stringResource(id = R.string.pref_nav_audiobooks_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(id = R.string.pref_nav_audiobooks_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val autoShowJellyfinTab by preferences.autoShowJellyfinTab.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_nav_jellyfin_auto_title),
-                value = autoShowJellyfinTab,
-                onValueChange = preferences.autoShowJellyfinTab::set,
-                title = { Text(text = stringResource(id = R.string.pref_nav_jellyfin_auto_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(id = R.string.pref_nav_jellyfin_auto_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

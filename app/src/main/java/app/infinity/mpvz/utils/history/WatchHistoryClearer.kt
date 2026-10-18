@@ -5,7 +5,7 @@ import kotlinx.coroutines.CancellationException
 internal suspend fun clearWatchHistory(
   backfillWatchStatistics: suspend () -> Unit,
   clearMediaHistory: suspend () -> Unit,
-  clearStreamHistory: suspend () -> Unit,
+  clearStreamHistory: suspend () -> Unit = {},
 ) {
   // Playback resume stores are deliberately not part of this operation.
   // If the snapshot cannot be persisted, retain source rows rather than losing statistics.

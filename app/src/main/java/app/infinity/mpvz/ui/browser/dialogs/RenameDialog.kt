@@ -11,42 +11,28 @@ package app.infinity.mpvz.ui.browser.dialogs
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import app.infinity.mpvz.preferences.AiPreferences
-import app.infinity.mpvz.repository.ai.AiService
-import app.infinity.mpvz.ui.icons.Icon
-import app.infinity.mpvz.ui.icons.Icons
-import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -64,10 +50,6 @@ fun RenameDialog(
   val isError = remember { mutableStateOf(false) }
   val errorMessage = remember { mutableStateOf("") }
   val focusRequester = remember { FocusRequester() }
-  val scope = rememberCoroutineScope()
-  val aiService = koinInject<AiService>()
-  val aiPreferences = koinInject<AiPreferences>()
-  var isAiLoading by remember { mutableStateOf(false) }
 
   LaunchedEffect(Unit) {
     focusRequester.requestFocus()
@@ -148,51 +130,6 @@ fun RenameDialog(
           shape = MaterialTheme.shapes.extraLarge,
         )
 
-        if (aiPreferences.enabled.get() && aiPreferences.renameWithAi.get()) {
-          OutlinedButton(
-            onClick = {
-              scope.launch {
-                isAiLoading = true
-                aiService
-                  .renameWithAi(currentName, extension)
-                  .onSuccess { aiName ->
-                    baseName.value = aiName.removeSuffix(extension ?: "")
-                  }.onFailure { _ ->
-                    isError.value = true
-                    errorMessage.value = "AI rename failed. Check API key and model."
-                  }
-                isAiLoading = false
-              }
-            },
-            enabled = !isAiLoading,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge,
-          ) {
-            if (isAiLoading) {
-              CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-              )
-              Spacer(modifier = Modifier.width(8.dp))
-              Text(
-                androidx.compose.ui.res
-                  .stringResource(app.infinity.mpvz.R.string.ui_ai_is_thinking),
-              )
-            } else {
-              Icon(
-                imageVector = Icons.RoundedFilled.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-              )
-              Spacer(modifier = Modifier.width(8.dp))
-              Text(
-                androidx.compose.ui.res
-                  .stringResource(app.infinity.mpvz.R.string.ui_ai_rename),
-                fontWeight = FontWeight.Medium,
-              )
-            }
-          }
-        }
       }
     },
     confirmButton = {

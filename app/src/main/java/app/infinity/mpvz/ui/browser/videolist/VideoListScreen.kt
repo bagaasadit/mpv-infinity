@@ -74,7 +74,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.infinity.mpvz.R
-import app.infinity.mpvz.database.repository.SecureFolderRepository
 import app.infinity.mpvz.domain.media.model.Video
 import app.infinity.mpvz.domain.thumbnail.ThumbnailRepository
 import app.infinity.mpvz.preferences.AppearancePreferences
@@ -83,7 +82,6 @@ import app.infinity.mpvz.preferences.GesturePreferences
 import app.infinity.mpvz.preferences.MediaLayoutMode
 import app.infinity.mpvz.preferences.SortOrder
 import app.infinity.mpvz.preferences.PlayerPreferences
-import app.infinity.mpvz.preferences.SecureFolderPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
 import app.infinity.mpvz.presentation.components.pullrefresh.PullRefreshBox
@@ -109,10 +107,6 @@ import app.infinity.mpvz.ui.browser.states.EmptyState
 import app.infinity.mpvz.ui.components.InlineSearchBar
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
-import app.infinity.mpvz.ui.player.AudiobookPlayback
-import app.infinity.mpvz.ui.securefolder.SecureConfirmDialog
-import app.infinity.mpvz.ui.securefolder.SecureFolderGateScreen
-import app.infinity.mpvz.ui.securefolder.SecureFolderProgressDialog
 import app.infinity.mpvz.ui.theme.AppMotion
 import app.infinity.mpvz.ui.utils.LocalBackStack
 import app.infinity.mpvz.ui.utils.popSafely
@@ -284,36 +278,6 @@ data class VideoListScreen(
     val showPrivateSpaceCompletionDialog = rememberSaveable { mutableStateOf(false) }
     val privateSpaceMovedCount = remember { mutableIntStateOf(0) }
 
-    // Move-to-Secure-Folder state
-    val secureFolderRepository = koinInject<SecureFolderRepository>()
-    val secureFolderPreferences = koinInject<SecureFolderPreferences>()
-    val moveToSecureConfirmOpen = rememberSaveable { mutableStateOf(false) }
-    val moveToSecureProgressOpen = rememberSaveable { mutableStateOf(false) }
-    val secureFolderProgress by secureFolderRepository.progress.collectAsState()
-
-    fun moveSelectedToSecureFolder() {
-      val selectedVideos = selectionManager.getSelectedItems()
-      if (selectedVideos.isEmpty()) return
-      moveToSecureProgressOpen.value = true
-      coroutineScope.launch {
-        val result = secureFolderRepository.moveIn(context, selectedVideos)
-        moveToSecureProgressOpen.value = false
-        selectionManager.clear()
-        viewModel.refresh()
-        result
-          .onSuccess { batch ->
-            val message =
-              if (batch.failedIds.isEmpty()) {
-                context.getString(R.string.secure_folder_moved_success, batch.succeededIds.size)
-              } else {
-                context.getString(R.string.secure_folder_moved_partial, batch.succeededIds.size, batch.failedIds.size)
-              }
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-          }.onFailure {
-            Toast.makeText(context, context.getString(R.string.secure_folder_move_failed), Toast.LENGTH_SHORT).show()
-          }
-      }
-    }
 
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
 
@@ -420,8 +384,6 @@ data class VideoListScreen(
             } else {
               { backstack.add(app.infinity.mpvz.ui.preferences.PreferencesScreen) }
             },
-          onTitleDoubleTap = { backstack.add(SecureFolderGateScreen) },
-          onTitleLongPress = { backstack.add(SecureFolderGateScreen) },
           isSingleSelection = selectionManager.isSingleSelection,
           onInfoClick = {
             if (selectionManager.isSingleSelection) {
@@ -440,15 +402,6 @@ data class VideoListScreen(
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
-          onMoveToSecureClick = {
-            if (!secureFolderPreferences.isPinSet()) {
-              backstack.add(SecureFolderGateScreen)
-            } else if (secureFolderPreferences.dontAskBeforeMove.get()) {
-              moveSelectedToSecureFolder()
-            } else {
-              moveToSecureConfirmOpen.value = true
-            }
-          },
           onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
           )
         }
@@ -536,13 +489,7 @@ data class VideoListScreen(
               // Always use MediaUtils.playFile which lets PlayerActivity auto-generate playlist
               // This avoids TransactionTooLargeException from passing large playlists
               // PlayerActivity will auto-generate playlist from folder if playlistMode is enabled
-              if (isAudiobook) {
-                coroutineScope.launch {
-                  AudiobookPlayback.launchForFile(context, video.path, video.uri.toString())
-                }
-              } else {
-                MediaUtils.playFile(video, context, "video_list")
-              }
+              MediaUtils.playFile(video, context, "video_list")
             }
           },
           onVideoLongClick = { video -> selectionManager.handleLongClick(video) },
@@ -583,7 +530,7 @@ data class VideoListScreen(
             onDeleteClick = { deleteDialogOpen.value = true },
             onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
             showDownscale = selectionManager.getSelectedItems().let { items -> items.isNotEmpty() && items.none { it.isAudio } },
-            showRename = selectionManager.selectedCount > 0,
+            showRename = selectionManager.isSingleSelection,
             modifier =
               Modifier
                 .align(Alignment.BottomCenter)
@@ -693,13 +640,6 @@ data class VideoListScreen(
               extension = if (extension != ".") extension else null,
             )
           }
-        } else if (selectionManager.selectedCount > 1) {
-          app.infinity.mpvz.ui.browser.dialogs.BulkAiRenameDialog(
-            isOpen = true,
-            onDismiss = { renameDialogOpen.value = false },
-            onConfirm = { updates -> selectionManager.renameBulk(updates) },
-            selectedVideos = selectionManager.getSelectedItems(),
-          )
         }
       }
 
@@ -850,25 +790,7 @@ data class VideoListScreen(
         },
       )
 
-      // Move to Secure Folder — confirm (skippable via "don't ask again"), then progress
-      SecureConfirmDialog(
-        isOpen = moveToSecureConfirmOpen.value,
-        title = stringResource(R.string.secure_folder_move_items_title, selectionManager.selectedCount),
-        subtitle = stringResource(R.string.secure_folder_move_items_subtitle),
-        dontAskAgain = secureFolderPreferences.dontAskBeforeMove,
-        onConfirm = {
-          moveToSecureConfirmOpen.value = false
-          moveSelectedToSecureFolder()
-        },
-        onDismiss = { moveToSecureConfirmOpen.value = false },
-      )
 
-      SecureFolderProgressDialog(
-        isOpen = moveToSecureProgressOpen.value,
-        progress = secureFolderProgress,
-        label = stringResource(R.string.secure_folder_moving_progress),
-        onCancel = { secureFolderRepository.cancelOperation() },
-      )
     }
   }
 }

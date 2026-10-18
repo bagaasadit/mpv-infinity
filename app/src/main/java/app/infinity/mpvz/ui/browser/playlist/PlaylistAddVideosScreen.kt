@@ -68,8 +68,7 @@ import org.koin.compose.koinInject
  * browsing/sort experience as [app.infinity.mpvz.ui.browser.folderlist.FolderListScreen]), drill
  * into one and multi-select videos using the app's own [rememberSelectionManager] + [BrowserTopBar]
  * (same as [app.infinity.mpvz.ui.browser.videolist.VideoListScreen]), then add them to the
- * playlist via [PlaylistDetailViewModel.addVideosToPlaylist] — mirrors
- * [app.infinity.mpvz.ui.securefolder.SecureFolderAddFilesScreen] for the Secure Folder flow.
+ * playlist via [PlaylistDetailViewModel.addVideosToPlaylist].
  */
 @Serializable
 data class PlaylistAddVideosScreen(

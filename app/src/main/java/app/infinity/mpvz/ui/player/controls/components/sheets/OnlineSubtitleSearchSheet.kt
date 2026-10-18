@@ -37,10 +37,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.infinity.mpvz.R
-import app.infinity.mpvz.preferences.AiPreferences
 import app.infinity.mpvz.presentation.components.PlayerSheet
 import app.infinity.mpvz.presentation.components.RemoteImage
-import app.infinity.mpvz.repository.ai.AiService
 import app.infinity.mpvz.repository.subtitle.OnlineSubtitle
 import app.infinity.mpvz.repository.subtitle.subdlGroupEpisodeRange
 import app.infinity.mpvz.repository.subtitle.withSelectedSubdlGroupEpisode
@@ -124,10 +122,7 @@ fun OnlineSubtitleSearchSheet(
       val context = LocalContext.current
       val mediaInfo = remember(mediaTitle) { MediaInfoParser.parse(mediaTitle) }
       var searchQuery by remember { mutableStateOf(mediaInfo.title) }
-      val aiPreferences = koinInject<AiPreferences>()
-      val aiService = koinInject<AiService>()
       val scope = rememberCoroutineScope()
-      var isAiFormatting by remember { mutableStateOf(false) }
 
       // Build the detected info string for display
       val detectedInfo =
@@ -155,40 +150,6 @@ fun OnlineSubtitleSearchSheet(
         searchQuery = q
         onSearchMedia(q)
         keyboardController?.hide()
-      }
-
-      fun formatWithAi() {
-        val input = if (searchQuery.isNotBlank()) searchQuery else mediaInfo.title
-        if (input.isBlank()) {
-          Toast
-            .makeText(
-              context,
-              context.getString(app.infinity.mpvz.R.string.ui_search_query_is_empty),
-              Toast.LENGTH_SHORT,
-            ).show()
-          return
-        }
-        scope.launch {
-          isAiFormatting = true
-          aiService
-            .formatTitleForSubtitleSearch(input)
-            .onSuccess { formatted ->
-              searchQuery = formatted
-              onSearchMedia(formatted)
-              keyboardController?.hide()
-            }.onFailure { e ->
-              Toast
-                .makeText(
-                  context,
-                  context.getString(
-                    R.string.toast_ai_format_failed,
-                    e.message ?: context.getString(R.string.generic_unknown_error),
-                  ),
-                  Toast.LENGTH_SHORT,
-                ).show()
-            }
-          isAiFormatting = false
-        }
       }
 
       Column(
@@ -252,16 +213,6 @@ fun OnlineSubtitleSearchSheet(
                     onClearMediaSelection()
                   }) {
                     Icon(Icons.RoundedFilled.Close, null)
-                  }
-                }
-                if (aiPreferences.enabled.get() && aiPreferences.subtitleFormatWithAi.get()) {
-                  if (isAiFormatting) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(4.dp))
-                  } else {
-                    IconButton(onClick = { formatWithAi() }) {
-                      Icon(Icons.RoundedFilled.AutoAwesome, "Format with AI", tint = MaterialTheme.colorScheme.tertiary)
-                    }
                   }
                 }
                 if (isSearching || isDownloading || isSearchingMedia) {
