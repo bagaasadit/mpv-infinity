@@ -103,7 +103,7 @@ fun SelectionTopBar(
             }
             if (onDeselectAll != null) {
               DropdownMenuItem(
-                text = { Text(stringResource(R.string.generic_deselect_all)) },
+                text = { Text(stringResource(R.string.deselect_all)) },
                 onClick = {
                   showSelectionMenu = false
                   onDeselectAll()
@@ -116,8 +116,8 @@ fun SelectionTopBar(
         if (onDeleteClick != null) {
           IconButton(onClick = onDeleteClick) {
             Icon(
-              imageVector = if (useRemoveIcon) Icons.RoundedFilled.DeleteOutline else Icons.RoundedFilled.Delete,
-              contentDescription = stringResource(R.string.generic_delete),
+              imageVector = Icons.RoundedFilled.Delete,
+              contentDescription = stringResource(R.string.delete),
               tint = MaterialTheme.colorScheme.error,
             )
           }
@@ -139,7 +139,7 @@ fun SelectionTopBar(
           IconButton(onClick = onBackClick) {
             Icon(
               imageVector = Icons.RoundedFilled.ArrowBack,
-              contentDescription = stringResource(R.string.generic_back),
+              contentDescription = stringResource(R.string.back),
             )
           }
         }
