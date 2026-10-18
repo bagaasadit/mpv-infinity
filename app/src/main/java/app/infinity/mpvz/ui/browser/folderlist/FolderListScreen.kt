@@ -1001,26 +1001,6 @@ object FolderListScreen : Screen {
           }
         }
       }
-    } else if (embedded && audiobookMode && selectedFolderBucketId != null) {
-      key(selectedFolderBucketId) {
-        CompositionLocalProvider(
-          app.infinity.mpvz.ui.browser.LocalNavigationBarHeight provides 0.dp,
-        ) {
-          VideoListScreen(
-            bucketId = selectedFolderBucketId!!,
-            folderName = selectedFolderName.orEmpty(),
-            isAudio = true,
-            isAudiobook = true,
-            searchQuery = searchQuery,
-            externalViewOptionsOpen = externalViewOptionsOpen,
-            onExternalViewOptionsDismiss = onExternalViewOptionsDismiss,
-            onBack = {
-              selectedFolderBucketId = null
-              selectedFolderName = null
-            },
-          ).Content()
-        }
-      }
     } else {
       FoldersPane()
     }

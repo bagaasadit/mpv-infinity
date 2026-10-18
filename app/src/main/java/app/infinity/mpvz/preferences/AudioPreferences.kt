@@ -50,6 +50,7 @@ class AudioPreferences(
       val missing = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS") - parsed.toSet()
       parsed + missing
     },
+  )
 
   init {
     // Consolidate the old audio-only screen-lock switch into the single global setting.

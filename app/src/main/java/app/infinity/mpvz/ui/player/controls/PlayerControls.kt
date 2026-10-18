@@ -393,6 +393,7 @@ fun PlayerControls(
   val isSpeedNonOne = remember(playbackSpeed) {
     abs((playbackSpeed ?: 1f) - 1f) > 0.001f
   }
+  val currentPlaybackItem = playbackQueue.currentItem
   val useAudioPlayer =
     when (currentPlaybackItem?.declaredMediaKind()) {
       DeclaredPlaybackMediaKind.VIDEO -> false

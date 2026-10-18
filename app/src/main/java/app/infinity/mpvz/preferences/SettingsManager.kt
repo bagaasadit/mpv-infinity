@@ -14,8 +14,6 @@ import android.net.Uri
 import android.util.Xml
 import app.infinity.mpvz.BuildConfig
 import app.infinity.mpvz.database.MpvInfinityDatabase
-import app.infinity.mpvz.domain.network.NetworkConnection
-import app.infinity.mpvz.domain.network.NetworkProtocol
 import app.infinity.mpvz.preferences.preference.PreferenceStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -111,19 +109,6 @@ class SettingsManager(
     }
     serializer.endTag(null, TAG_PREFERENCES)
 
-    serializer.startTag(null, TAG_DATABASE)
-
-    val networkConnections = database.networkConnectionDao().getAllConnectionsList()
-    serializer.startTag(null, TAG_NETWORK_CONNECTIONS)
-    networkConnections.forEach { connection ->
-      writeNetworkConnection(serializer, connection)
-      exportedCount++
-      exportedKeys.add("network:${connection.name}")
-    }
-    serializer.endTag(null, TAG_NETWORK_CONNECTIONS)
-
-    serializer.endTag(null, TAG_DATABASE)
-
     serializer.endTag(null, TAG_ROOT)
     serializer.endDocument()
     serializer.flush()
@@ -186,28 +171,6 @@ class SettingsManager(
     serializer.endTag(null, TAG_PREFERENCE)
   }
 
-  private fun writeNetworkConnection(
-    serializer: XmlSerializer,
-    connection: NetworkConnection,
-  ) {
-    serializer.startTag(null, TAG_NETWORK_CONNECTION)
-    serializer.attribute(null, "id", connection.id.toString())
-    serializer.attribute(null, "name", sanitizeXmlValue(connection.name))
-    serializer.attribute(null, "protocol", connection.protocol.name)
-    serializer.attribute(null, "host", sanitizeXmlValue(connection.host))
-    serializer.attribute(null, "port", connection.port.toString())
-    serializer.attribute(null, "username", sanitizeXmlValue(connection.username))
-    // Passwords are Android Keystore-bound ciphertext at rest. Exporting that envelope would both
-    // expose credential material and create an unusable backup on another installation. Deliberately
-    // omit it; non-anonymous imports stay disconnected until the user enters a password again.
-    serializer.attribute(null, "path", sanitizeXmlValue(connection.path))
-    serializer.attribute(null, "isAnonymous", connection.isAnonymous.toString())
-    serializer.attribute(null, "lastConnected", connection.lastConnected.toString())
-    serializer.attribute(null, "autoConnect", connection.autoConnect.toString())
-    serializer.attribute(null, "useHttps", connection.useHttps.toString())
-    serializer.attribute(null, "sftpHostKeyFingerprint", sanitizeXmlValue(connection.sftpHostKeyFingerprint))
-    serializer.endTag(null, TAG_NETWORK_CONNECTION)
-  }
 
   private suspend fun readSettingsFromXml(inputStream: InputStream): ImportStats {
     val parser: XmlPullParser = Xml.newPullParser()
@@ -216,8 +179,6 @@ class SettingsManager(
 
     val stats = ImportStats()
     var eventType = parser.eventType
-
-    val networkConnections = mutableListOf<NetworkConnection>()
 
     while (eventType != XmlPullParser.END_DOCUMENT) {
       when (eventType) {
@@ -238,29 +199,10 @@ class SettingsManager(
                 }
               }
             }
-            TAG_NETWORK_CONNECTION -> {
-              try {
-                networkConnections.add(readNetworkConnection(parser))
-                stats.imported++
-              } catch (e: Exception) {
-                stats.failed++
-                stats.errors.add("Failed to import network connection: ${e.message}")
-              }
-            }
           }
         }
       }
       eventType = parser.next()
-    }
-
-    // Insert all database data
-    try {
-      if (networkConnections.isNotEmpty()) {
-        database.networkConnectionDao().insertAll(networkConnections)
-      }
-    } catch (e: Exception) {
-      stats.failed++
-      stats.errors.add("Failed to insert database data: ${e.message}")
     }
 
     return stats
@@ -296,28 +238,6 @@ class SettingsManager(
     editor.apply()
   }
 
-  private fun readNetworkConnection(parser: XmlPullParser): NetworkConnection =
-    NetworkConnection(
-      id = 0, // Will be auto-generated
-      name = parser.getAttributeValue(null, "name") ?: "",
-      protocol =
-        NetworkProtocol.valueOf(
-          parser.getAttributeValue(null, "protocol") ?: "SMB",
-        ),
-      host = parser.getAttributeValue(null, "host") ?: "",
-      port = parser.getAttributeValue(null, "port")?.toIntOrNull() ?: 445,
-      username = parser.getAttributeValue(null, "username") ?: "",
-      // Never restore credentials from settings XML, including legacy exports that contained
-      // plaintext passwords or device-bound encrypted envelopes.
-      password = "",
-      path = parser.getAttributeValue(null, "path") ?: "/",
-      isAnonymous = parser.getAttributeValue(null, "isAnonymous")?.toBoolean() ?: false,
-      lastConnected = parser.getAttributeValue(null, "lastConnected")?.toLongOrNull() ?: 0L,
-      // Avoid repeated authentication attempts before credentials have been re-entered.
-      autoConnect = false,
-      useHttps = parser.getAttributeValue(null, "useHttps")?.toBoolean() ?: false,
-      sftpHostKeyFingerprint = parser.getAttributeValue(null, "sftpHostKeyFingerprint") ?: "",
-    )
 
   fun getDefaultExportFilename(): String {
     val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())

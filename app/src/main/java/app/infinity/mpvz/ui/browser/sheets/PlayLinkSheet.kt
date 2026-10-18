@@ -47,7 +47,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import app.infinity.mpvz.database.repository.NetworkStreamEntryRepository
 import app.infinity.mpvz.preferences.YtdlPreferences
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
@@ -76,7 +75,6 @@ fun PlayLinkSheet(
   val coroutineScope = rememberCoroutineScope()
   val context = LocalContext.current
   val ytdlPreferences = koinInject<YtdlPreferences>()
-  val streamEntryRepository = koinInject<NetworkStreamEntryRepository>()
 
   val handleDismiss = { onDismiss() }
 
@@ -109,12 +107,6 @@ fun PlayLinkSheet(
                 fileName = selectedName,
                 launchSource = "play_link",
               )
-              streamEntryRepository.saveNormalEntry(
-                canonicalSourceUri = selectedSource,
-                fileName = selectedName,
-                posterUrl = firstEntry?.thumbnailUrl,
-                backdropUrl = firstEntry?.thumbnailUrl,
-              )
 
               val uri = runCatching { android.net.Uri.parse(selectedSource) }.getOrNull()
               if (firstEntry == null && app.infinity.mpvz.utils.media.HttpUtils.isYouTubeUrl(uri)) {
@@ -127,12 +119,6 @@ fun PlayLinkSheet(
                     fileSize = 0L,
                     width = 0,
                     height = 0,
-                  )
-                  streamEntryRepository.saveNormalEntry(
-                    canonicalSourceUri = selectedSource,
-                    fileName = ytMeta.title,
-                    posterUrl = ytMeta.thumbnailUrl,
-                    backdropUrl = ytMeta.thumbnailUrl,
                   )
                 }
               }

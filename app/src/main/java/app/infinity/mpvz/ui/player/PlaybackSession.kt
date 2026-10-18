@@ -431,8 +431,6 @@ object PlaybackSession : MPVLib.EventObserver {
   private fun finalizeStopLocked() {
     if (pendingStopClearQueue) _queue.value = PlaybackQueueState()
     pendingStopClearQueue = false
-    releaseActiveNetworkStreamLocked()
-    releaseAuxiliaryNetworkStreamsLocked()
     updateState {
       it.copy(
         phase = PlaybackPhase.IDLE,
@@ -499,8 +497,6 @@ object PlaybackSession : MPVLib.EventObserver {
     runCatching { MPVLib.removeObserver(this) }
     runCatching { MPVLib.destroy() }
       .onFailure { error -> Log.e(TAG, "Failed to destroy libmpv", error) }
-    releaseActiveNetworkStreamLocked()
-    releaseAuxiliaryNetworkStreamsLocked()
     observers.clear()
     observedProperties.clear()
     resetAmbientShaderTrackingLocked()

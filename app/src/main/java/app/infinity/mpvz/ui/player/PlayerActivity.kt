@@ -5718,7 +5718,6 @@ class PlayerActivity :
         width = width,
         height = height,
         launchSource = launchSource,
-        aliases = currentStreamHistoryAliases(),
       )
 
       Log.d(TAG, "Saved recently played: $filePath")
@@ -8093,7 +8092,6 @@ class PlayerActivity :
         height = height,
         launchSource = "playlist",
         playlistId = historyPlaylistId,
-        aliases = currentStreamHistoryAliases(),
       )
 
 

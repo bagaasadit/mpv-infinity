@@ -4,10 +4,22 @@
 
 package app.infinity.mpvz.ui.browser.music
 
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -673,3 +685,52 @@ fun SharedMusicDetailHeader(
     }
   }
 }
+
+@Composable
+fun LocalAlbumArtImage(
+  uri: Uri?,
+  contentDescription: String?,
+  modifier: Modifier = Modifier
+) {
+  val context = LocalContext.current
+  var bitmap by remember(uri) { mutableStateOf<ImageBitmap?>(null) }
+
+  LaunchedEffect(uri) {
+    if (uri != null) {
+      bitmap = withContext(Dispatchers.IO) {
+        try {
+          context.contentResolver.openInputStream(uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream)?.asImageBitmap()
+          }
+        } catch (e: Exception) {
+          null
+        }
+      }
+    } else {
+      bitmap = null
+    }
+  }
+
+  val loaded = bitmap
+  if (loaded != null) {
+    Image(
+      bitmap = loaded,
+      contentDescription = contentDescription,
+      contentScale = ContentScale.Crop,
+      modifier = modifier
+    )
+  } else {
+    Box(
+      modifier = modifier,
+      contentAlignment = Alignment.Center
+    ) {
+      Icon(
+        imageVector = Icons.RoundedFilled.Audiotrack,
+        contentDescription = contentDescription,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(24.dp)
+      )
+    }
+  }
+}
+

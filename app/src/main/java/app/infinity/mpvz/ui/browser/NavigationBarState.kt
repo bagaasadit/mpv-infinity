@@ -19,6 +19,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+val LocalNavigationBarHeight = androidx.compose.runtime.compositionLocalOf<Dp> { 0.dp }
+
 /**
  * Centralized state holder for browser navigation visibility.
  * Uses Compose state so screens recompose only when values actually change.

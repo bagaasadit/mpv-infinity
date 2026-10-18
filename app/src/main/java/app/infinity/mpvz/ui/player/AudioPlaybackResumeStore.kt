@@ -55,7 +55,6 @@ internal object AudioPlaybackResumeStore {
       queueState.items.size <= MAX_PERSISTED_QUEUE_ITEMS &&
         queueState.items.all { item ->
           item.isDefinitelyAudioOnly() &&
-            item.audiobook == null &&
             item.torrentFileIndex == null &&
             !item.requiresTorrentResolution()
         }
