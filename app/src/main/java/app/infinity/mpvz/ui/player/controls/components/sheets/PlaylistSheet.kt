@@ -70,10 +70,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import app.infinity.mpvz.R
+import app.infinity.mpvz.domain.media.model.Video
 import app.infinity.mpvz.domain.thumbnail.ThumbnailRepository
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.components.PlayerSheet
 import app.infinity.mpvz.presentation.components.RemoteImage
+import app.infinity.mpvz.ui.player.PlaybackSession
 import app.infinity.mpvz.ui.player.controls.components.MiniAudioVisualizer
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons

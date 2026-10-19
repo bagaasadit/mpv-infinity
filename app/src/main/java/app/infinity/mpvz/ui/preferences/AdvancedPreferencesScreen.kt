@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -1055,6 +1056,13 @@ object AdvancedPreferencesScreen : Screen {
 
 fun getSimplifiedPathFromUri(uri: String): String =
   File(Environment.getExternalStorageDirectory(), Uri.decode(uri).substringAfterLast(":")).canonicalPath
+
+internal fun getSimplifiedStoragePath(uriString: String): String =
+  try {
+    Uri.decode(uriString).substringAfterLast(':').ifEmpty { uriString }
+  } catch (_: Exception) {
+    uriString
+  }
 
 private fun formatFileSize(bytes: Long): String =
   when {
