@@ -8371,23 +8371,7 @@ class PlayerActivity :
         VideoSortType.Title -> naturalSortFiles(files)
         VideoSortType.Date -> files.sortedBy { it.lastModified() }
         VideoSortType.Size -> files.sortedBy { it.length() }
-        VideoSortType.Duration -> {
-          val fileByPath = files.associateBy { normalizePlaylistFilePath(it.absolutePath) }
-          val sortedVideos =
-            app.infinity.mpvz.repository.MediaFileRepository
-              .getVideosFromFiles(this@PlayerActivity, files)
-              .let { videos ->
-                app.infinity.mpvz.utils.sort.SortUtils
-                  .sortVideos(videos, sortType, sortOrder)
-              }
-          val resolvedFiles = sortedVideos.mapNotNull { video -> fileByPath[normalizePlaylistFilePath(video.path)] }
-          if (resolvedFiles.isEmpty()) {
-            naturalSortFiles(files)
-          } else {
-            val seenPaths = resolvedFiles.mapTo(mutableSetOf()) { normalizePlaylistFilePath(it.absolutePath) }
-            resolvedFiles + naturalSortFiles(files.filter { normalizePlaylistFilePath(it.absolutePath) !in seenPaths })
-          }
-        }
+        VideoSortType.Duration -> files.sortedBy { FileTypeUtils.getDurationMs(it) }
       }
 
     return if (sortType == VideoSortType.Duration || sortOrder.isAscending) {
@@ -8424,28 +8408,7 @@ class PlayerActivity :
         }?.toList()
         .orEmpty()
 
-    if (!isVideoListLaunchSource(launchSource)) {
-      return naturalSortFiles(directMediaFiles)
-    }
-
-    val currentFilePath = normalizePlaylistFilePath(currentFile.absolutePath)
-    val fileByPath = directMediaFiles.associateBy { normalizePlaylistFilePath(it.absolutePath) }
-    val sortedFromLibrary =
-      app.infinity.mpvz.repository.MediaFileRepository
-        .getVideosInFolder(context, normalizePlaylistFilePath(parentFolder.absolutePath))
-        .let { videos ->
-          app.infinity.mpvz.utils.sort.SortUtils.sortVideos(
-            videos,
-            browserPreferences.videoSortType.get(),
-            browserPreferences.videoSortOrder.get(),
-          )
-        }.mapNotNull { video -> fileByPath[normalizePlaylistFilePath(video.path)] }
-
-    return if (sortedFromLibrary.any { normalizePlaylistFilePath(it.absolutePath) == currentFilePath }) {
-      sortedFromLibrary
-    } else {
-      sortSiblingFilesForVideoList(directMediaFiles)
-    }
+    return sortSiblingFilesForVideoList(directMediaFiles)
   }
 
   private suspend fun loadPlaylistById(
@@ -8455,76 +8418,6 @@ class PlayerActivity :
     expectedGeneration: Long = mediaRequestGeneration,
   ) {
     if (isAllVideosPlaylist(pid)) {
-      val isAudioTarget = sourceIntent.getBooleanExtra("media_library_audio", false) || isKnownAudioLaunch(sourceIntent)
-      val mediaLibraryAudio = sourceIntent.getBooleanExtra("media_library_audio", false) || isAudioTarget
-      val isMediaLibraryLaunch = sourceIntent.getStringExtra("launch_source") == "media_library" || isAudioTarget
-      val allVideos =
-        app.infinity.mpvz.utils.sort.SortUtils.sortVideos(
-          app.infinity.mpvz.repository.MediaFileRepository
-            .getAllVideos(
-              context = this@PlayerActivity,
-              includeAudioOverride = if (isMediaLibraryLaunch || isAudioTarget) true else null,
-            ).let { media ->
-              if (isMediaLibraryLaunch || isAudioTarget) {
-                media.filter { it.isAudio == mediaLibraryAudio }
-              } else {
-                media.filter { !it.isAudio }
-              }
-            },
-          browserPreferences.videoSortType.get(),
-          browserPreferences.videoSortOrder.get(),
-        )
-      val playlistUris = allVideos.map { it.uri }
-      val resolvedPath = parsePathFromIntent(sourceIntent)
-      val resolvedUri = sourceIntent.dataString
-      val derivedIndex =
-        allVideos.indexOfFirst { video ->
-          video.path == resolvedPath || video.uri.toString() == resolvedUri
-        }
-      val syntheticItems =
-        allVideos.mapIndexed { index, video ->
-          PlaylistItemEntity(
-            id = index + 1,
-            playlistId = ALL_VIDEOS_PLAYLIST_ID,
-            filePath = video.path,
-            fileName = video.displayName,
-            position = index,
-            addedAt = video.dateAdded * 1000L,
-          )
-        }
-      val updatedAt =
-        allVideos.maxOfOrNull { it.dateModified * 1000L } ?: System.currentTimeMillis()
-      if (!isCurrentMediaRequest(expectedGeneration)) return
-
-      withContext(Dispatchers.Main) {
-        if (!isCurrentMediaRequest(expectedGeneration)) return@withContext
-        playlistEntity = buildAllVideosPlaylistEntity(updatedAt = updatedAt)
-        playlistItems = syntheticItems
-        isM3uPlaylist = false
-        playlist = playlistUris
-        // Drop metadata synced from the temporary one-item launch queue (see auto-playlist path).
-        networkPlaylistPaths = emptyList()
-        networkPlaylistTitles = emptyList()
-        networkPlaylistArtworkUrls = emptyList()
-        networkPlaylistHeaders = emptyList()
-        networkPlaylistConnectionId = -1L
-        playlistWindowOffset = 0
-        playlistTotalCount = playlistUris.size
-        playlistIndex =
-          derivedIndex.takeIf { it >= 0 }
-            ?: playlistIndex.coerceIn(0, (playlistUris.lastIndex).coerceAtLeast(0))
-        Log.d(TAG, "$logPrefix ${playlistUris.size} items from all-videos playlist")
-        val restoringSavedSelection = pendingSavedPlaylistSelection != null
-        if (restoringSavedSelection) {
-          applyPendingSavedSelection(playlist)
-          pendingSavedPlaylistSelection = null
-        }
-        publishPlaylistToSession()
-        viewModel.refreshPlaylistItems()
-        if (restoringSavedSelection && playlist.isNotEmpty()) {
-          loadPlaylistItemInternal(playlistIndex, saveCurrentPlaybackState = false)
-        }
-      }
       return
     }
 

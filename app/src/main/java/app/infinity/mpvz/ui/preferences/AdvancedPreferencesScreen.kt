@@ -709,11 +709,9 @@ object AdvancedPreferencesScreen : Screen {
               markerNames = hiddenFolderMarkerNames,
               onIncludeNoMediaFoldersChanged = { enabled ->
                 foldersPreferences.includeNoMediaFolders.set(enabled)
-                app.infinity.mpvz.repository.MediaFileRepository.clearCache()
               },
               onMarkerNamesChanged = { markerNames ->
                 foldersPreferences.hiddenFolderMarkerNames.set(markerNames)
-                app.infinity.mpvz.repository.MediaFileRepository.clearCache()
               },
             )
           }
