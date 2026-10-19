@@ -4220,7 +4220,8 @@ class PlayerViewModel : ViewModel(),
             detected = AutoCropAnalyzer.combine(samples)
           } else if (!hadVisibleFrame) {
             // The scene was too dark to detect content (e.g. paused in pitch black hallway in The Batman).
-            // Do NOT falsely report NO_BARS.
+            // Do NOT falsely report NO_BARS. Reset generation so future scene changes can retry.
+            autoCropAnalyzedGeneration = -1L
             withContext(Dispatchers.Main) {
               clearAutoCropProperty()
               _autoCropState.value = AutoCropState.ERROR

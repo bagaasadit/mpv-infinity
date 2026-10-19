@@ -147,18 +147,34 @@ class NativeMedia3Engine(context: Context) {
     .setSubtitleParserFactory(assSubtitleParserFactory)
   private val player = ExoPlayer.Builder(context.applicationContext)
     .setLoadControl(
-      DefaultLoadControl.Builder()
-        .setBufferDurationsMs(
-          30_000,                  // 30s agile buffer cushion
-          120_000,                 // 120s maximum buffer ceiling (2 minutes)
-          2_000,                   // Instant start in 2s
-          4_000,                   // Quick resume in 4s after rebuffering
-        )
-        .setBackBuffer(30_000, false)
-        // 256 MB RAM buffer ceiling safe on modern devices like POCO F5 (8/12GB RAM)
-        .setTargetBufferBytes(256 * 1024 * 1024)
-        .setPrioritizeTimeOverSizeThresholds(true)
-        .build(),
+      run {
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        val memInfo = android.app.ActivityManager.MemoryInfo().also { activityManager?.getMemoryInfo(it) }
+        val totalMemMb = (memInfo.totalMem / (1024 * 1024)).coerceAtLeast(1024L)
+        val isLowRam = activityManager?.isLowRamDevice == true || totalMemMb < 3500L
+        val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).coerceAtLeast(64L)
+
+        val targetBufferBytes = when {
+          isLowRam || maxHeapMb < 256 -> 32 * 1024 * 1024       // 32MB: Safe for 32-bit / Low-RAM
+          totalMemMb < 6000L || maxHeapMb < 512 -> 64 * 1024 * 1024 // 64MB: Mid-range devices
+          else -> 128 * 1024 * 1024                             // 128MB: High-end 64-bit devices
+        }
+        val maxBufferMs = if (isLowRam) 45_000 else 120_000
+        val minBufferMs = if (isLowRam) 15_000 else 30_000
+        val startBufferMs = if (isLowRam) 1_500 else 2_000
+
+        DefaultLoadControl.Builder()
+          .setBufferDurationsMs(
+            minBufferMs,
+            maxBufferMs,
+            startBufferMs,
+            4_000,
+          )
+          .setBackBuffer(if (isLowRam) 10_000 else 30_000, false)
+          .setTargetBufferBytes(targetBufferBytes)
+          .setPrioritizeTimeOverSizeThresholds(true)
+          .build()
+      },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
     // being handed over from MPV. Disable this watchdog for Native; a real player/codec error is

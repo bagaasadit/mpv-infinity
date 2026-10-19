@@ -271,7 +271,11 @@ fun PlayerControls(
     val target = nativeSeekPreviewPosition
     if (nativeEngineActive && !isSeeking && target != null) {
       val actualSeconds = nativeSnapshot.positionMs / 1000f
-      if (kotlin.math.abs(actualSeconds - target) <= 0.75f) {
+      if (kotlin.math.abs(actualSeconds - target) <= 1.5f) {
+        nativeSeekPreviewPosition = null
+      } else {
+        // Fallback timeout to prevent seekbar preview from staying permanently stuck
+        kotlinx.coroutines.delay(500L)
         nativeSeekPreviewPosition = null
       }
     }

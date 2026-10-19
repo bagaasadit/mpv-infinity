@@ -938,8 +938,6 @@ class PlayerActivity :
               activeEngineMode = PlaybackEngineMode.NATIVE
               viewModel.setNativeEngineActive(true)
               setNativeVideoSurfaceVisible(true)
-              binding.player.alpha = 0f
-              binding.player.visibility = View.GONE
               nativeEngine.play(
                 nativeUri,
                 outgoingPositionMs,
@@ -978,6 +976,7 @@ class PlayerActivity :
                   return@launch
                 }
                 setNativeVideoSurfaceVisible(true)
+                binding.player.alpha = 0f
                 binding.player.visibility = View.GONE
                 if (ownsPlaybackSession()) {
                   // Native successfully took over rendering. Cleanly stop MPV so its background
