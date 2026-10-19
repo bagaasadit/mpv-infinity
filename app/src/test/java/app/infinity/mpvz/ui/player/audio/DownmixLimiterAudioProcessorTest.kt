@@ -4,7 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.ByteBuffer
@@ -44,6 +44,35 @@ class DownmixLimiterAudioProcessorTest {
     assertEquals(48000, configured.sampleRate)
     assertEquals(2, configured.channelCount)
     assertEquals(C.ENCODING_PCM_16BIT, configured.encoding)
+  }
+
+  @Test
+  fun twentyFourBitAndThirtyTwoBitPcmConfiguresToStereo16Bit() {
+    val format24 = AudioFormat(48000, 6, C.ENCODING_PCM_24BIT)
+    val configured24 = processor.configure(format24)
+    assertEquals(48000, configured24.sampleRate)
+    assertEquals(2, configured24.channelCount)
+    assertEquals(C.ENCODING_PCM_16BIT, configured24.encoding)
+
+    val format32 = AudioFormat(96000, 8, C.ENCODING_PCM_32BIT)
+    val configured32 = processor.configure(format32)
+    assertEquals(96000, configured32.sampleRate)
+    assertEquals(2, configured32.channelCount)
+    assertEquals(C.ENCODING_PCM_16BIT, configured32.encoding)
+  }
+
+  @Test
+  fun partialFrameBoundaryDoesNotHang() {
+    val format51 = AudioFormat(48000, 6, C.ENCODING_PCM_16BIT)
+    processor.configure(format51)
+    processor.flush()
+
+    // 1 frame = 6 channels * 2 bytes = 12 bytes. Send only 7 bytes (partial frame)
+    val partialBytes = ByteBuffer.allocate(7).order(ByteOrder.LITTLE_ENDIAN)
+    processor.queueInput(partialBytes)
+
+    // Position must have advanced to limit so caller is not trapped in busy-loop
+    assertFalse("Partial input buffer must be consumed to avoid infinite busy-loop", partialBytes.hasRemaining())
   }
 
   @Test

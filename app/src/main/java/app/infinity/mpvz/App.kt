@@ -147,12 +147,10 @@ class App :
     val videoBackgroundPlaybackEnabled = getKoin().get<AudioPreferences>().backgroundPlayback.get()
     if (videoBackgroundPlaybackEnabled) return
 
-    val state = PlaybackSession.state.value
-    if (state.currentItem == null || state.phase == PlaybackPhase.IDLE || state.phase == PlaybackPhase.UNINITIALIZED) return
-
-    PlaybackSession.setPropertyBoolean("pause", true)
+    // Pause active playback across both NativeMedia3 and MPV engines
+    playerActivity.pauseActivePlayback()
     playerActivity.abandonAudioFocus()
-    Log.d(TAG, "Paused video because video background playback is disabled")
+    Log.d(TAG, "Paused active playback because video background playback is disabled")
   }
 
   override fun onActivityCreated(

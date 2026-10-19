@@ -125,7 +125,6 @@ import app.infinity.mpvz.preferences.DecoderPreferences
 import app.infinity.mpvz.preferences.PlayerButton
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.PortraitPlaybackControlsPosition
-import app.infinity.mpvz.preferences.SubtitlesPreferences
 import app.infinity.mpvz.preferences.allPlayerButtons
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.preferences.preference.deleteAndGet
@@ -210,25 +209,6 @@ fun PlayerControls(
     appearancePreferences.portraitPlaybackControlsPosition.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
-  val subtitlesPreferences = koinInject<SubtitlesPreferences>()
-  val subtitlePosition by subtitlesPreferences.subPos.collectAsState()
-  val subtitleFontSize by subtitlesPreferences.fontSize.collectAsState()
-  val subtitleScale by subtitlesPreferences.subScale.collectAsState()
-  val subtitleTextColor by subtitlesPreferences.textColor.collectAsState()
-  val subtitleBackgroundColor by subtitlesPreferences.backgroundColor.collectAsState()
-  val subtitleBorderColor by subtitlesPreferences.borderColor.collectAsState()
-  val subtitleBorderSize by subtitlesPreferences.borderSize.collectAsState()
-  val subtitleShadowOffset by subtitlesPreferences.shadowOffset.collectAsState()
-  val subtitleBold by subtitlesPreferences.bold.collectAsState()
-  val subtitleItalic by subtitlesPreferences.italic.collectAsState()
-  val subtitleJustification by subtitlesPreferences.justification.collectAsState()
-  val subtitleFont by subtitlesPreferences.font.collectAsState()
-  val mpvSubtitlePosition by PlaybackSession.propInt["sub-pos"].collectAsState()
-  val mpvSubtitleFontSize by PlaybackSession.propInt["sub-font-size"].collectAsState()
-  val mpvSubtitleMarginX by PlaybackSession.propInt["sub-margin-x"].collectAsState()
-  val mpvSubtitleScale by PlaybackSession.propFloat["sub-scale"].collectAsState()
-  val mpvOsdWidth by PlaybackSession.propInt["osd-width"].collectAsState()
-  val mpvOsdHeight by PlaybackSession.propInt["osd-height"].collectAsState()
   val decoderPreferences = koinInject<DecoderPreferences>()
   val playbackEngine by decoderPreferences.playbackEngine.collectAsState()
   val showSystemStatusBar by playerPreferences.showSystemStatusBar.collectAsState()
@@ -244,7 +224,6 @@ fun PlayerControls(
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val playbackQueue by PlaybackSession.queue.collectAsStateWithLifecycle()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
-  val precisePosition by viewModel.precisePosition.collectAsState()
   val demuxerCacheTime by PlaybackSession.propDouble["demuxer-cache-time"].collectAsState()
   val mpvPlaybackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
   val seekbarDuration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f

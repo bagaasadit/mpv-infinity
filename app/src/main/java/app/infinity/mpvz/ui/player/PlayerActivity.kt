@@ -639,6 +639,7 @@ class PlayerActivity :
   private var resumeOnAudioFocusGain = false
   private var playbackDelayedForAudioFocus = false
   private var volumeBeforeAudioFocusDuck: Double? = null
+  private var nativeVolumeBeforeDuck: Float? = null
 
   // ==================== Broadcast Receivers ====================
 
@@ -695,6 +696,7 @@ class PlayerActivity :
   private val audioFocusChangeListener =
     AudioManager.OnAudioFocusChangeListener { focusChange ->
       PlaybackActivityOwner.runIfOwner(playbackOwnerToken, Unit) {
+        val isNative = activeEngineMode == PlaybackEngineMode.NATIVE || isNativeEngineActive()
         when (focusChange) {
           AudioManager.AUDIOFOCUS_LOSS -> {
             audioFocusRequestActive = false
@@ -708,6 +710,9 @@ class PlayerActivity :
             if (!handoff) {
               // Focus callbacks must not use the ordinary pause action: it abandons focus and can
               // erase the resume intent while Android is still dispatching a transient focus cycle.
+              if (isNative) {
+                nativeEngine.setPlaying(false)
+              }
               PlaybackSession.setPropertyBoolean("pause", true)
             }
           }
@@ -716,20 +721,35 @@ class PlayerActivity :
             holdsAudioFocus = false
             val handoff = isFinishing || isDestroyed || MediaPlaybackService.isActivityHandoffInProgress()
             if (!handoff) {
-              val wasPlaying = PlaybackSession.getPropertyBoolean("pause") == false
+              val wasPlaying = if (isNative) {
+                nativeEngine.currentPlayer.isPlaying
+              } else {
+                PlaybackSession.getPropertyBoolean("pause") == false
+              }
               // Android can dispatch the same transient loss more than once during a call. Once a
               // playing session has requested resume, a later callback must not overwrite it merely
               // because the first callback already paused mpv.
               resumeOnAudioFocusGain = resumeOnAudioFocusGain || wasPlaying
+              if (isNative) {
+                nativeEngine.setPlaying(false)
+              }
               PlaybackSession.setPropertyBoolean("pause", true)
             }
           }
 
           AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-            if (volumeBeforeAudioFocusDuck == null) {
-              PlaybackSession.getPropertyDouble("volume")?.let { volume ->
-                volumeBeforeAudioFocusDuck = volume
-                PlaybackSession.setPropertyDouble("volume", volume * 0.5)
+            if (isNative) {
+              if (nativeVolumeBeforeDuck == null) {
+                val currentVol = nativeEngine.currentPlayer.volume
+                nativeVolumeBeforeDuck = currentVol
+                nativeEngine.currentPlayer.volume = currentVol * 0.5f
+              }
+            } else {
+              if (volumeBeforeAudioFocusDuck == null) {
+                PlaybackSession.getPropertyDouble("volume")?.let { volume ->
+                  volumeBeforeAudioFocusDuck = volume
+                  PlaybackSession.setPropertyDouble("volume", volume * 0.5)
+                }
               }
             }
           }
@@ -742,7 +762,12 @@ class PlayerActivity :
               val shouldResume = resumeOnAudioFocusGain || playbackDelayedForAudioFocus
               resumeOnAudioFocusGain = false
               playbackDelayedForAudioFocus = false
-              if (shouldResume) PlaybackSession.setPropertyBoolean("pause", false)
+              if (shouldResume) {
+                if (isNative) {
+                  nativeEngine.setPlaying(true)
+                }
+                PlaybackSession.setPropertyBoolean("pause", false)
+              }
             }
           }
 
@@ -2166,8 +2191,27 @@ class PlayerActivity :
   }
 
   private fun restoreDuckedAudioVolume() {
+    nativeVolumeBeforeDuck?.let { vol ->
+      runCatching { nativeEngine.currentPlayer.volume = vol }
+    }
+    nativeVolumeBeforeDuck = null
+
     volumeBeforeAudioFocusDuck?.let { volume -> PlaybackSession.setPropertyDouble("volume", volume) }
     volumeBeforeAudioFocusDuck = null
+  }
+
+  fun pauseActivePlayback() {
+    if (activeEngineMode == PlaybackEngineMode.NATIVE || isNativeEngineActive()) {
+      nativeEngine.setPlaying(false)
+    }
+    PlaybackSession.setPropertyBoolean("pause", true)
+  }
+
+  fun resumeActivePlayback() {
+    if (activeEngineMode == PlaybackEngineMode.NATIVE || isNativeEngineActive()) {
+      nativeEngine.setPlaying(true)
+    }
+    PlaybackSession.setPropertyBoolean("pause", false)
   }
 
   private fun cleanupAudio() {
@@ -2337,23 +2381,15 @@ class PlayerActivity :
     MediaPlaybackService.activityForeground = false
     runCatching {
       pipHelper.onStop()
-      if ((isNativeEngineActive() || activeEngineMode == PlaybackEngineMode.NATIVE) && fileName.isNotBlank()) {
+      val nativeActive = isNativeEngineActive() || activeEngineMode == PlaybackEngineMode.NATIVE
+      if (nativeActive && fileName.isNotBlank()) {
         saveVideoPlaybackState(fileName, immediate = true)
       }
-      if (!mpvInitialized) return@runCatching
 
-      if (noisyReceiverRegistered) {
-        unregisterReceiver(noisyReceiver)
-        noisyReceiverRegistered = false
-      }
+      // Always clean up receivers to prevent IntentReceiverLeaked on native playback or early exit
+      cleanupReceivers()
 
-      // Unregister the screen-state receiver while stopped so the Activity
-      // is not woken by ACTION_SCREEN_OFF / ACTION_USER_PRESENT while in
-      // the background. It is re-registered in onStart(). See issue 2.3.
-      if (screenStateReceiverRegistered) {
-        unregisterReceiver(screenStateReceiver)
-        screenStateReceiverRegistered = false
-      }
+      if (!mpvInitialized && !nativeActive) return@runCatching
 
       if (
         PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnStop(

@@ -430,9 +430,9 @@ class NativeMedia3Engine(context: Context) {
         .setUsage(C.USAGE_MEDIA)
         .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
         .build(),
-      true,
+      false, // Delegated to PlayerActivity as single source of truth
     )
-    player.setHandleAudioBecomingNoisy(true)
+    player.setHandleAudioBecomingNoisy(false) // PlayerActivity manages noisyReceiver
     assHandler.init(player)
     Log.i(logTag, "Native Media3 configured: stuckBufferingDetectionTimeoutMs=${Int.MAX_VALUE}")
     // Large UHD/Dolby Vision files can take a long time to decode an exact frame after a seek.
