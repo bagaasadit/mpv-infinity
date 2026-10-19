@@ -79,8 +79,6 @@ import androidx.media3.common.C
 import androidx.lifecycle.repeatOnLifecycle
 import app.infinity.mpvz.R
 import app.infinity.mpvz.database.entities.PlaybackStateEntity
-import app.infinity.mpvz.database.entities.PlaylistEntity
-import app.infinity.mpvz.database.entities.PlaylistItemEntity
 import app.infinity.mpvz.databinding.PlayerLayoutBinding
 import app.infinity.mpvz.domain.anime4k.Anime4KManager
 import app.infinity.mpvz.domain.network.NetworkPlaybackUri
@@ -98,9 +96,6 @@ import app.infinity.mpvz.preferences.MpvConfigOverridePolicy
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.SubtitlesPreferences
 import app.infinity.mpvz.preferences.VideoSortType
-import app.infinity.mpvz.database.entities.ALL_VIDEOS_PLAYLIST_ID
-import app.infinity.mpvz.database.entities.buildAllVideosPlaylistEntity
-import app.infinity.mpvz.database.entities.isAllVideosPlaylist
 import app.infinity.mpvz.ui.player.controls.PlayerControls
 import app.infinity.mpvz.ui.player.components.VideoAmbientBackground
 import app.infinity.mpvz.ui.player.components.rememberVideoAmbientFrame
@@ -220,11 +215,6 @@ class PlayerActivity :
   private val networkHttpClient: OkHttpClient by inject()
 
   private val androidCookieJar: AndroidCookieJar by inject()
-
-  /**
-   * Repository for managing playlists.
-   */
-  private val playlistRepository: app.infinity.mpvz.database.repository.PlaylistRepository by inject()
 
   /**
    * Preferences for player settings.
@@ -473,11 +463,6 @@ class PlayerActivity :
   internal var playlist: List<Uri> = emptyList()
 
   /**
-   * Database metadata for playlist items, if the current playlist was loaded from Room.
-   */
-  private var playlistItems: List<PlaylistItemEntity> = emptyList()
-
-  /**
    * Original network metadata for intent-backed WebDAV/SMB/FTP playlists.
    */
   private var networkPlaylistPaths: List<String> = emptyList()
@@ -485,11 +470,6 @@ class PlayerActivity :
   private var networkPlaylistArtworkUrls: List<String> = emptyList()
   private var networkPlaylistHeaders: List<Map<String, String>> = emptyList()
   private var networkPlaylistConnectionId: Long = -1L
-
-  /**
-   * Playlist metadata for the current Room-backed playlist.
-   */
-  private var playlistEntity: PlaylistEntity? = null
 
   /**
    * Current index in the playlist
@@ -1203,22 +1183,6 @@ class PlayerActivity :
       hasValidSavedPlaybackSession() || audioPlaybackSessionAttachableAtLaunch || restoredAudioPlaybackSnapshot != null
 
     // If playlist is empty but playlist_id is provided, load asynchronously from database
-    // Load all items - LazyColumn handles pagination/virtualization efficiently
-    if (playlist.isEmpty() && playlistId != null && !hasReusableSavedPlaybackSession) {
-      lifecycleScope.launch(Dispatchers.IO) {
-        val pid = playlistId ?: return@launch
-        try {
-          loadPlaylistById(
-            pid = pid,
-            sourceIntent = intent,
-            logPrefix = "Loaded",
-          )
-        } catch (e: Exception) {
-          Log.e(TAG, "Failed to load playlist from database", e)
-        }
-      }
-    }
-
     // Only auto-generate playlist from folder if playlist mode is enabled and no playlist_id
     if (playlist.isEmpty() &&
       playlistId == null &&
@@ -2163,17 +2127,6 @@ class PlayerActivity :
     networkPlaylistHeaders = queueItems.map(PlaybackItem::headers)
     networkPlaylistConnectionId = queueState.currentItem?.networkSource?.connectionId ?: -1L
     isM3uPlaylist = queueState.isM3u
-
-    if (playlistItems.isNotEmpty()) {
-      val databaseItemsStillAligned =
-        playlistItems.size == queueItems.size &&
-          playlistItems.indices.all { index -> playlistItems[index].id == queueItems[index].playlistItemId }
-      if (!databaseItemsStillAligned) {
-        playlistItems = emptyList()
-        playlistEntity = null
-        playlistId = null
-      }
-    }
   }
 
 
@@ -2885,8 +2838,6 @@ class PlayerActivity :
     val savedQueue = snapshot.queueState
     val currentItem = savedQueue.currentItem ?: return
     playlistId = null
-    playlistItems = emptyList()
-    playlistEntity = null
     playlist = savedQueue.items.map { item -> Uri.parse(NetworkPlaybackUri.normalize(item.originalUri)) }
     playlistIndex = savedQueue.currentIndex
     playlistWindowOffset = 0
@@ -3032,8 +2983,6 @@ class PlayerActivity :
     )
 
     playlistId = null
-    playlistItems = emptyList()
-    playlistEntity = null
     isM3uPlaylist = launch.isM3u
     playlist = launch.items.map { item -> Uri.parse(NetworkPlaybackUri.normalize(item.originalUri)) }
     playlistIndex = requestedIndex
@@ -4136,17 +4085,12 @@ class PlayerActivity :
       return
     }
 
-    val playlistItem = getPlaylistItemByUri(uri)
     val itemHeaders =
       PlaybackSession.queue.value.items
         .getOrNull(playlistIndex)
         ?.headers
         .orEmpty()
-    val storedHeaders =
-      getEffectiveUserAgent(playlistItem)
-        ?.let { userAgent -> mapOf("User-Agent" to userAgent) }
-        .orEmpty()
-    applyHttpHeaders(buildPlaybackHeaders(uri, itemHeaders, storedHeaders))
+    applyHttpHeaders(buildPlaybackHeaders(uri, itemHeaders))
   }
 
   /**
@@ -4290,8 +4234,6 @@ class PlayerActivity :
    * @return The display name/title of the file
    */
   internal fun getPlaylistItemTitle(uri: Uri): String {
-    getPlaylistItemByUri(uri)?.fileName?.takeIf { it.isNotBlank() }?.let { return it }
-
     val idx = playlist.indexOf(uri)
     if (idx != -1 && idx < networkPlaylistTitles.size) {
       networkPlaylistTitles[idx].takeIf { it.isNotBlank() }?.let { return it }
@@ -4303,42 +4245,6 @@ class PlayerActivity :
     // Extract filename from URL/URI
     return extractFileNameFromUri(uri)
   }
-
-  internal fun getPlaylistItemTvgLogo(index: Int): String? = playlistItems.getOrNull(index)?.tvgLogo
-
-  private fun getPlaylistItemByIndex(index: Int): PlaylistItemEntity? = playlistItems.getOrNull(index)
-
-  private fun getPlaylistItemByUri(uri: Uri): PlaylistItemEntity? {
-    val currentItem = getPlaylistItemByIndex(playlistIndex)
-    if (currentItem != null && isSameUriOrLocalPath(currentItem.filePath, uri)) {
-      return currentItem
-    }
-    return playlistItems.firstOrNull { isSameUriOrLocalPath(it.filePath, uri) }
-  }
-
-  private fun isSameUriOrLocalPath(
-    filePath: String,
-    uri: Uri,
-  ): Boolean {
-    if (filePath == uri.toString()) return true
-    val path1 =
-      if (filePath.startsWith("content://") || filePath.startsWith("file://")) {
-        Uri.parse(filePath).extractLocalPath()
-      } else {
-        filePath
-      }
-    val path2 =
-      if (uri.scheme == "content" || uri.scheme == "file") {
-        uri.extractLocalPath()
-      } else {
-        uri.toString()
-      }
-    return path1 != null && path2 != null && path1 == path2
-  }
-
-  private fun getEffectiveUserAgent(item: PlaylistItemEntity?): String? =
-    item?.userAgent?.takeIf { it.isNotBlank() }
-      ?: playlistEntity?.userAgent?.takeIf { it.isNotBlank() }
 
   private fun buildPlaybackHeaders(
     uri: Uri?,
@@ -4364,13 +4270,11 @@ class PlayerActivity :
     PlaybackSession.queue.value.currentItem?.title?.takeIf {
       PlaybackSession.queue.value.isExplicitQueue && it.isNotBlank()
     }
-      ?: getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
       ?: networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
       ?: fileName
 
   private fun shouldForceCurrentMediaTitle(): Boolean =
-    getPlaylistItemByIndex(playlistIndex)?.fileName?.isNotBlank() == true ||
-      getExplicitIntentTitle() != null ||
+    getExplicitIntentTitle() != null ||
       (!isCurrentStreamM3U() && !HttpUtils.shouldPreferResolvedMediaTitle(extractUriFromIntent(intent), fileName))
 
   private fun getExplicitIntentTitle(): String? =
@@ -5961,8 +5865,6 @@ class PlayerActivity :
       playlistWindowOffset = 0
       playlistTotalCount = playlistFromIntent.size.takeIf { it > 0 } ?: -1
       playlist = playlistFromIntent
-      playlistItems = emptyList()
-      playlistEntity = null
       isM3uPlaylist = false
       loadNetworkPlaylistMetadata(intent)
       if (playlist.isNotEmpty()) {
@@ -5978,30 +5880,12 @@ class PlayerActivity :
       playlistWindowOffset = 0
       playlistTotalCount = -1
       playlist = emptyList()
-      playlistItems = emptyList()
-      playlistEntity = null
       isM3uPlaylist = false
       networkPlaylistPaths = emptyList()
       networkPlaylistTitles = emptyList()
       networkPlaylistHeaders = emptyList()
       networkPlaylistConnectionId = -1L
       PlaybackSession.clearQueue()
-    }
-
-    // If playlist is empty but playlist_id is provided, load from database
-    if (playlist.isEmpty() && playlistId != null) {
-      lifecycleScope.launch(Dispatchers.IO) {
-        val pid = playlistId ?: return@launch
-        try {
-          loadPlaylistById(
-            pid = pid,
-            sourceIntent = intent,
-            logPrefix = "onNewIntent: Loaded",
-          )
-        } catch (e: Exception) {
-          Log.e(TAG, "onNewIntent: Failed to load playlist from database", e)
-        }
-      }
     }
 
     // Auto-generate playlist from folder if playlist mode is enabled and no playlist_id
@@ -7631,22 +7515,6 @@ class PlayerActivity :
       networkPlaylistHeaders = networkPlaylistHeaders.toMutableList().apply { add(to, removeAt(from)) }
     }
 
-    if (playlistItems.isNotEmpty() && from in playlistItems.indices && to in playlistItems.indices) {
-      val mutableItems = playlistItems.toMutableList()
-      val movedItem = mutableItems.removeAt(from)
-      mutableItems.add(to, movedItem)
-      playlistItems = mutableItems
-
-      playlistEntity?.let { entity ->
-        if (!isM3uPlaylist) {
-          val newOrder = playlistItems.map { it.id }
-          lifecycleScope.launch(Dispatchers.IO) {
-            playlistRepository.reorderPlaylistItems(entity.id, newOrder)
-          }
-        }
-      }
-    }
-
     playlistIndex =
       if (from == playlistIndex) {
         to
@@ -7771,43 +7639,6 @@ class PlayerActivity :
 
     // Set HTTP headers (including referer) for network streams
     setHttpHeadersForUri(uri)
-
-    // Update playlist play history if this is a custom playlist
-    playlistId?.takeUnless(::isAllVideosPlaylist)?.let { id ->
-      lifecycleScope.launch(Dispatchers.IO) {
-        val playlistItem = getPlaylistItemByUri(uri)
-        val filePath =
-          playlistItem?.filePath ?: when (uri.scheme) {
-            "file" -> uri.path ?: uri.toString()
-            "content" -> {
-              contentResolver
-                .query(
-                  uri,
-                  arrayOf(MediaStore.MediaColumns.DATA),
-                  null,
-                  null,
-                  null,
-                )?.use { cursor ->
-                  if (cursor.moveToFirst()) {
-                    val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
-                    if (columnIndex != -1) cursor.getString(columnIndex) else null
-                  } else {
-                    null
-                  }
-                } ?: uri.toString()
-            }
-
-            else -> uri.toString()
-          }
-
-        runCatching {
-          playlistRepository.updatePlayHistory(id, filePath)
-          Log.d(TAG, "Updated playlist history for: $filePath in playlist $id")
-        }.onFailure { e ->
-          Log.e(TAG, "Error updating playlist history", e)
-        }
-      }
-    }
 
     // Load the new video
     // Avoid blocking UI thread while mpv opens network streams (e.g., HLS).
@@ -8116,7 +7947,7 @@ class PlayerActivity :
           PlaybackSession.getPropertyInt("height") ?: PlaybackSession.getPropertyInt("video-params/h") ?: 0
         }.getOrDefault(0)
 
-      val historyPlaylistId = playlistId?.takeUnless(::isAllVideosPlaylist)
+      val historyPlaylistId = playlistId
 
       RecentlyPlayedOps.addRecentlyPlayed(
         context = applicationContext,
@@ -8259,7 +8090,6 @@ class PlayerActivity :
     val launchMimeType = intent.type ?: "audio/*".takeIf { isKnownAudioLaunch(intent) }
     val items =
       playlist.mapIndexed { index, uri ->
-        val databaseItem = playlistItems.getOrNull(index)
         val persistedNetworkReference = NetworkPlaybackUri.parse(uri.toString())
         val networkPath =
           networkPlaylistPaths.getOrNull(index)?.takeIf { it.isNotBlank() }
@@ -8274,16 +8104,9 @@ class PlayerActivity :
             null
           }
         val title =
-          databaseItem?.fileName?.takeIf { it.isNotBlank() }
-            ?: networkPlaylistTitles.getOrNull(index)?.takeIf { it.isNotBlank() }
+          networkPlaylistTitles.getOrNull(index)?.takeIf { it.isNotBlank() }
             ?: getFileNameFromUri(uri)
-        val storedHeaders =
-          databaseItem
-            ?.userAgent
-            ?.takeIf { it.isNotBlank() }
-            ?.let { userAgent -> mapOf("User-Agent" to userAgent) }
-            .orEmpty()
-        val headers = buildPlaybackHeaders(uri, networkPlaylistHeaders.getOrNull(index).orEmpty(), storedHeaders)
+        val headers = buildPlaybackHeaders(uri, networkPlaylistHeaders.getOrNull(index).orEmpty())
         val existingItem =
           existingQueueItems.firstOrNull { it.originalUri == uri.toString() || it.playableUri == uri.toString() }
 
@@ -8299,10 +8122,9 @@ class PlayerActivity :
           videoHeight = intentVideoDimension(intent, "height"),
           hdrMetadata = intentHdrMetadata(intent),
           networkSource = networkSource,
-          playlistItemId = databaseItem?.id,
+          playlistItemId = null,
           artworkUri =
-            databaseItem?.tvgLogo?.takeIf { it.isNotBlank() }
-              ?: networkPlaylistArtworkUrls.getOrNull(index)?.takeIf { it.isNotBlank() }
+            networkPlaylistArtworkUrls.getOrNull(index)?.takeIf { it.isNotBlank() }
               ?: existingItem?.artworkUri
               ?: (if (index == playlistIndex) launchPosterUrl else null),
           durationSeconds = existingItem?.durationSeconds,
@@ -8411,67 +8233,6 @@ class PlayerActivity :
     return sortSiblingFilesForVideoList(directMediaFiles)
   }
 
-  private suspend fun loadPlaylistById(
-    pid: Int,
-    sourceIntent: Intent,
-    logPrefix: String,
-    expectedGeneration: Long = mediaRequestGeneration,
-  ) {
-    if (isAllVideosPlaylist(pid)) {
-      return
-    }
-
-    val loadedPlaylist = playlistRepository.getPlaylistById(pid)
-    val loadedItems = playlistRepository.getPlaylistItems(pid)
-    val items = loadedItems.map {
-      val path = M3UParser.normalizeLocalMediaReference(it.filePath)
-      Uri.parse(path).takeIf { uri -> !uri.scheme.isNullOrBlank() } ?: Uri.fromFile(File(path))
-    }
-    val requestedPath = sourceIntent.getStringExtra("local_media_path")
-    val requestedUri = sourceIntent.dataString
-    // A selected item starts loading before this Room query finishes, temporarily creating a
-    // one-item queue at index 0. Resolve from immutable launch identity so that temporary queue
-    // observation cannot replace the actual selected position in the full playlist.
-    val derivedIndex =
-      loadedItems.indices.firstOrNull { index ->
-        val storedPath = loadedItems[index].filePath
-        storedPath == requestedPath || storedPath == requestedUri || items[index].toString() == requestedUri
-      }
-    val requestedIndex =
-      derivedIndex
-        ?: sourceIntent.getIntExtra("playlist_index", -1).takeIf { index -> index >= 0 }
-    val totalCount = loadedItems.size
-    if (!isCurrentMediaRequest(expectedGeneration)) return
-
-    withContext(Dispatchers.Main) {
-      if (!isCurrentMediaRequest(expectedGeneration)) return@withContext
-      playlistEntity = loadedPlaylist
-      playlistItems = loadedItems
-      isM3uPlaylist = loadedPlaylist?.isM3uPlaylist == true
-      playlist = items
-      // Drop metadata synced from the temporary one-item launch queue (see auto-playlist path).
-      networkPlaylistPaths = emptyList()
-      networkPlaylistTitles = emptyList()
-      networkPlaylistArtworkUrls = emptyList()
-      networkPlaylistHeaders = emptyList()
-      networkPlaylistConnectionId = -1L
-      playlistIndex = if (items.isEmpty()) 0 else (requestedIndex ?: playlistIndex).coerceIn(items.indices)
-      playlistWindowOffset = 0
-      playlistTotalCount = totalCount
-      Log.d(TAG, "$logPrefix all $totalCount items from playlist $pid (isM3U: $isM3uPlaylist)")
-      val restoringSavedSelection = pendingSavedPlaylistSelection != null
-      if (restoringSavedSelection) {
-        applyPendingSavedSelection(playlist)
-        pendingSavedPlaylistSelection = null
-      }
-      publishPlaylistToSession()
-      viewModel.refreshPlaylistItems()
-      if (restoringSavedSelection && playlist.isNotEmpty()) {
-        loadPlaylistItemInternal(playlistIndex, saveCurrentPlaybackState = false)
-      }
-    }
-  }
-
   private fun generatePlaylistFromFolder(currentPath: String) {
     val expectedGeneration = mediaRequestGeneration
     lifecycleScope.launch(Dispatchers.IO) {
@@ -8501,8 +8262,6 @@ class PlayerActivity :
 
       withContext(Dispatchers.Main) {
         if (!isCurrentMediaRequest(expectedGeneration)) return@withContext
-        playlistEntity = null
-        playlistItems = emptyList()
         isM3uPlaylist = false
         playlist = siblingFiles.map { it.toUri() }
         // The temporary one-item queue already synced index-aligned metadata for the launched

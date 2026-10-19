@@ -12,27 +12,20 @@ package app.infinity.mpvz.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import app.infinity.mpvz.database.dao.PlaybackStateDao
-import app.infinity.mpvz.database.dao.PlaylistDao
 import app.infinity.mpvz.database.dao.RecentlyPlayedDao
 import app.infinity.mpvz.database.entities.PlaybackStateEntity
-import app.infinity.mpvz.database.entities.PlaylistEntity
-import app.infinity.mpvz.database.entities.PlaylistItemEntity
 import app.infinity.mpvz.database.entities.RecentlyPlayedEntity
 
 @Database(
   entities = [
     PlaybackStateEntity::class,
     RecentlyPlayedEntity::class,
-    PlaylistEntity::class,
-    PlaylistItemEntity::class,
   ],
-  version = 25,
+  version = 26,
   exportSchema = true,
 )
 abstract class MpvInfinityDatabase : RoomDatabase() {
   abstract fun videoDataDao(): PlaybackStateDao
 
   abstract fun recentlyPlayedDao(): RecentlyPlayedDao
-
-  abstract fun playlistDao(): PlaylistDao
 }

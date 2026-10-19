@@ -837,6 +837,14 @@ val MIGRATION_24_25 =
     }
   }
 
+val MIGRATION_25_26 =
+  object : Migration(25, 26) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL("DROP TABLE IF EXISTS `PlaylistItemEntity`")
+      db.execSQL("DROP TABLE IF EXISTS `PlaylistEntity`")
+    }
+  }
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -876,6 +884,7 @@ val DatabaseModule =
           MIGRATION_22_23,
           MIGRATION_23_24,
           MIGRATION_24_25,
+          MIGRATION_25_26,
         ).build()
     }
 
@@ -887,12 +896,5 @@ val DatabaseModule =
 
     single { ThumbnailRepository(androidContext()) }
 
-    single {
-      PlaylistRepository(
-        playlistDao = get<MpvInfinityDatabase>().playlistDao(),
-        httpClient = get(),
-        applicationContext = androidContext(),
-        ytdlPreferences = get(),
-      )
-    }
+    single { PlaylistRepository(androidContext()) }
   }
