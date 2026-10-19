@@ -91,3 +91,8 @@ internal fun normalizeHiddenMarkerName(value: String): String? {
   if (name.isEmpty() || name == "." || name == ".." || '/' in name || '\\' in name) return null
   return if (name.startsWith('.')) name else ".$name"
 }
+
+internal fun isAndroidDataAccessiblePath(file: File?): Boolean {
+  val path = file?.absolutePath?.replace('\\', '/') ?: return false
+  return path.endsWith("/Android", ignoreCase = true) || path.contains("/Android/data", ignoreCase = true)
+}

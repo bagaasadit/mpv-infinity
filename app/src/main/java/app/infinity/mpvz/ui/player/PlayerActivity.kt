@@ -5599,8 +5599,7 @@ class PlayerActivity :
 
       // Prioritize explicit title from playlist or intent
       val resolvedExplicitTitle =
-        getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
-          ?: networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
+        networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
           ?: intent.getStringExtra("title")
 
       val resolvedFileName =
@@ -7618,8 +7617,7 @@ class PlayerActivity :
     viewModel.calculateVideoHash(uri)
 
     // Extract and set the new file name
-    fileName = getPlaylistItemByIndex(index)?.fileName?.takeIf { it.isNotBlank() }
-      ?: networkTitle
+    fileName = networkTitle
       ?: getFileNameFromUri(uri)
     // Generate new media identifier for playback state
     legacyMediaIdentifier =
@@ -7657,8 +7655,7 @@ class PlayerActivity :
 
     // Update media title (this will trigger UI update)
     val shouldForceTitle =
-      getPlaylistItemByIndex(index)?.fileName?.isNotBlank() == true ||
-        !(uri.toString().lowercase().contains(".m3u8") || uri.toString().lowercase().contains(".m3u"))
+      !(uri.toString().lowercase().contains(".m3u8") || uri.toString().lowercase().contains(".m3u"))
     if (shouldForceTitle) {
       PlaybackSession.setPropertyString("force-media-title", fileName)
       viewModel.setMediaTitle(fileName)
@@ -7908,8 +7905,7 @@ class PlayerActivity :
 
       val resolvedName =
         if (isGenericStream) {
-          getPlaylistItemByIndex(playlistIndex)?.fileName?.takeIf { it.isNotBlank() }
-            ?: networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
+          networkPlaylistTitles.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
             ?: intent.getStringExtra("title")
             ?: name
         } else {
