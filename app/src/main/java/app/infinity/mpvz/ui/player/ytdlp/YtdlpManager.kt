@@ -954,18 +954,41 @@ object YtdlpManager {
   private fun executePythonProcess(
     command: List<String>,
     context: Context,
+    timeoutSeconds: Long = 15L,
     onOutput: (String) -> Unit,
   ): Boolean {
+    var process: Process? = null
     return try {
-      val process = startPythonProcess(command, context)
+      val p = startPythonProcess(command, context)
+      process = p
 
-      BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-        reader.lineSequence().forEach(onOutput)
+      val readerThread = Thread {
+        runCatching {
+          BufferedReader(InputStreamReader(p.inputStream)).use { reader ->
+            reader.lineSequence().forEach(onOutput)
+          }
+        }
       }
-      process.waitFor() == 0
+      readerThread.start()
+
+      val finished = p.waitFor(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS)
+      if (!finished) {
+        p.destroyForcibly()
+        readerThread.interrupt()
+        onOutput("Execution timed out after $timeoutSeconds seconds")
+        false
+      } else {
+        readerThread.join(1000L)
+        p.exitValue() == 0
+      }
     } catch (e: Exception) {
       onOutput("Error: ${e.message}")
       false
+    } finally {
+      process?.let { p ->
+        if (p.isAlive) p.destroyForcibly()
+        runCatching { p.inputStream.close() }
+      }
     }
   }
 
