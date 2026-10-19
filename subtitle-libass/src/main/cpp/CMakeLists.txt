@@ -3,6 +3,10 @@ project(media3_subtitle_libass)
 
 set(LIBASS_ANDROID_DIR "${CMAKE_BINARY_DIR}/libass-android-src" CACHE PATH "Pinned Android libass source checkout")
 if(NOT EXISTS "${LIBASS_ANDROID_DIR}/lib_ass/src/main/cpp/libass-cmake/CMakeLists.txt")
+  execute_process(COMMAND git config --global url.https://github.com/fontconfig/fontconfig.git.insteadOf https://gitlab.freedesktop.org/fontconfig/fontconfig)
+  execute_process(COMMAND git config --global --add url.https://github.com/fontconfig/fontconfig.git.insteadOf https://gitlab.freedesktop.org/fontconfig/fontconfig.git)
+  execute_process(COMMAND git config --global url.https://github.com/freetype/freetype.git.insteadOf https://gitlab.freedesktop.org/freetype/freetype)
+  execute_process(COMMAND git config --global --add url.https://github.com/freetype/freetype.git.insteadOf https://gitlab.freedesktop.org/freetype/freetype.git)
   execute_process(
     COMMAND git clone --depth 1 --branch master --recurse-submodules https://github.com/peerless2012/libass-android.git "${LIBASS_ANDROID_DIR}"
     RESULT_VARIABLE clone_result

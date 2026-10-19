@@ -51,7 +51,12 @@ jobs:
           java-version: '17'
           cache: gradle
       - name: Install native subtitle build dependencies
-        run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool gettext autopoint gperf pkg-config
+        run: |
+          sudo apt-get update && sudo apt-get install -y autoconf automake libtool gettext autopoint gperf pkg-config
+          git config --global url."https://github.com/fontconfig/fontconfig.git".insteadOf "https://gitlab.freedesktop.org/fontconfig/fontconfig"
+          git config --global --add url."https://github.com/fontconfig/fontconfig.git".insteadOf "https://gitlab.freedesktop.org/fontconfig/fontconfig.git"
+          git config --global url."https://github.com/freetype/freetype.git".insteadOf "https://gitlab.freedesktop.org/freetype/freetype"
+          git config --global --add url."https://github.com/freetype/freetype.git".insteadOf "https://gitlab.freedesktop.org/freetype/freetype.git"
       - name: Run unit tests
         run: |
           chmod +x ./gradlew
