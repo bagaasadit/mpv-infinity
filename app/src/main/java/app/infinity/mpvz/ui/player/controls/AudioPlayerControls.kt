@@ -803,7 +803,9 @@ fun AudioPlayerControls(
   val backgroundPlaybackEnabled by audioPreferences.audioBackgroundPlayback.collectAsState()
   val playerControlsTheme by appearancePreferences.playerControlsTheme.collectAsState()
   val showSeekbarOuterContainer by appearancePreferences.showSeekbarOuterContainer.collectAsState()
-  val liquidGlassSurfaces by appearancePreferences.liquidGlassSurfaces.collectAsState()
+  val colorScheme = MaterialTheme.colorScheme
+  val typography = MaterialTheme.typography
+  val shapes = MaterialTheme.shapes
   val musicPlayerColorScheme = colorScheme
   val palette =
     remember(colorScheme) {
