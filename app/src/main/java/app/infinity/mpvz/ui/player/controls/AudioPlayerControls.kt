@@ -606,17 +606,7 @@ fun AudioPlayerControls(
       playlistItems.filter { it.isAudio }
     }
 
-  var isStandbyActive by remember { mutableStateOf(false) }
-  var lastUserInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-  val resetInactivityTimer = {
-    lastUserInteractionTime = System.currentTimeMillis()
-    isStandbyActive = false
-  }
-
-  BackHandler(enabled = isStandbyActive) {
-    resetInactivityTimer()
-  }
 
   val currentPath by PlaybackSession.propString["path"].collectAsState()
   val currentStreamFilename by PlaybackSession.propString["stream-open-filename"].collectAsState()
@@ -809,33 +799,12 @@ fun AudioPlayerControls(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
   val audioWavySeekbar by audioPreferences.audioWavySeekbar.collectAsState()
-  val audioPaletteBackground by audioPreferences.audioPaletteBackground.collectAsState()
-  val audioStandbyMode by audioPreferences.audioStandbyMode.collectAsState()
+
   val backgroundPlaybackEnabled by audioPreferences.audioBackgroundPlayback.collectAsState()
   val playerControlsTheme by appearancePreferences.playerControlsTheme.collectAsState()
   val showSeekbarOuterContainer by appearancePreferences.showSeekbarOuterContainer.collectAsState()
   val liquidGlassSurfaces by appearancePreferences.liquidGlassSurfaces.collectAsState()
-  val customThemes by appearancePreferences.customThemes.collectAsState()
-  val activeCustomThemeId by appearancePreferences.activeCustomThemeId.collectAsState()
-  val colorScheme = MaterialTheme.colorScheme
-  val typography = MaterialTheme.typography
-  val shapes = MaterialTheme.shapes
-  fun contrastRatio(foreground: Color, background: Color): Float {
-    val lighter = maxOf(foreground.luminance(), background.luminance())
-    val darker = minOf(foreground.luminance(), background.luminance())
-    return (lighter + 0.05f) / (darker + 0.05f)
-  }
-  val musicPlayerColorScheme =
-    if (customThemes.any { it.id == activeCustomThemeId } &&
-      contrastRatio(colorScheme.primary, colorScheme.inverseSurface) >= 4.5f
-    ) {
-      colorScheme.copy(
-        onSurface = colorScheme.primary,
-        onSurfaceVariant = colorScheme.primary,
-      )
-    } else {
-      colorScheme
-    }
+  val musicPlayerColorScheme = colorScheme
   val palette =
     remember(colorScheme) {
       VisualizerPalette(
@@ -926,24 +895,14 @@ fun AudioPlayerControls(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
   val isTabletPortrait = isPortrait && isTablet
-  val audioStandbyDelaySeconds by audioPreferences.audioStandbyDelaySeconds.collectAsState()
-
-  LaunchedEffect(audioStandbyMode, audioStandbyDelaySeconds, isPlaying, isPortrait, lastUserInteractionTime) {
-    isStandbyActive = false
-    if (audioStandbyMode && isPlaying) {
-      kotlinx.coroutines.delay(audioStandbyDelaySeconds.coerceIn(1, 60) * 1000L)
-      isStandbyActive = true
-    }
-  }
-
   val ambientModeEnabled by audioPreferences.audioAmbientMode.collectAsState()
 
   val ambientColors by produceState<Pair<Color, Color>?>(
     initialValue = null,
     key1 = albumArtBitmap,
-    key2 = listOf(ambientModeEnabled, audioPaletteBackground, showVisualizer),
+    key2 = listOf(ambientModeEnabled, showVisualizer),
   ) {
-    if (!audioPaletteBackground || !ambientModeEnabled || albumArtBitmap == null) {
+    if (!ambientModeEnabled || albumArtBitmap == null) {
       value = null
       return@produceState
     }
@@ -989,9 +948,8 @@ fun AudioPlayerControls(
     animationSpec = tween(durationMillis = 800),
     label = "ambient_bottom_color",
   )
-  val edgeToEdgeVisualizer = isPortrait && showVisualizer && !isStandbyActive
-  val standbyVisualizerBoundary = isStandbyActive && isPortrait && showVisualizer
-  val visualizerUsesFullTopAndSides = edgeToEdgeVisualizer || standbyVisualizerBoundary
+  val edgeToEdgeVisualizer = isPortrait && showVisualizer
+  val visualizerUsesFullTopAndSides = edgeToEdgeVisualizer
   val controlsSidePadding = if (edgeToEdgeVisualizer) 16.dp else 0.dp
   Box(
     modifier =
@@ -999,7 +957,7 @@ fun AudioPlayerControls(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
         .drawWithCache {
-          if (audioPaletteBackground && ambientModeEnabled &&
+          if (ambientModeEnabled &&
             (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)) {
             val topColor = animatedAmbientTop
             val bottomColor = animatedAmbientBottom
@@ -1572,7 +1530,7 @@ fun AudioPlayerControls(
         onValueChangeFinished = viewModel::seekAudioTo,
         timersInverted = Pair(false, invertDuration),
         durationTimerOnCLick = { playerPreferences.invertDuration.set(!invertDuration) },
-        positionTimerOnClick = {},
+        positionTimerOnClick = null,
         chapters = seekbarChapters,
         skipSegments = persistentListOf(),
         paused = isPaused,
@@ -1902,41 +1860,26 @@ fun AudioPlayerControls(
             }
           }
         } else {
-          androidx.compose.animation.AnimatedVisibility(
-            visible = !isStandbyActive,
-            enter = fadeIn(animationSpec = tween(300)) + androidx.compose.animation.expandVertically(animationSpec = tween(300)),
-            exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.shrinkVertically(animationSpec = tween(300)),
-          ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              headerBar()
-              losslessBadge()
-              Spacer(modifier = Modifier.height(16.dp))
-            }
+          Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            headerBar()
+            losslessBadge()
+            Spacer(modifier = Modifier.height(16.dp))
           }
           centerVisualizerView(Modifier.weight(1f).fillMaxWidth(), false)
         }
-        if (isStandbyActive) {
-          seekbarView()
-        }
 
-        androidx.compose.animation.AnimatedVisibility(
-          visible = !isStandbyActive,
-          enter = fadeIn(animationSpec = tween(300)) + androidx.compose.animation.expandVertically(animationSpec = tween(300)),
-          exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.shrinkVertically(animationSpec = tween(300)),
+        Column(
+          modifier = Modifier.padding(horizontal = controlsSidePadding),
+          horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-          Column(
-            modifier = Modifier.padding(horizontal = controlsSidePadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-          ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            trackMetadataView()
-            Spacer(modifier = Modifier.height(16.dp))
-            seekbarView()
-            Spacer(modifier = Modifier.height(16.dp))
-            playbackControlsRow()
-            Spacer(modifier = Modifier.height(10.dp))
-            bottomActionRow()
-          }
+          Spacer(modifier = Modifier.height(16.dp))
+          trackMetadataView()
+          Spacer(modifier = Modifier.height(16.dp))
+          seekbarView()
+          Spacer(modifier = Modifier.height(16.dp))
+          playbackControlsRow()
+          Spacer(modifier = Modifier.height(10.dp))
+          bottomActionRow()
         }
       }
     } else if (false && isTabletLandscape) {
@@ -2005,15 +1948,13 @@ fun AudioPlayerControls(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
           ) {
-            if (!isStandbyActive) headerBar()
-            if (!isStandbyActive) losslessBadge()
-            if (!isStandbyActive) trackMetadataView()
+            headerBar()
+            losslessBadge()
+            trackMetadataView()
             Spacer(modifier = Modifier.weight(1f))
             seekbarView()
-            if (!isStandbyActive) {
-              playbackControlsRow()
-              bottomActionRow()
-            }
+            playbackControlsRow()
+            bottomActionRow()
           }
         }
       }

@@ -1760,7 +1760,7 @@ fun PlayerControls(
                 resetControlsTimestamp = System.currentTimeMillis()
                 playerPreferences.invertDuration.set(!invertDuration)
               },
-              positionTimerOnClick = {},
+              positionTimerOnClick = null,
               chapters = seekbarChapters,
               skipSegments = skipSegmentsImmutable,
               paused = paused,

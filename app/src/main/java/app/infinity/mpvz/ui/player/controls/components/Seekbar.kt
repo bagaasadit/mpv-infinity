@@ -286,7 +286,7 @@ internal fun SeekbarWithTimers(
   onValueChange: (Float) -> Unit,
   onValueChangeFinished: (Float) -> Unit,
   timersInverted: Pair<Boolean, Boolean>,
-  positionTimerOnClick: () -> Unit,
+  positionTimerOnClick: (() -> Unit)? = null,
   durationTimerOnCLick: () -> Unit,
   chapters: ImmutableList<Segment>,
   skipSegments: ImmutableList<SkipSegment>,
@@ -376,9 +376,11 @@ internal fun SeekbarWithTimers(
           value = if (isUserInteracting) userPosition else position,
           isInverted = timersInverted.first,
           textColor = timerTextColor,
-          onClick = {
-            clickEvent()
-            positionTimerOnClick()
+          onClick = positionTimerOnClick?.let { cb ->
+            {
+              clickEvent()
+              cb()
+            }
           },
         )
 
@@ -403,9 +405,11 @@ internal fun SeekbarWithTimers(
         value = if (isUserInteracting) userPosition else position,
         isInverted = timersInverted.first,
         textColor = timerTextColor,
-        onClick = {
-          clickEvent()
-          positionTimerOnClick()
+        onClick = positionTimerOnClick?.let { cb ->
+          {
+            clickEvent()
+            cb()
+          }
         },
         modifier = Modifier.width(60.dp),
       )
@@ -1705,19 +1709,25 @@ fun VideoTimer(
   isInverted: Boolean,
   modifier: Modifier = Modifier,
   textColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-  onClick: () -> Unit = {},
+  onClick: (() -> Unit)? = null,
 ) {
   val seconds = value.toInt()
   val timeText = remember(seconds, isInverted) { Utils.prettyTime(seconds, isInverted) }
   val interactionSource = remember { MutableInteractionSource() }
+  val timerModifier =
+    if (onClick != null) {
+      modifier.clickable(
+        interactionSource = interactionSource,
+        indication = ripple(),
+        onClick = onClick,
+      )
+    } else {
+      modifier
+    }
   Text(
     modifier =
-      modifier
-        .clickable(
-          interactionSource = interactionSource,
-          indication = ripple(),
-          onClick = onClick,
-        ).padding(horizontal = 4.dp)
+      timerModifier
+        .padding(horizontal = 4.dp)
         .wrapContentHeight(Alignment.CenterVertically),
     text = timeText,
     color = textColor,

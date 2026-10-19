@@ -455,7 +455,7 @@ fun AudioWavySeekBar(
   onSeek: (Float) -> Unit,
   onSeekFinished: (Float) -> Unit,
   timersInverted: Pair<Boolean, Boolean>,
-  positionTimerOnClick: () -> Unit,
+  positionTimerOnClick: (() -> Unit)? = null,
   durationTimerOnClick: () -> Unit,
   chapters: ImmutableList<Segment> = persistentListOf(),
   timerTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -558,9 +558,11 @@ fun AudioWavySeekBar(
         value = shownPosition,
         isInverted = timersInverted.first,
         textColor = timerTextColor,
-        onClick = {
-          clickEvent()
-          positionTimerOnClick()
+        onClick = positionTimerOnClick?.let { cb ->
+          {
+            clickEvent()
+            cb()
+          }
         },
       )
 

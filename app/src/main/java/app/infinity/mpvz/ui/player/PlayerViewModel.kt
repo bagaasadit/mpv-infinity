@@ -1605,14 +1605,17 @@ class PlayerViewModel : ViewModel(),
         }
       }
     }
-    // Observe audio effect changes to update mpv af filters
+    // Observe audio effect changes to update mpv af filters and audio-channels
     viewModelScope.launch(playbackStateDispatcher) {
       combine(
         audioPreferences.volumeNormalization.changes(),
         audioPreferences.drcEnabled.changes(),
         audioPreferences.audioChannels.changes(),
-      ) { _, _, _ -> }.collect {
+      ) { _, _, channels -> channels }.collect { channels ->
         if (!_isMpvCoreReady.value) return@collect
+        if (channels != AudioChannels.ReverseStereo) {
+          PlaybackSession.setPropertyString("audio-channels", channels.value)
+        }
         applyEqualizerMpvFilters(immediate = true)
       }
     }

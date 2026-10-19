@@ -759,8 +759,11 @@ class PlayerActivity :
     applyMaxDisplayRefreshRate()
     restoreAudioPlaybackSessionIfNeeded()
     if (!acceptPreparedPlaybackLaunch(intent)) {
-      finish()
-      return
+      if (extractUriFromIntent(intent) == null) {
+        finish()
+        return
+      }
+      Log.w(TAG, "Stale prepared launch token, but intent URI exists; falling back to direct URI")
     }
     playbackOwnerToken = PlaybackActivityOwner.claim()
     pendingSavedPlaylistSelection = savedInstanceState?.toSavedPlaylistSelection()
@@ -1511,9 +1514,7 @@ class PlayerActivity :
 
   private fun setupPlayerControls() {
     binding.controls.setContent {
-      // The controls ComposeView sits above the native video surface. Do not draw the
-      // library custom media backdrop here or it will cover the episode while audio continues.
-      MpvInfinityTheme(showCustomThemeBackdrop = false) {
+      MpvInfinityTheme {
         Box(modifier = Modifier.fillMaxSize()) {
           PlayerControls(
             viewModel = viewModel,
@@ -4603,11 +4604,19 @@ class PlayerActivity :
     }
     if (isAdvancingAtEof) return
     if (isBackgroundPlaybackSessionActive || !MediaPlaybackService.activityForeground) return
+    // GUARD: If playback has not become ready, this is an early load error/stale event, NOT legitimate EOF.
+    if (!isReady) {
+      Log.d(TAG, "Ignoring EOF callback because media is not ready")
+      return
+    }
     // A dropped network stream can drain the demuxer and flip eof-reached mid-file. Only a
     // position at (or within a couple of seconds of) the known duration is a real end.
     val durationSecs = nativeDurationSecs ?: viewModel.duration ?: 0
     val positionSecs = nativePositionSecs ?: viewModel.pos ?: 0
-    if (durationSecs > 0 && positionSecs < durationSecs - 2) return
+    if (durationSecs <= 0 || positionSecs < durationSecs - 2) {
+      Log.d(TAG, "Ignoring EOF callback: duration=$durationSecs pos=$positionSecs")
+      return
+    }
     if (fileName.isNotBlank()) saveVideoPlaybackState(fileName, immediate = true)
 
     val repeatMode = viewModel.repeatMode.value

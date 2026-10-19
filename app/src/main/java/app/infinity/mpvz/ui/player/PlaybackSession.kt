@@ -1542,18 +1542,8 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   private fun resolvePlayableUri(item: PlaybackItem): String {
-    // fd:// descriptors are single-use: mpv consumes and closes them on their first load. Replays
-    // of queue items or persisted sessions must re-open a fresh descriptor from the content URI.
-    if (item.playableUri.startsWith("fd://") && item.originalUri.startsWith("content://")) {
-      val context = applicationContext ?: error("Application context is unavailable for content URI playback")
-      val refreshedUri =
-        Uri.parse(item.originalUri).openContentFd(context)
-          ?: error("Unable to reopen content URI for playback")
-      return refreshedUri
-    }
-
-    // Resolve a local path for native integrations that cannot consume content:// directly.
     val context = applicationContext
+    // 1. Resolve a direct local path when readable
     if (context != null) {
       val localPath = sequenceOf(item.playableUri, item.originalUri)
         .mapNotNull { candidate ->
@@ -1562,10 +1552,26 @@ object PlaybackSession : MPVLib.EventObserver {
         }
         .firstOrNull()
       if (localPath != null) {
-        Log.d(TAG, "Using direct local path for Native Media3: $localPath")
+        Log.d(TAG, "Using direct local path for MPV: $localPath")
         return localPath
       }
     }
+
+    // 2. Content URIs cannot be opened natively by libmpv. Obtain a fresh file descriptor (fd://).
+    // Replays of queue items or persisted sessions where playableUri was fd:// also refresh here.
+    val candidateContentUri = sequenceOf(item.playableUri, item.originalUri)
+      .firstOrNull { it.startsWith("content://") }
+    if (candidateContentUri != null || (item.playableUri.startsWith("fd://") && item.originalUri.startsWith("content://"))) {
+      val uriToOpen = candidateContentUri ?: item.originalUri
+      if (context != null) {
+        val fdUri = Uri.parse(uriToOpen).openContentFd(context, allowFdFallback = true)
+        if (fdUri != null) {
+          Log.d(TAG, "Resolved content URI to file descriptor for MPV: $fdUri")
+          return fdUri
+        }
+      }
+    }
+
     if (item.playableUri.startsWith("content://")) return item.playableUri
     if (item.originalUri.startsWith("content://")) return item.originalUri
     return item.playableUri

@@ -840,27 +840,9 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_audio_standby_mode_title,
-          summaryRes = R.string.pref_audio_standby_mode_summary,
-          keywords = listOf("audio", "music", "standby", "idle", "screen", "lyrics", "album", "art"),
-          category = "Audio",
-          screen = AudioPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_audio_ambient_mode_title,
           summaryRes = R.string.pref_audio_ambient_mode_summary,
           keywords = listOf("audio", "music", "ambient", "colors", "album", "art", "gradient", "youtube"),
-          category = "Audio",
-          screen = AudioPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_audio_palette_background_title,
-          summaryRes = R.string.pref_audio_palette_background_summary,
-          keywords = listOf("audio", "music", "album", "artwork", "palette", "background", "colors", "theme"),
           category = "Audio",
           screen = AudioPreferencesScreen,
         ),

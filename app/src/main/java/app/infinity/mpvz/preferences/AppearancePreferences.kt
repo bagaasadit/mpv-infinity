@@ -44,13 +44,6 @@ class AppearancePreferences(
   val darkMode = preferenceStore.getEnum("dark_mode", DarkMode.System)
   // Monochrome is the neutral first-install experience; a persisted user choice always wins.
   val appTheme = preferenceStore.getEnum("app_theme", AppTheme.Monochrome)
-  val customThemes = preferenceStore.getObject(
-    key = "custom_themes",
-    defaultValue = emptyList<CustomThemeData>(),
-    serializer = CustomThemeCodec::encode,
-    deserializer = CustomThemeCodec::decode,
-  )
-  val activeCustomThemeId = preferenceStore.getString("active_custom_theme_id", "")
   val amoledMode = preferenceStore.getBoolean("amoled_mode", false)
   val liquidGlassSurfaces = preferenceStore.getBoolean("liquid_glass_surfaces", false)
   val useSystemFont = preferenceStore.getBoolean("use_system_font", false)

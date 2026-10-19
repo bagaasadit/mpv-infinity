@@ -58,7 +58,6 @@ import app.infinity.mpvz.ui.player.ControlsAnimationStyle
 import app.infinity.mpvz.ui.player.NavigationAnimStyle
 import app.infinity.mpvz.ui.player.VideoOpenAnimation
 import app.infinity.mpvz.ui.preferences.components.SwitchPreference
-import app.infinity.mpvz.ui.preferences.components.CustomThemeSettings
 import app.infinity.mpvz.ui.preferences.components.ThemePicker
 import app.infinity.mpvz.ui.theme.DarkMode
 import app.infinity.mpvz.ui.theme.LocalThemeTransitionState
@@ -95,8 +94,6 @@ object AppearancePreferencesScreen : Screen {
 
   val darkMode by preferences.darkMode.collectAsState()
   val appTheme by preferences.appTheme.collectAsState()
-  val activeCustomThemeId by preferences.activeCustomThemeId.collectAsState()
-  val customThemes by preferences.customThemes.collectAsState()
     var pendingThumbnailMode by remember { mutableStateOf<ThumbnailMode?>(null) }
     var isThemeSectionExpanded by rememberSaveable { mutableStateOf(true) }
     val storedThumbnailMode by browserPreferences.thumbnailMode.collectAsState()
@@ -218,7 +215,7 @@ object AppearancePreferencesScreen : Screen {
                     fontWeight = FontWeight.SemiBold,
                   )
                   Text(
-                    text = "${stringResource(darkMode.titleRes)} · ${customThemes.firstOrNull { it.id == activeCustomThemeId }?.name ?: stringResource(appTheme.titleRes)}",
+                    text = "${stringResource(darkMode.titleRes)} · ${stringResource(appTheme.titleRes)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                   )
@@ -265,34 +262,15 @@ object AppearancePreferencesScreen : Screen {
                     currentTheme = appTheme,
                     isDarkMode = isDarkMode,
                     onThemeSelected = { theme, position ->
-                      if ((theme != appTheme || activeCustomThemeId.isNotEmpty()) && themeTransition?.isAnimating != true) {
+                      if (theme != appTheme && themeTransition?.isAnimating != true) {
                         themeTransition?.startTransition(position)
                         scope.launch {
                           delay(50)
                           preferences.appTheme.set(theme)
-                          preferences.activeCustomThemeId.set("")
-                        }
-                      }
-                    },
-                    customThemes = customThemes,
-                    activeCustomThemeId = activeCustomThemeId,
-                    onCustomThemeSelected = { theme, position ->
-                      if (activeCustomThemeId != theme.id && themeTransition?.isAnimating != true) {
-                        themeTransition?.startTransition(position)
-                        scope.launch {
-                          delay(50)
-                          preferences.activeCustomThemeId.set(theme.id)
                         }
                       }
                     },
                     modifier = Modifier.padding(vertical = 8.dp),
-                  )
-
-                  PreferenceDivider()
-
-                  CustomThemeSettings(
-                    preferences = preferences,
-                    modifier = Modifier.padding(horizontal = 16.dp),
                   )
 
                   PreferenceDivider()
