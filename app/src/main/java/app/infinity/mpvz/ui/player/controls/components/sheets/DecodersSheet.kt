@@ -102,7 +102,3 @@ fun DecodersSheet(
   }
 }
 
-private const val NATIVE_ENGINE_LABEL = "Native"
-
-@Suppress("unused")
-private fun nativeEngineLabel(): String = NATIVE_ENGINE_LABEL

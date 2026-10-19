@@ -47,8 +47,6 @@ import app.infinity.mpvz.preferences.AudioChannels
 import app.infinity.mpvz.preferences.AudioPlayerOrientation
 import app.infinity.mpvz.preferences.AudioPreferences
 import app.infinity.mpvz.preferences.AudioVisualizerStyle
-import app.infinity.mpvz.preferences.BrowserPreferences
-import app.infinity.mpvz.preferences.MediaLibraryType
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
@@ -59,7 +57,6 @@ import app.infinity.mpvz.ui.utils.LocalBackStack
 import app.infinity.mpvz.ui.utils.LocalShowSettingsBackArrow
 import app.infinity.mpvz.ui.utils.currentMpvConfigOverrideOptions
 import app.infinity.mpvz.ui.utils.popSafely
-import app.infinity.mpvz.utils.media.MediaLibraryEvents
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
@@ -86,7 +83,6 @@ object AudioPreferencesScreen : Screen {
     val backstack = LocalBackStack.current
     val preferences = koinInject<AudioPreferences>()
     val configOwnedOptions = currentMpvConfigOverrideOptions()
-    val browserPreferences = koinInject<BrowserPreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
     val notificationPermissionLauncher =
       rememberLauncherForActivityResult(
@@ -130,111 +126,6 @@ object AudioPreferencesScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
-          item {
-            PreferenceSectionHeader(
-              title = stringResource(R.string.pref_media_library_section),
-              modifier = Modifier.settingsSearchTarget(R.string.pref_audio),
-            )
-          }
-
-          item {
-            PreferenceCard {
-              val includeAudioBrowser by browserPreferences.includeAudioBrowser.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_include_audio_files),
-                value = includeAudioBrowser,
-                onValueChange = { enabled ->
-                  browserPreferences.includeAudioBrowser.set(enabled)
-                  if (!enabled) {
-                    browserPreferences.mediaLibraryType.set(MediaLibraryType.Video)
-                  }
-                  // Files/folders use the same MediaScanOptions as the rest of the browser.
-                  // Notify active browser screens immediately instead of waiting for a restart.
-                  MediaLibraryEvents.notifyChanged()
-                },
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.infinity.mpvz.R.string.ui_include_audio_files),
-                  )
-                },
-                summary = {
-                  Text(
-                    androidx.compose.ui.res.stringResource(
-                      app.infinity.mpvz.R.string.ui_show_audio_files_in_the_browser,
-                    ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              // Minimum duration is a library filter, not a child setting of "Include audio files".
-              // It always applies to the dedicated Music tab, and it also applies to audio shown
-              // alongside videos in Files/Folders whenever that separate switch is enabled.
-              PreferenceDivider()
-              val minimumAudioDurationSeconds by browserPreferences.minimumAudioDurationSeconds.collectAsState()
-              val maxMinimumDurationSeconds = 120f
-              val minimumDurationLabel =
-                when {
-                  minimumAudioDurationSeconds <= 0 -> "Any duration"
-                  minimumAudioDurationSeconds < 60 -> "${minimumAudioDurationSeconds}s and longer"
-                  minimumAudioDurationSeconds % 60 == 0 -> "${minimumAudioDurationSeconds / 60} min and longer"
-                  else ->
-                    "${minimumAudioDurationSeconds / 60}m ${minimumAudioDurationSeconds % 60}s and longer"
-                }
-
-              Column(
-                modifier =
-                  Modifier
-                    .settingsSearchTarget(R.string.ui_minimum_audio_duration)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-              ) {
-                Text(
-                  androidx.compose.ui.res
-                    .stringResource(app.infinity.mpvz.R.string.ui_minimum_audio_duration),
-                  style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                  minimumDurationLabel,
-                  color = MaterialTheme.colorScheme.outline,
-                  style = MaterialTheme.typography.bodyMedium,
-                )
-                RangeSlider(
-                  value =
-                    minimumAudioDurationSeconds
-                      .toFloat()
-                      .coerceIn(0f, maxMinimumDurationSeconds)..maxMinimumDurationSeconds,
-                  onValueChange = { selectedRange ->
-                    // The left thumb is the lower bound; there is intentionally no upper limit.
-                    // Music reacts live via the preference flow. Files/Folders are refreshed once
-                    // the drag finishes so storage is not rescanned for every intermediate step.
-                    browserPreferences.minimumAudioDurationSeconds.set(
-                      selectedRange.start.toInt().coerceIn(0, maxMinimumDurationSeconds.toInt()),
-                    )
-                  },
-                  onValueChangeFinished = { MediaLibraryEvents.notifyChanged() },
-                  valueRange = 0f..maxMinimumDurationSeconds,
-                  steps = 23,
-                )
-                Text(
-                  text =
-                    "Applies to Music and audio in Files • Included: ${
-                      if (minimumAudioDurationSeconds <= 0) {
-                        "0s"
-                      } else {
-                        minimumDurationLabel.removeSuffix(" and longer")
-                      }
-                    } – no limit",
-                  color = MaterialTheme.colorScheme.outline,
-                  style = MaterialTheme.typography.bodySmall,
-                )
-              }
-
-
-            }
-          }
-
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_appearance))
           }

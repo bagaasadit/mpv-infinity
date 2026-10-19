@@ -66,9 +66,8 @@ import app.infinity.mpvz.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
 
 /**
- * Minimalist, dedicated launcher home screen ala mpvKt.
- * Provides quick access to URL playback, file picking, storage browsing, and settings
- * without loading heavy gallery/scanner components.
+ * Minimalist, dedicated launcher home screen for mpv-infinity.
+ * Provides quick access to URL streaming, SAF media file picking, and app settings.
  */
 @Serializable
 object PurePlayerHomeScreen : Screen {
@@ -197,7 +196,7 @@ object PurePlayerHomeScreen : Screen {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Open url",
+              text = "Open URL",
               style = MaterialTheme.typography.labelLarge.copy(
                 fontWeight = FontWeight.Medium,
               ),
@@ -208,7 +207,7 @@ object PurePlayerHomeScreen : Screen {
 
           OutlinedButton(
             onClick = {
-              openDocumentLauncher.launch(arrayOf("video/*", "audio/*", "*/*"))
+              openDocumentLauncher.launch(arrayOf("video/*", "audio/*"))
             },
             shape = CircleShape,
             modifier = Modifier

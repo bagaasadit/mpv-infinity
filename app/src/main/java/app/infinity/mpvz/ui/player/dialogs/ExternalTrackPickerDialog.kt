@@ -149,6 +149,23 @@ fun ExternalTrackPickerDialog(
       selectedPath?.let { File(it) }
     }
 
+  val volumePaths =
+    remember(storageVolumes) {
+      storageVolumes.mapNotNull { StorageVolumeUtils.getVolumePath(it) }.toSet()
+    }
+
+  val navigateBack = {
+    val current = currentDir
+    val parent = current?.parentFile
+    if (current == null || volumePaths.contains(current.absolutePath) || parent == null ||
+      parent.absolutePath == "/storage" || parent.absolutePath == "/storage/emulated"
+    ) {
+      selectedPath = null
+    } else {
+      selectedPath = parent.absolutePath
+    }
+  }
+
   // Get folders and allowed files
   val (folders, files) =
     remember(selectedPath, matchToName) {
@@ -234,7 +251,7 @@ fun ExternalTrackPickerDialog(
             ) {
               NavigationButtons(
                 selectedPath = selectedPath,
-                onBack = { selectedPath = currentDir?.parent },
+                onBack = navigateBack,
                 onHome = { selectedPath = Environment.getExternalStorageDirectory().absolutePath },
                 onSystemPicker = onSystemPickerRequest,
                 buttonSize = 48.dp,
@@ -272,7 +289,7 @@ fun ExternalTrackPickerDialog(
               Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 NavigationButtons(
                   selectedPath = selectedPath,
-                  onBack = { selectedPath = currentDir?.parent },
+                  onBack = navigateBack,
                   onHome = { selectedPath = Environment.getExternalStorageDirectory().absolutePath },
                   onSystemPicker = onSystemPickerRequest,
                   buttonSize = 40.dp,

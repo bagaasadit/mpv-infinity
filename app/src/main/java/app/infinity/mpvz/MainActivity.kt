@@ -215,7 +215,6 @@ class MainActivity : AppCompatActivity() {
       // Set up theme and edge-to-edge display
       val dark by appearancePreferences.darkMode.collectAsState()
       val sessionState by PlaybackSession.state.collectAsState()
-      val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
       val autoPiPOnNavigation by playerPreferences.autoPiPOnNavigation.collectAsState()
       val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
       val rendererNoticePreferences =
@@ -230,7 +229,6 @@ class MainActivity : AppCompatActivity() {
 
       LaunchedEffect(
         sessionState,
-        enableVideoMiniPlayer,
         autoPiPOnNavigation,
         trackListNode,
       ) {

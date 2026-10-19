@@ -14,7 +14,7 @@ import android.content.Context
 import android.net.Uri
 import app.infinity.mpvz.database.entities.RecentlyPlayedEntity
 import app.infinity.mpvz.domain.recentlyplayed.repository.RecentlyPlayedRepository
-import app.infinity.mpvz.preferences.AdvancedPreferences
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -37,7 +37,6 @@ internal fun <T> visibleRecentlyPlayedItems(
 
 object RecentlyPlayedOps {
   private val repository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
-  private val preferences: AdvancedPreferences by inject(AdvancedPreferences::class.java)
 
   suspend fun addRecentlyPlayed(
     context: Context,
@@ -80,28 +79,15 @@ object RecentlyPlayedOps {
     }
   }
 
-  suspend fun backfillWatchStatistics(context: Context) {
-    if (!shouldTrackWatchStatistics(preferences.enableRecentlyPlayed.get(), preferences.enableWatchStatistics.get())) return
-    withContext(Dispatchers.IO) {
-      val history = repository.getRecentlyPlayed(limit = WatchStatisticsState.MAX_ITEMS)
-      WatchStatisticsStore.backfillIfNeeded(context, history)
-    }
-  }
+  suspend fun backfillWatchStatistics(context: Context) {}
 
-  private suspend fun recordWatchStatistics(context: Context, itemKey: String, aliases: List<String>) {
-    if (!shouldTrackWatchStatistics(preferences.enableRecentlyPlayed.get(), preferences.enableWatchStatistics.get())) return
-    if (!WatchStatisticsStore.isInitialized(context)) backfillWatchStatistics(context)
-    if (!WatchStatisticsStore.isInitialized(context)) return
-    withContext(Dispatchers.IO) {
-      WatchStatisticsStore.record(context, itemKey, aliases)
-    }
-  }
+  private suspend fun recordWatchStatistics(context: Context, itemKey: String, aliases: List<String>) {}
 
   suspend fun clearAll() {
     repository.clearAll()
   }
 
-  fun isRecentlyPlayedEnabled(): Boolean = preferences.enableRecentlyPlayed.get()
+  fun isRecentlyPlayedEnabled(): Boolean = false
 
   suspend fun updateVideoTitle(
     filePath: String,
@@ -172,39 +158,15 @@ object RecentlyPlayedOps {
     if (isRecentlyPlayedEnabled()) repository.getRecentlyPlayedCount() else 0
 
   fun observeRecentlyPlayed(limit: Int = 50): Flow<List<RecentlyPlayedEntity>> =
-    combine(
-      repository.observeRecentlyPlayed(limit),
-      preferences.enableRecentlyPlayed.changes(),
-    ) { items, enabled -> if (enabled) items else emptyList() }
-      .distinctUntilChanged()
-      .flowOn(Dispatchers.IO)
+    flowOf(emptyList())
 
   @OptIn(ExperimentalCoroutinesApi::class)
   fun observeLastPlayedEntity(): Flow<RecentlyPlayedEntity?> =
-    combine(
-      repository.observeLastPlayed(),
-      preferences.enableRecentlyPlayed.changes(),
-    ) { _, enabled -> enabled }
-      .mapLatest { enabled -> if (enabled) getLastPlayedEntity() else null }
-      .distinctUntilChanged()
-      .flowOn(Dispatchers.IO)
+    flowOf(null)
 
   @OptIn(ExperimentalCoroutinesApi::class)
   fun observeLastPlayedPath(): Flow<String?> =
-    combine(
-      repository.observeLastPlayedForHighlight(),
-      preferences.enableRecentlyPlayed.changes(),
-    ) { entity, enabled -> if (enabled) entity?.filePath else null }
-      .mapLatest { path ->
-        if (path.isNullOrEmpty()) {
-          null
-        } else if (fileExists(path)) {
-          path
-        } else {
-          null
-        }
-      }.distinctUntilChanged()
-      .flowOn(Dispatchers.IO)
+    flowOf(null)
 
   suspend fun onVideoDeleted(filePath: String) {
     if (filePath.isBlank()) return

@@ -70,13 +70,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import app.infinity.mpvz.R
-import app.infinity.mpvz.domain.media.model.Video
 import app.infinity.mpvz.domain.thumbnail.ThumbnailRepository
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.components.PlayerSheet
 import app.infinity.mpvz.presentation.components.RemoteImage
-import app.infinity.mpvz.ui.player.dialogs.AddToPlaylistDialog
-import app.infinity.mpvz.ui.player.PlaybackSession
 import app.infinity.mpvz.ui.player.controls.components.MiniAudioVisualizer
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
@@ -90,35 +87,6 @@ import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
-fun PlaylistItem.toVideo(): Video {
-  val cleanPath =
-    if (path.startsWith("file://", ignoreCase = true)) {
-      runCatching { Uri.parse(path).path }.getOrNull() ?: path.removePrefix("file://")
-    } else {
-      path.ifBlank { uri.path.orEmpty().ifBlank { uri.toString() } }
-    }
-  return Video(
-    id = uri.toString().hashCode().toLong(),
-    title = title,
-    displayName = title,
-    path = cleanPath,
-    uri = uri,
-    duration = 0L,
-    durationFormatted = duration,
-    size = 0L,
-    sizeFormatted = "",
-    dateModified = 0L,
-    dateAdded = 0L,
-    mimeType = if (isAudio) "audio/*" else "video/*",
-    bucketId = "",
-    bucketDisplayName = "",
-    width = 0,
-    height = 0,
-    fps = 0f,
-    resolution = resolution,
-    isAudio = isAudio,
-  )
-}
 
 data class PlaylistItem(
   val uri: Uri,
@@ -314,8 +282,6 @@ fun PlaylistSheet(
       screenWidth * 0.85f
     }
 
-  var showAddToPlaylistDialog by rememberSaveable { mutableStateOf(false) }
-
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = Modifier.fillMaxWidth(),
@@ -389,15 +355,7 @@ fun PlaylistSheet(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
           ) {
-            IconButton(
-              onClick = { showAddToPlaylistDialog = true },
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.PlaylistAdd,
-                contentDescription = stringResource(R.string.save_queue_as_playlist),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-            }
+
 
             IconButton(onClick = { isListMode = !isListMode }) {
               Icon(
@@ -511,15 +469,7 @@ fun PlaylistSheet(
     }
   }
 
-  if (showAddToPlaylistDialog && playlist.isNotEmpty()) {
-    val queueVideos = remember(playlist) { playlist.map { it.toVideo() } }
-    AddToPlaylistDialog(
-      isOpen = true,
-      videos = queueVideos,
-      onDismiss = { showAddToPlaylistDialog = false },
-      onSuccess = { showAddToPlaylistDialog = false },
-    )
-  }
+
 }
 
 @Composable

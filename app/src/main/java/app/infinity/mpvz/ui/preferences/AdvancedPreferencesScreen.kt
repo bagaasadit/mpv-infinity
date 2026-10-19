@@ -17,13 +17,23 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,6 +72,7 @@ import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
 import app.infinity.mpvz.presentation.components.ConfirmDialog
 import app.infinity.mpvz.presentation.crash.CrashActivity
+import app.infinity.mpvz.ui.components.IconSwitch
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
 import app.infinity.mpvz.ui.preferences.components.SwitchPreference
@@ -72,6 +83,7 @@ import app.infinity.mpvz.utils.clipboard.SafeClipboard
 import app.infinity.mpvz.utils.history.RecentlyPlayedOps
 import app.infinity.mpvz.utils.history.clearWatchHistory
 import app.infinity.mpvz.utils.media.PlaybackStateEvents
+import app.infinity.mpvz.utils.storage.normalizeHiddenMarkerName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -133,6 +145,8 @@ object AdvancedPreferencesScreen : Screen {
     val settingsManager = koinInject<SettingsManager>()
     val foldersPreferences = koinInject<FoldersPreferences>()
     val subtitlesPreferences = koinInject<SubtitlesPreferences>()
+    val includeNoMediaFolders by foldersPreferences.includeNoMediaFolders.collectAsState()
+    val hiddenFolderMarkerNames by foldersPreferences.hiddenFolderMarkerNames.collectAsState()
     val scope = rememberCoroutineScope()
     var showImportDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
@@ -680,6 +694,29 @@ object AdvancedPreferencesScreen : Screen {
             }
           }
 
+          // Media Scanning Section
+          item {
+            PreferenceSectionHeader(
+              title = stringResource(R.string.pref_folders_title),
+            )
+          }
+
+          item {
+            NoMediaPreferenceCard(
+              modifier = Modifier.settingsSearchTarget(R.string.pref_folders_include_hidden_title),
+              includeNoMediaFolders = includeNoMediaFolders,
+              markerNames = hiddenFolderMarkerNames,
+              onIncludeNoMediaFoldersChanged = { enabled ->
+                foldersPreferences.includeNoMediaFolders.set(enabled)
+                app.infinity.mpvz.repository.MediaFileRepository.clearCache()
+              },
+              onMarkerNamesChanged = { markerNames ->
+                foldersPreferences.hiddenFolderMarkerNames.set(markerNames)
+                app.infinity.mpvz.repository.MediaFileRepository.clearCache()
+              },
+            )
+          }
+
           // Data & Cache Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_data_cache))
@@ -688,57 +725,15 @@ object AdvancedPreferencesScreen : Screen {
           item {
             PreferenceCard {
               var isConfirmDialogShown by remember { mutableStateOf(false) }
-              val enableRecentlyPlayed by preferences.enableRecentlyPlayed.collectAsState()
-              var recentlyPlayedCount by remember { mutableStateOf(0) }
-
-              LaunchedEffect(enableRecentlyPlayed) {
-                if (enableRecentlyPlayed) {
-                  recentlyPlayedCount =
-                    withContext(Dispatchers.IO) {
-                      runCatching { RecentlyPlayedOps.getRecentlyPlayedCount() }.getOrDefault(0)
-                    }
-                } else {
-                  recentlyPlayedCount = 0
-                }
-              }
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_enable_recently_played_title),
-                value = enableRecentlyPlayed,
-                onValueChange = preferences.enableRecentlyPlayed::set,
-                title = { Text(stringResource(R.string.pref_advanced_enable_recently_played_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_advanced_enable_recently_played_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val playbackHistorySummary =
-                if (recentlyPlayedCount > 0) {
-                  stringResource(R.string.pref_clear_playback_history_recently_played, recentlyPlayedCount)
-                } else {
-                  stringResource(R.string.pref_clear_playback_history_recently_played_none)
-                }
 
               Preference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_clear_playback_history),
                 title = { Text(stringResource(R.string.pref_advanced_clear_playback_history)) },
                 summary = {
-                  Column {
-                    Text(
-                      stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                    Text(
-                      playbackHistorySummary,
-                      color = MaterialTheme.colorScheme.outline,
-                      style = MaterialTheme.typography.bodySmall,
-                    )
-                  }
+                  Text(
+                    stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
                 },
                 onClick = { isConfirmDialogShown = true },
               )
@@ -755,7 +750,6 @@ object AdvancedPreferencesScreen : Screen {
                         PlaybackStateEvents.notifyChanged("")
                       }.onSuccess {
                         withContext(Dispatchers.Main) {
-                          recentlyPlayedCount = 0
                           isConfirmDialogShown = false
                           Toast
                             .makeText(
@@ -811,7 +805,6 @@ object AdvancedPreferencesScreen : Screen {
                       listOf(
                         File(context.cacheDir, "thumbnails"),
                         File(context.filesDir, "thumbnails"),
-                        File(context.cacheDir, "remote_images"),
                       ).forEach { dir ->
                         if (dir.exists()) {
                           dir.walkTopDown().filter { it.isFile }.forEach { size += it.length() }
@@ -1069,3 +1062,153 @@ private fun formatFileSize(bytes: Long): String =
     bytes < 1024 * 1024 -> "%.1f KB".format(bytes / 1024.0)
     else -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
   }
+
+@Composable
+private fun NoMediaPreferenceCard(
+  includeNoMediaFolders: Boolean,
+  markerNames: Set<String>,
+  onIncludeNoMediaFoldersChanged: (Boolean) -> Unit,
+  onMarkerNamesChanged: (Set<String>) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  var showAddMarkerDialog by remember { mutableStateOf(false) }
+  var markerInput by remember { mutableStateOf("") }
+
+  Card(
+    modifier = modifier.fillMaxWidth(),
+    colors =
+      CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+      ),
+  ) {
+    Column {
+      Row(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .clickable { onIncludeNoMediaFoldersChanged(!includeNoMediaFolders) }
+            .padding(16.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = stringResource(R.string.pref_folders_include_hidden_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+          )
+          Spacer(modifier = Modifier.height(4.dp))
+          Text(
+            text = stringResource(R.string.pref_folders_include_hidden_summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        IconSwitch(
+          checked = includeNoMediaFolders,
+          onCheckedChange = onIncludeNoMediaFoldersChanged,
+        )
+      }
+
+      if (includeNoMediaFolders) {
+        HorizontalDivider()
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+          Text(
+            text = stringResource(R.string.pref_folders_hidden_markers_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+          )
+          Text(
+            text = stringResource(R.string.pref_folders_hidden_markers_summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+
+          if (markerNames.isEmpty()) {
+            Text(
+              text = stringResource(R.string.pref_folders_hidden_markers_empty),
+              modifier = Modifier.padding(top = 8.dp),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          } else {
+            markerNames.sorted().forEach { markerName ->
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+              ) {
+                Text(text = markerName, modifier = Modifier.weight(1f))
+                IconButton(onClick = { onMarkerNamesChanged(markerNames - markerName) }) {
+                  Icon(
+                    Icons.RoundedFilled.Close,
+                    contentDescription =
+                      stringResource(R.string.pref_folders_remove_marker, markerName),
+                  )
+                }
+              }
+            }
+          }
+
+          TextButton(
+            onClick = {
+              markerInput = ""
+              showAddMarkerDialog = true
+            },
+          ) {
+            Icon(Icons.RoundedFilled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(stringResource(R.string.pref_folders_add_marker))
+          }
+        }
+      }
+    }
+  }
+
+  if (showAddMarkerDialog) {
+    val normalizedMarker = normalizeHiddenMarkerName(markerInput)
+    val errorMessage =
+      when {
+        markerInput.isBlank() -> null
+        normalizedMarker == null -> R.string.pref_folders_marker_invalid
+        normalizedMarker in markerNames -> R.string.pref_folders_marker_duplicate
+        else -> null
+      }
+
+    AlertDialog(
+      onDismissRequest = { showAddMarkerDialog = false },
+      title = { Text(stringResource(R.string.pref_folders_add_marker_title)) },
+      text = {
+        OutlinedTextField(
+          value = markerInput,
+          onValueChange = { markerInput = it },
+          label = { Text(stringResource(R.string.pref_folders_marker_name)) },
+          placeholder = { Text(".nomedia") },
+          singleLine = true,
+          isError = errorMessage != null,
+          supportingText =
+            if (errorMessage == null) {
+              null
+            } else {
+              { Text(stringResource(errorMessage)) }
+            },
+        )
+      },
+      confirmButton = {
+        TextButton(
+          enabled = normalizedMarker != null && normalizedMarker !in markerNames,
+          onClick = {
+            onMarkerNamesChanged(markerNames + requireNotNull(normalizedMarker))
+            showAddMarkerDialog = false
+          },
+        ) {
+          Text(stringResource(R.string.pref_folders_add_marker))
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showAddMarkerDialog = false }) {
+          Text(stringResource(R.string.generic_cancel))
+        }
+      },
+    )
+  }
+}

@@ -180,7 +180,8 @@ fun MoreSheet(
               }
             }
           }
-          TextButton(onClick = onEnterFiltersPanel, enabled = filtersEnabled) {
+          val isMpv = activeEngine == PlaybackEngineMode.MPV
+          TextButton(onClick = onEnterFiltersPanel, enabled = filtersEnabled && isMpv) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
@@ -196,7 +197,7 @@ fun MoreSheet(
           }
           TextButton(
             onClick = onEnterLuaScriptsPanel,
-            enabled = mpvConfStorageLocation.isNotBlank(),
+            enabled = mpvConfStorageLocation.isNotBlank() && isMpv,
           ) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
@@ -491,32 +492,3 @@ fun TimePickerDialog(
   }
 }
 
-@Composable
-fun SectionHeaderWithInfo(
-  title: String,
-  onInfoClick: () -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  Row(
-    modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.Start,
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.titleMedium,
-      color = MaterialTheme.colorScheme.primary,
-    )
-    Spacer(modifier = Modifier.width(8.dp))
-    IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
-      Icon(
-        imageVector = Icons.RoundedFilled.Info,
-        contentDescription =
-          androidx.compose.ui.res
-            .stringResource(app.infinity.mpvz.R.string.info),
-        tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(16.dp),
-      )
-    }
-  }
-}

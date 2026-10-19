@@ -50,6 +50,7 @@ import androidx.core.content.ContextCompat
 import app.infinity.mpvz.R
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import app.infinity.mpvz.preferences.AudioPreferences
+import app.infinity.mpvz.preferences.BrowserPreferences
 import app.infinity.mpvz.preferences.IntroSegmentProvider
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
@@ -89,13 +90,13 @@ object PlayerPreferencesScreen : Screen {
     val configOwnedOptions = currentMpvConfigOverrideOptions()
     val audioPreferences = koinInject<AudioPreferences>()
     val advancedPreferences = koinInject<AdvancedPreferences>()
+    val browserPreferences = koinInject<BrowserPreferences>()
     val notificationPermissionLauncher =
       rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
       ) { _ -> }
     var showTemplateDialog by remember { mutableStateOf(false) }
     var templateDraft by remember { mutableStateOf("") }
-    var showVideoMiniPlayerDependencyDialog by remember { mutableStateOf(false) }
     val screenshotFolderUri by preferences.screenshotFolderUri.collectAsState()
     val screenshotFolderPicker = rememberLauncherForActivityResult(
       ActivityResultContracts.OpenDocumentTree(),
@@ -221,10 +222,6 @@ object PlayerPreferencesScreen : Screen {
                 value = videoBackgroundPlayback,
                 onValueChange = { enabled ->
                   audioPreferences.backgroundPlayback.set(enabled)
-                  if (!enabled) {
-                    preferences.enableVideoMiniPlayer.set(false)
-                    showVideoMiniPlayerDependencyDialog = false
-                  }
                   if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED
@@ -328,6 +325,40 @@ object PlayerPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              val watchedThreshold by browserPreferences.watchedThreshold.collectAsState()
+              val effectiveThreshold = watchedThreshold.coerceAtLeast(0)
+              val thresholdDisplayValue = if (effectiveThreshold == 0) 0f else effectiveThreshold.toFloat()
+              SliderPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_watched_threshold_title),
+                value = thresholdDisplayValue,
+                onValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
+                sliderValue = thresholdDisplayValue,
+                onSliderValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
+                title = {
+                  Text(
+                    text = stringResource(id = R.string.pref_appearance_watched_threshold_title),
+                  )
+                },
+                valueRange = 0f..100f,
+                valueSteps = 20,
+                summary = {
+                  Text(
+                    text =
+                      if (effectiveThreshold == 0) {
+                        stringResource(R.string.pref_appearance_watched_threshold_summary_infinite)
+                      } else {
+                        stringResource(
+                          id = R.string.pref_appearance_watched_threshold_summary,
+                          effectiveThreshold,
+                        )
+                      },
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               val rememberBrightness by preferences.rememberBrightness.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_player_remember_brightness),
@@ -364,31 +395,6 @@ object PlayerPreferencesScreen : Screen {
                 summary = {
                   Text(
                     stringResource(R.string.pref_auto_pip_home_only_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val enableVideoMiniPlayer by preferences.enableVideoMiniPlayer.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_enable_video_mini_player_title),
-                value = enableVideoMiniPlayer,
-                onValueChange = { enabled ->
-                  when {
-                    !enabled -> preferences.enableVideoMiniPlayer.set(false)
-                    videoBackgroundPlayback -> preferences.enableVideoMiniPlayer.set(true)
-                    else -> {
-                      preferences.enableVideoMiniPlayer.set(false)
-                      showVideoMiniPlayerDependencyDialog = true
-                    }
-                  }
-                },
-                title = { Text(stringResource(R.string.pref_enable_video_mini_player_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_enable_video_mini_player_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -1159,40 +1165,6 @@ object PlayerPreferencesScreen : Screen {
           }
         }
       }
-    }
-    if (showVideoMiniPlayerDependencyDialog) {
-      AlertDialog(
-        onDismissRequest = { showVideoMiniPlayerDependencyDialog = false },
-        title = { Text(stringResource(R.string.pref_video_mini_player_dependency_title)) },
-        text = { Text(stringResource(R.string.pref_video_mini_player_dependency_message)) },
-        confirmButton = {
-          TextButton(
-            onClick = {
-              audioPreferences.backgroundPlayback.set(true)
-              preferences.enableVideoMiniPlayer.set(true)
-              showVideoMiniPlayerDependencyDialog = false
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-              ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-              }
-            },
-          ) {
-            Text(stringResource(R.string.pref_video_mini_player_dependency_confirm))
-          }
-        },
-        dismissButton = {
-          TextButton(
-            onClick = {
-              preferences.enableVideoMiniPlayer.set(false)
-              showVideoMiniPlayerDependencyDialog = false
-            },
-          ) {
-            Text(stringResource(R.string.generic_cancel))
-          }
-        },
-      )
     }
     if (showTemplateDialog) {
       AlertDialog(

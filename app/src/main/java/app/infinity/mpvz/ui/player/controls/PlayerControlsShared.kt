@@ -748,8 +748,7 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.CURRENT_CHAPTER -> {
-      if (isPortrait) {
-      } else if (compact) {
+      if (isPortrait || compact) {
         if (chapters.getOrNull(currentChapter ?: 0) != null) {
           ControlsButton(
             icon = Icons.RoundedFilled.Bookmarks,

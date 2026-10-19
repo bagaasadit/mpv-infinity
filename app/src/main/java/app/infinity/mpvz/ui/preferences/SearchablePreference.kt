@@ -100,50 +100,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_appearance_unlimited_name_lines_title,
-          summaryRes = R.string.pref_appearance_unlimited_name_lines_summary,
-          keywords = listOf("name", "full", "truncate", "lines", "display"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_show_unplayed_old_video_label_title,
-          summaryRes = R.string.pref_appearance_show_unplayed_old_video_label_summary,
-          keywords = listOf("unplayed", "old", "label", "video", "new", "indicator"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_unplayed_old_video_days_title,
-          keywords = listOf("days", "old", "video", "threshold", "time"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_auto_scroll_title,
-          summaryRes = R.string.pref_appearance_auto_scroll_summary,
-          keywords = listOf("scroll", "auto", "last played", "resume", "position"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_show_video_thumbnails_title,
-          summaryRes = R.string.pref_appearance_show_video_thumbnails_summary,
-          keywords = listOf("thumbnail", "thumbnails", "preview", "poster", "video"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_appearance_thumbnail_generation_title,
           summaryRes = R.string.pref_appearance_thumbnail_generation_summary,
           keywords =
@@ -167,15 +123,6 @@ object SearchablePreferences {
           titleRes = R.string.pref_appearance_thumbnail_quality_title,
           summaryRes = R.string.pref_appearance_thumbnail_quality_summary,
           keywords = listOf("thumbnail", "quality", "resolution", "720p", "1080p", "1440p", "storage"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_gesture_tap_thumbnail_to_select_title,
-          summaryRes = R.string.pref_gesture_tap_thumbnail_to_select_summary,
-          keywords = listOf("thumbnail", "selection", "select", "tap", "gesture"),
           category = "Appearance",
           screen = AppearancePreferencesScreen,
         ),
@@ -657,40 +604,15 @@ object SearchablePreferences {
           screen = GesturePreferencesScreen,
         ),
       )
-      // Storage / Folder preferences
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_folders_title,
-          summaryRes = R.string.pref_folders_summary,
-          keywords = listOf("folders", "blacklist", "hide", "exclude", "manage"),
-          category = "Folders",
-          screen = FoldersPreferencesScreen,
-        ),
-      )
+      // Media scanning preferences
       add(
         SearchablePreference(
           titleRes = R.string.pref_folders_include_hidden_title,
           summaryRes = R.string.pref_folders_include_hidden_summary,
           keywords =
             listOf("hidden", "dot folder", "dot file", "marker", "custom", "no media", "nomedia", "include", "scan"),
-          category = "Folders",
-          screen = FoldersPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_folders_add_folder,
-          keywords = listOf("add", "folder", "exclude", "blacklist"),
-          category = "Folders",
-          screen = FoldersPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_folders_clear_all,
-          keywords = listOf("clear", "all", "folders", "blacklist", "reset"),
-          category = "Folders",
-          screen = FoldersPreferencesScreen,
+          category = "Advanced",
+          screen = AdvancedPreferencesScreen,
         ),
       )
       // Decoder preferences
@@ -1094,15 +1016,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_advanced_enable_recently_played_title,
-          summaryRes = R.string.pref_advanced_enable_recently_played_summary,
-          keywords = listOf("recently", "played", "history", "enable", "track"),
-          category = "Advanced",
-          screen = AdvancedPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_advanced_clear_playback_history,
           keywords = listOf("clear", "history", "playback", "reset", "delete"),
           category = "Advanced",
@@ -1187,15 +1100,6 @@ object SearchablePreferences {
         category = "Appearance",
         screen = AppearancePreferencesScreen,
         anchorItemIndex = 3,
-        SearchEntrySpec(R.string.pref_tree_flatten_depth_title, listOf("tree", "folder", "path", "flatten", "compression")),
-        SearchEntrySpec(R.string.ui_dual_pane_view, listOf("tablet", "two pane", "split", "folder")),
-        SearchEntrySpec(R.string.pref_appearance_watched_threshold_title, listOf("watched", "progress", "threshold", "percent")),
-        SearchEntrySpec(R.string.ui_delete_folder_all_contents, listOf("delete", "folder", "all files", "media only")),
-      )
-      addSearchEntries(
-        category = "Appearance",
-        screen = AppearancePreferencesScreen,
-        anchorItemIndex = 5,
         SearchEntrySpec(
           R.string.pref_appearance_thumbnail_position_title,
           listOf("thumbnail", "frame", "position", "percent", "preview"),
@@ -1206,7 +1110,7 @@ object SearchablePreferences {
       addSearchEntries(
         category = "Appearance",
         screen = AppearancePreferencesScreen,
-        anchorItemIndex = 9,
+        anchorItemIndex = 5,
         SearchEntrySpec(R.string.pref_anim_controls_style_title, listOf("animation", "controls", "fade", "slide")),
         SearchEntrySpec(R.string.pref_anim_video_open_title, listOf("animation", "video", "opening", "launch")),
         SearchEntrySpec(R.string.pref_anim_screen_nav_style_title, listOf("animation", "screen", "navigation", "transition")),
@@ -1233,7 +1137,7 @@ object SearchablePreferences {
         anchorItemIndex = 1,
         SearchEntrySpec(R.string.pref_autoplay_next_audio_title, listOf("autoplay", "next", "audio", "music")),
         SearchEntrySpec(R.string.pref_playlist_mode_title, listOf("playlist", "next", "previous", "navigation", "queue")),
-        SearchEntrySpec(R.string.pref_enable_video_mini_player_title, listOf("mini player", "video", "background", "continue")),
+        SearchEntrySpec(R.string.pref_appearance_watched_threshold_title, listOf("watched", "progress", "threshold", "percent")),
         SearchEntrySpec(R.string.ui_show_media_info_in_chooser, listOf("media info", "chooser", "open with", "system")),
       )
       addSearchEntries(
@@ -1326,20 +1230,13 @@ object SearchablePreferences {
         category = "Audio",
         screen = AudioPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.ui_include_audio_files, listOf("audio", "files", "browser", "folders", "library")),
-        SearchEntrySpec(R.string.ui_minimum_audio_duration, listOf("audio", "minimum", "duration", "short", "filter")),
-      )
-      addSearchEntries(
-        category = "Audio",
-        screen = AudioPreferencesScreen,
-        anchorItemIndex = 3,
         SearchEntrySpec(R.string.pref_audio_ambient_mode_title, listOf("audio", "ambient", "background", "visualizer")),
         SearchEntrySpec(R.string.pref_audio_wavy_seekbar_title, listOf("audio", "wavy", "seekbar", "visualizer", "animation", "wave")),
       )
       addSearchEntries(
         category = "Audio",
         screen = AudioPreferencesScreen,
-        anchorItemIndex = 5,
+        anchorItemIndex = 3,
         SearchEntrySpec(R.string.pref_audio_drc_title, listOf("audio", "dynamic range", "compression", "drc", "loudness")),
       )
 
@@ -1521,16 +1418,6 @@ object SearchablePreferences {
           ),
         category = "Subtitles",
         screen = SubtitlesPreferencesScreen,
-      ),
-      SearchablePreference(
-        titleRes = R.string.pref_folders_title,
-        summaryRes = R.string.pref_folders_summary,
-        keywords =
-          listOf(
-            "folder blacklist exclude hidden audio video nomedia scan add remove clear storage pinned",
-          ),
-        category = "Folders",
-        screen = FoldersPreferencesScreen,
       ),
       SearchablePreference(
         titleRes = R.string.pref_advanced,

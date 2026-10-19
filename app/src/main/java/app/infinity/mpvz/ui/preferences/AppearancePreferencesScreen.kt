@@ -45,12 +45,10 @@ import app.infinity.mpvz.R
 import app.infinity.mpvz.domain.thumbnail.ThumbnailRepository
 import app.infinity.mpvz.preferences.AppearancePreferences
 import app.infinity.mpvz.preferences.BrowserPreferences
-import app.infinity.mpvz.preferences.GesturePreferences
 import app.infinity.mpvz.preferences.MultiChoiceSegmentedButton
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.ThumbnailMode
 import app.infinity.mpvz.preferences.ThumbnailQuality
-import app.infinity.mpvz.preferences.TreeFlattenDepth
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
 import app.infinity.mpvz.presentation.components.ConfirmDialog
@@ -88,7 +86,6 @@ object AppearancePreferencesScreen : Screen {
     val context = LocalContext.current
     val preferences = koinInject<AppearancePreferences>()
     val browserPreferences = koinInject<BrowserPreferences>()
-    val gesturePreferences = koinInject<GesturePreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
     val thumbnailRepository = koinInject<ThumbnailRepository>()
     val backstack = LocalBackStack.current
@@ -105,8 +102,6 @@ object AppearancePreferencesScreen : Screen {
     val storedThumbnailMode by browserPreferences.thumbnailMode.collectAsState()
     val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
     val thumbnailFramePosition by browserPreferences.thumbnailFramePosition.collectAsState()
-    val dualPaneForTablet by browserPreferences.dualPaneForTablet.collectAsState()
-    val treeFlattenDepth by browserPreferences.treeFlattenDepth.collectAsState()
     val thumbnailCacheClearedMessage = stringResource(R.string.pref_thumbnail_cache_cleared)
 
     val thumbnailMode = storedThumbnailMode
@@ -373,249 +368,12 @@ object AppearancePreferencesScreen : Screen {
 
           item {
             PreferenceSectionHeader(
-              title = stringResource(id = R.string.pref_appearance_category_file_browser),
-            )
-          }
-
-          item {
-            PreferenceCard {
-              val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unlimited_name_lines_title),
-                value = unlimitedNameLines,
-                onValueChange = { preferences.unlimitedNameLines.set(it) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_unlimited_name_lines_title),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        id = R.string.pref_appearance_unlimited_name_lines_summary,
-                      ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val showUnplayedOldVideoLabel by preferences.showUnplayedOldVideoLabel.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_show_unplayed_old_video_label_title),
-                value = showUnplayedOldVideoLabel,
-                onValueChange = { preferences.showUnplayedOldVideoLabel.set(it) },
-                title = {
-                  Text(
-                    text =
-                      stringResource(
-                        id = R.string.pref_appearance_show_unplayed_old_video_label_title,
-                      ),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        id = R.string.pref_appearance_show_unplayed_old_video_label_summary,
-                      ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val unplayedOldVideoDays by preferences.unplayedOldVideoDays.collectAsState()
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unplayed_old_video_days_title),
-                value = unplayedOldVideoDays.toFloat(),
-                onValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_unplayed_old_video_days_title),
-                  )
-                },
-                valueRange = 0f..30f,
-                valueSteps = 29,
-                summary = {
-                  Text(
-                    text =
-                      if (unplayedOldVideoDays == 0) {
-                        "Unlimited — NEW stays until the watched threshold is reached"
-                      } else {
-                        stringResource(
-                          id = R.string.pref_appearance_unplayed_old_video_days_summary,
-                          unplayedOldVideoDays,
-                        )
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onSliderValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
-                sliderValue = unplayedOldVideoDays.toFloat(),
-                enabled = showUnplayedOldVideoLabel,
-              )
-
-              PreferenceDivider()
-
-              val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_auto_scroll_title),
-                value = autoScrollToLastPlayed,
-                onValueChange = { browserPreferences.autoScrollToLastPlayed.set(it) },
-                title = {
-                  Text(text = stringResource(R.string.pref_appearance_auto_scroll_title))
-                },
-                summary = {
-                  Text(
-                    text = stringResource(R.string.pref_appearance_auto_scroll_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_tree_flatten_depth_title),
-                value = treeFlattenDepth,
-                onValueChange = browserPreferences.treeFlattenDepth::set,
-                values = TreeFlattenDepth.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(stringResource(R.string.pref_tree_flatten_depth_title)) },
-                summary = {
-                  Text(
-                    stringResource(
-                      R.string.pref_tree_flatten_depth_summary,
-                      treeFlattenDepth.displayName,
-                    ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_dual_pane_view),
-                value = dualPaneForTablet,
-                onValueChange = { browserPreferences.dualPaneForTablet.set(it) },
-                title = {
-                  Text(
-                    text =
-                      androidx.compose.ui.res.stringResource(
-                        app.infinity.mpvz.R.string.ui_dual_pane_view,
-                      ),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      androidx.compose.ui.res.stringResource(
-                        app.infinity.mpvz.R.string.ui_enable_dual_pane_layout_on_tablets_in_folder_view,
-                      ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val watchedThreshold by browserPreferences.watchedThreshold.collectAsState()
-              val effectiveThreshold = watchedThreshold.coerceAtLeast(0)
-              val thresholdDisplayValue = if (effectiveThreshold == 0) 0f else effectiveThreshold.toFloat()
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_watched_threshold_title),
-                value = thresholdDisplayValue,
-                onValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
-                sliderValue = thresholdDisplayValue,
-                onSliderValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_watched_threshold_title),
-                  )
-                },
-                valueRange = 0f..100f,
-                valueSteps = 20,
-                summary = {
-                  Text(
-                    text =
-                      if (effectiveThreshold == 0) {
-                        stringResource(R.string.pref_appearance_watched_threshold_summary_infinite)
-                      } else {
-                        stringResource(
-                          id = R.string.pref_appearance_watched_threshold_summary,
-                          effectiveThreshold,
-                        )
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val deleteFolderAllContents by browserPreferences.deleteFolderAllContents.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_delete_folder_all_contents),
-                value = deleteFolderAllContents,
-                onValueChange = { browserPreferences.deleteFolderAllContents.set(it) },
-                title = {
-                  Text(
-                    androidx.compose.ui.res.stringResource(
-                      app.infinity.mpvz.R.string.ui_delete_folder_all_contents,
-                    ),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      if (deleteFolderAllContents) {
-                        "Deletes entire folder (all files)"
-                      } else {
-                        "Only media files (audio/video) are deleted"
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-            }
-          }
-
-          item {
-            PreferenceSectionHeader(
               title = stringResource(id = R.string.pref_appearance_category_thumbnails),
             )
           }
 
           item {
             PreferenceCard {
-              val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_show_video_thumbnails_title),
-                value = showVideoThumbnails,
-                onValueChange = { browserPreferences.showVideoThumbnails.set(it) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_show_video_thumbnails_title),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        id = R.string.pref_appearance_show_video_thumbnails_summary,
-                      ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
               ListPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_thumbnail_generation_title),
                 value = thumbnailMode,
@@ -642,7 +400,6 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                enabled = showVideoThumbnails,
               )
 
               PreferenceDivider()
@@ -677,7 +434,6 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                enabled = showVideoThumbnails,
               )
 
               if (thumbnailMode == ThumbnailMode.FrameAtPosition) {
@@ -705,33 +461,8 @@ object AppearancePreferencesScreen : Screen {
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
-                  enabled = showVideoThumbnails,
                 )
               }
-
-              PreferenceDivider()
-
-              val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_tap_thumbnail_to_select_title),
-                value = tapThumbnailToSelect,
-                onValueChange = { gesturePreferences.tapThumbnailToSelect.set(it) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_gesture_tap_thumbnail_to_select_title),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        id = R.string.pref_gesture_tap_thumbnail_to_select_summary,
-                      ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                enabled = showVideoThumbnails,
-              )
 
               PreferenceDivider()
 
@@ -757,7 +488,6 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                enabled = showVideoThumbnails,
               )
             }
           }

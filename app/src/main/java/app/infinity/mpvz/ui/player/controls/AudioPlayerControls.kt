@@ -107,8 +107,6 @@ import kotlinx.coroutines.launch
 import androidx.palette.graphics.Palette
 import app.infinity.mpvz.database.repository.PlaylistRepository
 import app.infinity.mpvz.preferences.AdvancedPreferences
-import app.infinity.mpvz.domain.media.model.Video
-import app.infinity.mpvz.ui.player.dialogs.AddToPlaylistDialog
 import app.infinity.mpvz.ui.player.resolveUri
 import app.infinity.mpvz.ui.player.isDefinitelyAudioOnly
 import app.infinity.mpvz.ui.player.controls.components.MiniAudioVisualizer
@@ -595,7 +593,7 @@ fun AudioPlayerControls(
   fun isTransientTransportTitle(value: String?): Boolean {
     val normalized = value?.trim()?.uppercase(Locale.ROOT).orEmpty()
     return normalized.isBlank() || normalized.contains("/API/") || normalized.contains("/ITEMS/") ||
-      normalized.contains("/FILE/") || normalized.startsWith("DEV/") || normalized.contains("AUDIOBOOKSHELF") && normalized.contains("HTTP")
+      normalized.contains("/FILE/") || normalized.startsWith("DEV/")
   }
   LaunchedEffect(currentItem?.stableId, currentItem?.isDefinitelyAudioOnly()) {
     if (currentItem?.isDefinitelyAudioOnly() == true && advancedPreferences.enabledStatisticsPage.get() in 1..5) {
@@ -900,8 +898,6 @@ fun AudioPlayerControls(
   val abLoopA = abLoop.a
   val abLoopB = abLoop.b
 
-  var addToPlaylistDialogOpen by rememberSaveable { mutableStateOf(false) }
-
   val playerPreferences = koinInject<PlayerPreferences>()
   val playlistRepository = koinInject<PlaylistRepository>()
   val coroutineScope = rememberCoroutineScope()
@@ -1082,7 +1078,7 @@ fun AudioPlayerControls(
           ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudioProperties) }) {
             Icon(
               imageVector = Icons.RoundedFilled.Info,
-              contentDescription = stringResource(R.string.player_sheets_more_title),
+              contentDescription = "Audio properties",
               tint = MaterialTheme.colorScheme.onSurface,
               modifier = Modifier.size(28.dp),
             )
@@ -1547,17 +1543,6 @@ fun AudioPlayerControls(
               )
             }
 
-            ReactiveIconButton(
-              onClick = { addToPlaylistDialogOpen = true },
-              modifier = Modifier.size(40.dp),
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.PlaylistAdd,
-                contentDescription = stringResource(R.string.ui_add_to_playlist),
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(32.dp),
-              )
-            }
           }
         }
       }
@@ -2033,43 +2018,7 @@ fun AudioPlayerControls(
         }
       }
     }
-    if (addToPlaylistDialogOpen && !mediaPath.isNullOrBlank()) {
-      val displayTitle = remember(lastValidTitle, displayArtist) {
-        cleanSongTitle(lastValidTitle, displayArtist)
-      }
-      val videoForPlaylist =
-        remember(mediaPath, displayTitle) {
-          Video(
-            id = mediaPath.hashCode().toLong(),
-            title = displayTitle,
-            displayName = displayTitle,
-            path = mediaPath,
-            uri = Uri.parse(mediaPath),
-            duration = duration?.toLong() ?: 0L,
-            durationFormatted = "",
-            size = 0L,
-            sizeFormatted = "",
-            dateModified = 0L,
-            dateAdded = 0L,
-            mimeType = "audio/*",
-            bucketId = "",
-            bucketDisplayName = "",
-            width = 0,
-            height = 0,
-            fps = 0f,
-            resolution = "",
-            isAudio = true,
-          )
-        }
 
-      AddToPlaylistDialog(
-        isOpen = true,
-        videos = listOf(videoForPlaylist),
-        onDismiss = { addToPlaylistDialogOpen = false },
-        onSuccess = { addToPlaylistDialogOpen = false },
-        isJellyfin = false,
-      )
-    }
     }
   }
 }

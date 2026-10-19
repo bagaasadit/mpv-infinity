@@ -263,19 +263,6 @@ object PreferencesScreen : Screen {
           ),
       ),
       SettingsSection(
-        title = stringResource(R.string.pref_section_storage),
-        tint = colorScheme.onSurfaceVariant,
-        items =
-          listOf(
-            SettingsDestination(
-              title = stringResource(R.string.pref_folders_title),
-              summary = stringResource(R.string.pref_folders_summary),
-              icon = Icons.RoundedFilled.Folder,
-              screen = FoldersPreferencesScreen,
-            ),
-        ),
-      ),
-      SettingsSection(
         title = stringResource(R.string.pref_section_advanced),
         tint = colorScheme.onSurfaceVariant,
         items =

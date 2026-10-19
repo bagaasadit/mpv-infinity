@@ -145,5 +145,3 @@ private fun qualityDetails(track: TrackNode): String? {
     .joinToString(" • ")
     .takeIf(String::isNotBlank)
 }
-
-private val QUALITY_HEIGHT_REGEX = Regex("""(?i)(\d{3,4})p""")

@@ -1449,10 +1449,8 @@ class PlayerActivity :
       return
     }
 
-    // If mini player is enabled, back press within the app hands off playback to the mini player
-    // rather than entering PiP. If mini player is disabled, auto-PiP retains priority on Back
-    // unless the user restricted auto-PiP to the home gesture.
-    if (!isMiniPlayerEnabled() &&
+    // Auto-PiP retains priority on Back unless the user restricted auto-PiP to the home gesture.
+    if (
       shouldEnterPipOnNavigation() &&
       !playerPreferences.pipOnHomeGestureOnly.get() &&
       enterPipModeSmoothly()
@@ -1468,10 +1466,9 @@ class PlayerActivity :
       }
     }
 
-    // Background playback or Mini Player handoff on Back: return to the browser while handing
-    // the live MPV session to the foreground service. This is also the PiP-failure fallback.
+    // Background playback handoff on Back: return to the home screen while handing
+    // the live session to the foreground service. This is also the PiP-failure fallback.
     if (
-      isMiniPlayerEnabled() ||
       PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnBack(
         backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
         mediaReady = isReady || nativeEngine.snapshot.value.isReady,
@@ -2291,17 +2288,6 @@ class PlayerActivity :
     }
 
     super.finish()
-
-    // Minimizing into the Mini Player: slide the full player down toward the bottom
-    // bar. The browser tab stays in place; the Mini Player slides up to meet it.
-    if (isMiniPlayerEnabled()) {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, R.anim.slide_out_down)
-      } else {
-        @Suppress("DEPRECATION")
-        overridePendingTransition(0, R.anim.slide_out_down)
-      }
-    }
   }
 
   override fun finishAndRemoveTask() {
@@ -3896,14 +3882,6 @@ class PlayerActivity :
     viewModel.syncCurrentVolumeState()
     if (volume < viewModel.maxVolume) {
       viewModel.changeMPVVolumeTo(MAX_MPV_VOLUME)
-    }
-  }
-
-  private fun isMiniPlayerEnabled(): Boolean {
-    return if (isCurrentPlaybackAudio()) {
-      true
-    } else {
-      playerPreferences.enableVideoMiniPlayer.get()
     }
   }
 
@@ -8691,7 +8669,6 @@ class PlayerActivity :
     // Native-to-MPV handoff deliberately marks MPV as loading before the service owns it, so
     // isReady can be false even though a playable native session existed moments earlier.
     if (fileName.isBlank() || (!isReady && !nativeEngine.snapshot.value.isReady && !mpvInitialized)) return
-    if (isMiniPlayerEnabled()) return
 
     val currentVid = PlaybackSession.getPropertyInt("vid") ?: -1
     if (currentVid > 0) {
