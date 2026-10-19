@@ -67,6 +67,13 @@
 -dontwarn androidx.media3.**
 -keepclassmembers class androidx.media3.** { *; }
 
+# libass JNI bridge and native callbacks
+-keep class androidx.media3.subtitle.libass.** { *; }
+
+# Jellyfin FFmpeg Audio Decoder (instantiated via reflection by DefaultRenderersFactory)
+-dontwarn org.jellyfin.media3.ffmpeg.**
+-keep class org.jellyfin.media3.ffmpeg.** { *; }
+
 # =====================================================================
 # 4. SEEKER & UI CONTROLS
 # =====================================================================
