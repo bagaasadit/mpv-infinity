@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import app.infinity.mpvz.preferences.preference.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -149,6 +150,8 @@ fun SubtitleSettingsTypographyCard(
       }
       val font by PlaybackSession.propString["sub-font"].collectAsState()
       val fontSize by PlaybackSession.propInt["sub-font-size"].collectAsState()
+      val prefFontSize by preferences.fontSize.collectAsState()
+      val currentFontSize = fontSize ?: prefFontSize
       val mpvBorderStyle by PlaybackSession.propString["sub-border-style"].collectAsState()
       val borderStyle by remember {
         derivedStateOf {
@@ -157,6 +160,8 @@ fun SubtitleSettingsTypographyCard(
         }
       }
       val borderSize by PlaybackSession.propInt["sub-outline-size"].collectAsState()
+      val prefBorderSize by preferences.borderSize.collectAsState()
+      val currentBorderSize = borderSize ?: prefBorderSize
       val shadowOffset by PlaybackSession.propInt["sub-shadow-offset"].collectAsState()
       var localShadowOffset by remember(shadowOffset) {
         mutableStateOf(shadowOffset ?: preferences.shadowOffset.get())
@@ -261,8 +266,8 @@ fun SubtitleSettingsTypographyCard(
         label = stringResource(R.string.player_sheets_sub_typography_font_size),
         max = 100,
         min = 1,
-        value = fontSize ?: preferences.fontSize.get(),
-        valueText = fontSize.toString(),
+        value = currentFontSize,
+        valueText = currentFontSize.toString(),
         onChange = {
           preferences.fontSize.set(it)
           PlaybackSession.setPropertyInt("sub-font-size", it)
@@ -293,8 +298,8 @@ fun SubtitleSettingsTypographyCard(
       }
       SliderItem(
         stringResource(R.string.player_sheets_sub_typography_border_size),
-        value = borderSize ?: preferences.borderSize.get(),
-        valueText = (borderSize ?: preferences.borderSize.get()).toString(),
+        value = currentBorderSize,
+        valueText = currentBorderSize.toString(),
         onChange = {
           preferences.borderSize.set(it)
           PlaybackSession.setPropertyInt("sub-border-size", it)

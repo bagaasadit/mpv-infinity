@@ -2594,10 +2594,15 @@ class PlayerActivity :
   private fun updateWindowColorMode(isHdr: Boolean) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       runCatching {
-        val targetMode = if (isHdr) ActivityInfo.COLOR_MODE_HDR else ActivityInfo.COLOR_MODE_DEFAULT
+        // Enforce COLOR_MODE_DEFAULT to match Just Player.
+        // Forcing COLOR_MODE_HDR causes Android SurfaceFlinger to manage the HDR composition buffer,
+        // which clips wide gamut dynamics and interferes with Qualcomm hardware DPU Dolby Vision RPU tonemapper.
+        // Keeping the window at COLOR_MODE_DEFAULT allows SurfaceView to punch through directly to the
+        // hardware composer for authentic Dolby Vision (deep reds/flames) and HDR10 playback.
+        val targetMode = ActivityInfo.COLOR_MODE_DEFAULT
         if (window.colorMode != targetMode) {
           window.colorMode = targetMode
-          Log.i(TAG, "Switched window colorMode to: ${if (isHdr) "HDR (Wide Gamut 1000 nits)" else "DEFAULT (SDR)"}")
+          Log.i(TAG, "Enforced window colorMode to: DEFAULT (Just Player Passthrough)")
         }
       }.onFailure { error ->
         Log.w(TAG, "Failed to update window colorMode", error)

@@ -840,8 +840,9 @@ class NativeMedia3Engine(context: Context) {
       .buildUpon()
       .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
       .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-      .addOverride(TrackSelectionOverride(match.first.mediaTrackGroup, match.second))
+      .setOverrideForType(TrackSelectionOverride(match.first.mediaTrackGroup, match.second))
       .build()
+    selectedNativeSubtitleKey = player.currentTracks.groups.indexOf(match.first) to match.second
     pendingExternalSelectionId = null
     publishSnapshot()
   }
@@ -888,7 +889,7 @@ class NativeMedia3Engine(context: Context) {
         .buildUpon()
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
         .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-        .addOverride(TrackSelectionOverride(match.first.mediaTrackGroup, match.second))
+        .setOverrideForType(TrackSelectionOverride(match.first.mediaTrackGroup, match.second))
         .build()
       selectedNativeSubtitleKey = tracks.groups.indexOf(match.first) to match.second
       Log.d(logTag, "Restored selected native subtitle after track-group refresh index=${match.second}")
@@ -1016,12 +1017,12 @@ class NativeMedia3Engine(context: Context) {
       // normal SRT/WebVTT cues continue to use the same Media3 view.
       visibility = if (subtitlePresentationVisible) View.VISIBLE else View.GONE
       setStyle(subtitleStyle)
-      // Scale text size cleanly without matrix scaling the whole View (which distorts 4K PGS bitmap cues)
-      setFractionalTextSize(((subtitleFontSize / 1000f) * subtitleScale).coerceIn(0.01f, 0.16f))
+      // Set base text fractional size from font size preference
+      setFractionalTextSize((subtitleFontSize / 1000f).coerceIn(0.01f, 0.16f))
       pivotX = width / 2f
       pivotY = height.toFloat()
-      scaleX = 1f
-      scaleY = 1f
+      scaleX = subtitleScale
+      scaleY = subtitleScale
       translationY = ((subtitlePosition - 100) / 100f * height * 0.5f)
         .coerceIn(-height * 0.5f, height * 0.5f)
       setBottomPaddingFraction(0f)
@@ -1290,51 +1291,18 @@ class NativeMedia3Engine(context: Context) {
   fun selectTrack(track: NativeTrack) {
     if (track.type == C.TRACK_TYPE_AUDIO) {
       hasUserManuallySelectedAudio = true
-    } else if (track.type == C.TRACK_TYPE_TEXT) {
-      hasUserManuallySelectedSubtitle = true
-    }
-    val group = player.currentTracks.groups.getOrNull(track.groupIndex) ?: return
-    if (group.type != track.type || track.trackIndex !in 0 until group.length) return
-    if (track.type == C.TRACK_TYPE_TEXT) {
-      selectedNativeSubtitleSelection = subtitleSelectionFor(group, track.trackIndex)
-      val format = group.getTrackFormat(track.trackIndex)
-      if (isAssFormat(format.sampleMimeType, format.codecs)) {
-        selectedNativeSubtitleKey = track.groupIndex to track.trackIndex
-        player.trackSelectionParameters = player.trackSelectionParameters
-          .buildUpon()
-          .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-          .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-          .addOverride(TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex))
-          .build()
-        publishSnapshot()
-        return
-      }
-      selectedNativeSubtitleKey = track.groupIndex to track.trackIndex
-      val builder = player.trackSelectionParameters
+      val group = player.currentTracks.groups.getOrNull(track.groupIndex) ?: return
+      if (group.type != track.type || track.trackIndex !in 0 until group.length) return
+      val override = TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex)
+      player.trackSelectionParameters = player.trackSelectionParameters
         .buildUpon()
-        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-      builder.addOverride(TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex))
-      player.trackSelectionParameters = builder.build()
+        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+        .setOverrideForType(override)
+        .build()
       publishSnapshot()
-      return
+    } else if (track.type == C.TRACK_TYPE_TEXT) {
+      selectSubtitleTrack(track.groupIndex, track.trackIndex)
     }
-    val override = if (track.type == C.TRACK_TYPE_TEXT) {
-      val existing = player.trackSelectionParameters.overrides[group.mediaTrackGroup]?.trackIndices.orEmpty()
-      TrackSelectionOverride(group.mediaTrackGroup, (existing + track.trackIndex).distinct())
-    } else {
-      TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex)
-    }
-    val builder = player.trackSelectionParameters
-      .buildUpon()
-      .setTrackTypeDisabled(track.type, false)
-    if (track.type == C.TRACK_TYPE_TEXT) {
-      builder.addOverride(override)
-    } else {
-      builder.setOverrideForType(override)
-    }
-    player.trackSelectionParameters = builder.build()
-    publishSnapshot()
   }
 
   /**
@@ -1347,10 +1315,15 @@ class NativeMedia3Engine(context: Context) {
   fun toggleSubtitle(track: NativeTrack) {
     val group = player.currentTracks.groups.getOrNull(track.groupIndex) ?: return
     if (group.type != C.TRACK_TYPE_TEXT || track.trackIndex !in 0 until group.length) return
-    if (group.isTrackSelected(track.trackIndex)) {
+    val isCurrentlySelected = if (selectedNativeSubtitleKey != null) {
+      selectedNativeSubtitleKey == (track.groupIndex to track.trackIndex)
+    } else {
+      group.isTrackSelected(track.trackIndex)
+    }
+    if (isCurrentlySelected) {
       disableSubtitles()
     } else {
-      selectTrack(track)
+      selectSubtitleTrack(track.groupIndex, track.trackIndex)
     }
   }
 
@@ -1370,26 +1343,14 @@ class NativeMedia3Engine(context: Context) {
     if (group.type != C.TRACK_TYPE_TEXT) return
     if (trackIndex !in 0 until group.length) return
     selectedNativeSubtitleSelection = subtitleSelectionFor(group, trackIndex)
-    val format = group.getTrackFormat(trackIndex)
-    if (isAssFormat(format.sampleMimeType, format.codecs)) {
-      selectedNativeSubtitleKey = groupIndex to trackIndex
-      player.trackSelectionParameters = player.trackSelectionParameters
-        .buildUpon()
-        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-        .addOverride(TrackSelectionOverride(group.mediaTrackGroup, trackIndex))
-        .build()
-      publishSnapshot()
-      return
-    }
+    selectedNativeSubtitleKey = groupIndex to trackIndex
     player.trackSelectionParameters = player.trackSelectionParameters
       .buildUpon()
       .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
       .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-      .addOverride(TrackSelectionOverride(group.mediaTrackGroup, trackIndex))
+      .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, trackIndex))
       .build()
-    selectedNativeSubtitleKey = groupIndex to trackIndex
-    Log.i(logTag, "silent subtitle selection enabled group=${group.mediaTrackGroup.id} requested=$trackIndex")
+    Log.i(logTag, "subtitle selection enabled group=${group.mediaTrackGroup.id} requested=$trackIndex")
     publishSnapshot()
   }
 
@@ -1578,8 +1539,12 @@ class NativeMedia3Engine(context: Context) {
             language = format.language,
             formatId = externalUri?.let { "external:$it" } ?: format.id,
             external = isExternal,
-            selected = if (type == C.TRACK_TYPE_TEXT && selectedNativeSubtitleKey == (groupIndex to trackIndex)) {
-              true
+            selected = if (type == C.TRACK_TYPE_TEXT) {
+              if (selectedNativeSubtitleKey != null) {
+                selectedNativeSubtitleKey == (groupIndex to trackIndex)
+              } else {
+                group.isTrackSelected(trackIndex)
+              }
             } else group.isTrackSelected(trackIndex),
           )
         }
