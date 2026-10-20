@@ -42,7 +42,8 @@ import kotlin.math.tanh
 class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
   companion object {
-    private const val TARGET_CEILING = 0.9885f // -0.1 dBFS (Audiophile True Peak Margin)
+    private const val TARGET_CEILING_PCM16 = 0.89125f // -1.0 dBFS
+    private const val TARGET_CEILING_FLOAT = 0.9885f // -0.1 dBFS
     private const val RELEASE_TIME_SEC = 0.050f // 50 ms release
 
     // BS2B Filter Constants (Default 700Hz, -3.7dB feed)
@@ -54,7 +55,7 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   var enableLfeMixing: Boolean = true
   var enableBinauralCrossfeed: Boolean = true
   var dialogueBoostGain: Float = 1.0f
-  var outputFloatingPoint: Boolean = true
+  var outputFloatingPoint: Boolean = false
 
   private var currentGain = 1.0f
   private var releaseCoeff = 0.9995f
@@ -261,9 +262,10 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       if (leftSum.isNaN() || leftSum.isInfinite()) leftSum = 0f
       if (rightSum.isNaN() || rightSum.isInfinite()) rightSum = 0f
 
+      val targetCeiling = if (isOutputFloat) TARGET_CEILING_FLOAT else TARGET_CEILING_PCM16
       val sampleMax = max(abs(leftSum), abs(rightSum))
-      if (sampleMax > TARGET_CEILING) {
-        val targetGain = TARGET_CEILING / sampleMax
+      if (sampleMax > targetCeiling) {
+        val targetGain = targetCeiling / sampleMax
         // Instant attack: catch transients immediately
         if (targetGain < currentGain) {
           currentGain = targetGain

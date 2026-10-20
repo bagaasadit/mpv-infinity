@@ -62,6 +62,18 @@ class DownmixLimiterAudioProcessorTest {
   }
 
   @Test
+  fun multichannelConfiguresToStereoFloatWhenRequested() {
+    val floatProcessor = DownmixLimiterAudioProcessor().apply {
+      outputFloatingPoint = true
+    }
+    val format51 = AudioFormat(48000, 6, C.ENCODING_PCM_FLOAT)
+    val configured = floatProcessor.configure(format51)
+    assertEquals(48000, configured.sampleRate)
+    assertEquals(2, configured.channelCount)
+    assertEquals(C.ENCODING_PCM_FLOAT, configured.encoding)
+  }
+
+  @Test
   fun partialFrameBoundaryDoesNotHang() {
     val format51 = AudioFormat(48000, 6, C.ENCODING_PCM_16BIT)
     processor.configure(format51)
