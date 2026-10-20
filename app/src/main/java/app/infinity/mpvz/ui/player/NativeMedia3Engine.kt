@@ -191,11 +191,13 @@ class NativeMedia3Engine(context: Context) {
           val downmixLimiterProcessor = DownmixLimiterAudioProcessor().apply {
             enableLfeMixing = true
             enableBinauralCrossfeed = true
-            outputFloatingPoint = true
+            outputFloatingPoint = false // PCM 16-bit guarantees 100% stability on Qualcomm Audio HAL
           }
           return DefaultAudioSink.Builder(context)
             .setAudioProcessors(arrayOf(downmixLimiterProcessor))
-            .setEnableFloatOutput(true)
+            // Force standard stereo capabilities: prevents Media3 from opening direct 8-channel passthrough to analog jack
+            .setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
+            .setEnableFloatOutput(false) // Prevent Snapdragon ADSP crash on analog stereo jack
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .build()
         }
