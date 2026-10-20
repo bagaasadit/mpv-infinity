@@ -185,6 +185,10 @@ class MPVView(
   override fun initOptions() {
     val profile = decoderPreferences.profile.get()
     PlaybackSession.setOptionString("profile", profile)
+    PlaybackSession.setOptionString("correct-downscaling", "yes")
+    PlaybackSession.setOptionString("sigmoid-upscaling", "yes")
+    PlaybackSession.setOptionString("dither-depth", "auto")
+    PlaybackSession.setOptionString("dither", "fruit")
     val backend = selectRenderBackend()
     val useVulkan = backend.gpuApi == "vulkan"
     val hwdecMode = preferredHwdecMode(useVulkan)
@@ -294,10 +298,12 @@ class MPVView(
     PlaybackSession.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
     PlaybackSession.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
 
-    // Use audio-based video sync for better frame pacing with 4K HDR content.
-    // This prevents timing jitter when the display refresh rate doesn't perfectly
-    // match the video frame rate (e.g., 24fps content on 60Hz display).
-    PlaybackSession.setOptionString("video-sync", "audio")
+    // High-fidelity frame pacing for 120Hz display:
+    // display-resample with oversample interpolation eliminates the 23.976 fps micro-stutter
+    // caused by fractional refresh rate mismatch (120 / 23.976 = 5.005 refreshes/frame).
+    PlaybackSession.setOptionString("video-sync", "display-resample")
+    PlaybackSession.setOptionString("interpolation", "yes")
+    PlaybackSession.setOptionString("tscale", "oversample")
 
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
     if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) {
@@ -323,7 +329,13 @@ class MPVView(
     when (decoderPreferences.debanding.get()) {
       Debanding.None -> {}
       Debanding.CPU -> PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
-      Debanding.GPU -> PlaybackSession.setOptionString("deband", "yes")
+      Debanding.GPU -> {
+        PlaybackSession.setOptionString("deband", "yes")
+        PlaybackSession.setOptionString("deband-iterations", decoderPreferences.debandIterations.get().toString())
+        PlaybackSession.setOptionString("deband-threshold", decoderPreferences.debandThreshold.get().toString())
+        PlaybackSession.setOptionString("deband-range", decoderPreferences.debandRange.get().toString())
+        PlaybackSession.setOptionString("deband-grain", decoderPreferences.debandGrain.get().toString())
+      }
     }
 
     // Keep the MPV stats OSD video-only. Otherwise a music item can inherit the previous
@@ -507,13 +519,20 @@ class MPVView(
     PlaybackSession.setOptionString("secondary-sub-font", preferredFont)
 
     if (subtitlesPreferences.overrideAssSubs.get()) {
-      PlaybackSession.setOptionString("sub-ass-override", "force")
+      PlaybackSession.setOptionString("sub-ass-override", "scale")
       PlaybackSession.setOptionString("sub-ass-justify", "yes")
-      PlaybackSession.setOptionString("secondary-sub-ass-override", "force")
+      PlaybackSession.setOptionString("secondary-sub-ass-override", "scale")
     } else {
       PlaybackSession.setOptionString("sub-ass-override", "no")
       PlaybackSession.setOptionString("secondary-sub-ass-override", "no")
     }
+
+    PlaybackSession.setOptionString("sub-ass-force-margins", "no")
+    PlaybackSession.setOptionString("sub-bitmap-scale", "no")
+    PlaybackSession.setOptionString("embeddedfonts", "yes")
+    PlaybackSession.setOptionString("sub-font-provider", "auto")
+    PlaybackSession.setOptionString("sub-codepage", "auto")
+    PlaybackSession.setOptionString("demuxer-mkv-subtitle-preroll", "yes")
 
     // Typography and styling for both primary and secondary MPV subtitle tracks.
     val fontSize = subtitlesPreferences.fontSize.get().toString()

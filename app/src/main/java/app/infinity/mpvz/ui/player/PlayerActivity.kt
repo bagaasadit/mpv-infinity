@@ -1652,6 +1652,7 @@ class PlayerActivity :
     }
     binding.media3Player.alpha = if (visible) 1f else 0f
     binding.media3Player.visibility = state
+    binding.media3SubtitleOverlay.visibility = state
   }
 
   private fun updateVideoAmbientPlayerBounds() {
@@ -1974,6 +1975,7 @@ class PlayerActivity :
 
   override fun onDestroy() {
     Log.d(TAG, "PlayerActivity onDestroy")
+    updateWindowColorMode(false)
     val ownsPlaybackSession = ownsPlaybackSession()
     val playbackWasInitialized = mpvInitialized
     val nativeWasActive =
@@ -2585,6 +2587,20 @@ class PlayerActivity :
         }
       }.onFailure { error ->
         Log.w(TAG, "Failed to apply peak display refresh rate", error)
+      }
+    }
+  }
+
+  private fun updateWindowColorMode(isHdr: Boolean) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      runCatching {
+        val targetMode = if (isHdr) ActivityInfo.COLOR_MODE_HDR else ActivityInfo.COLOR_MODE_DEFAULT
+        if (window.colorMode != targetMode) {
+          window.colorMode = targetMode
+          Log.i(TAG, "Switched window colorMode to: ${if (isHdr) "HDR (Wide Gamut 1000 nits)" else "DEFAULT (SDR)"}")
+        }
+      }.onFailure { error ->
+        Log.w(TAG, "Failed to update window colorMode", error)
       }
     }
   }
@@ -4752,6 +4768,19 @@ class PlayerActivity :
           withContext(playbackRenderDispatcher) {
             player.applyAnime4KShaders()
             viewModel.restartHdrScreenOutputAndAmbientIfActive()
+
+            val primaries = PlaybackSession.getPropertyString("video-params/primaries") ?: ""
+            val gamma = PlaybackSession.getPropertyString("video-params/gamma") ?: ""
+            val sigPeak = PlaybackSession.getPropertyDouble("video-params/sig-peak") ?: 1.0
+            val isHdrContent = primaries.contains("2020", ignoreCase = true) ||
+              gamma.contains("pq", ignoreCase = true) ||
+              gamma.contains("hlg", ignoreCase = true) ||
+              sigPeak > 1.0 ||
+              PlaybackSession.queue.value.currentItem?.isHdrOrDolbyVision() == true
+
+            withContext(Dispatchers.Main) {
+              updateWindowColorMode(isHdrContent)
+            }
           }
         }
       }
@@ -6196,6 +6225,8 @@ class PlayerActivity :
         }
         activeSaveMediaIdentifier = item.stableId
         activeEngineMode = PlaybackEngineMode.NATIVE
+        applyMaxDisplayRefreshRate()
+        updateWindowColorMode(nativeItem.isHdrOrDolbyVision())
         viewModel.setNativeEngineActive(true)
         viewModel.setAmbientLifecycleActive(true)
         binding.player.visibility = View.GONE

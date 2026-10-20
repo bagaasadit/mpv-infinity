@@ -188,10 +188,14 @@ class NativeMedia3Engine(context: Context) {
           enableFloatOutput: Boolean,
           enableAudioTrackPlaybackParams: Boolean
         ): AudioSink? {
-          val downmixLimiterProcessor = DownmixLimiterAudioProcessor()
+          val downmixLimiterProcessor = DownmixLimiterAudioProcessor().apply {
+            enableLfeMixing = true
+            enableBinauralCrossfeed = true
+            outputFloatingPoint = true
+          }
           return DefaultAudioSink.Builder(context)
             .setAudioProcessors(arrayOf(downmixLimiterProcessor))
-            .setEnableFloatOutput(false)
+            .setEnableFloatOutput(true)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .build()
         }
@@ -1010,17 +1014,20 @@ class NativeMedia3Engine(context: Context) {
       // normal SRT/WebVTT cues continue to use the same Media3 view.
       visibility = if (subtitlePresentationVisible) View.VISIBLE else View.GONE
       setStyle(subtitleStyle)
-      setFractionalTextSize((subtitleFontSize / 1000f).coerceIn(0.01f, 0.16f))
+      // Scale text size cleanly without matrix scaling the whole View (which distorts 4K PGS bitmap cues)
+      setFractionalTextSize(((subtitleFontSize / 1000f) * subtitleScale).coerceIn(0.01f, 0.16f))
       pivotX = width / 2f
       pivotY = height.toFloat()
-      scaleX = subtitleScale
-      scaleY = subtitleScale
+      scaleX = 1f
+      scaleY = 1f
       translationY = ((subtitlePosition - 100) / 100f * height * 0.5f)
         .coerceIn(-height * 0.5f, height * 0.5f)
       setBottomPaddingFraction(0f)
     }
     subtitleOverlay?.apply {
-      visibility = if (subtitlePresentationVisible) View.VISIBLE else View.GONE
+      // Hide the overlay TextureView when not in use to eliminate GPU compositing overhead
+      val isOverlayNeeded = subtitlePresentationVisible && libassRenderer != null && (attachedView?.subtitleView == null)
+      visibility = if (isOverlayNeeded) View.VISIBLE else View.GONE
       pivotX = width / 2f
       pivotY = height.toFloat()
       scaleX = subtitleScale

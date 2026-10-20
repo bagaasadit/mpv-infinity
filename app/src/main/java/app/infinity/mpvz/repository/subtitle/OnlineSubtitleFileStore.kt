@@ -17,6 +17,9 @@ import app.infinity.mpvz.utils.media.ChecksumUtils
 import app.infinity.mpvz.utils.media.resolveSubtitleStorageDirectory
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.Charset
 import java.util.Locale
 
 class OnlineSubtitleFileStore(
@@ -52,10 +55,11 @@ class OnlineSubtitleFileStore(
         ?: SubtitleArchiveExtractor.extensionFromName(subtitle.url)?.takeIf { it in STANDARD_SUBTITLE_EXTENSIONS }
         ?: "srt"
 
-    val payload = extracted?.bytes ?: bytes
-    if (SubtitleArchiveExtractor.looksLikeHtml(payload)) {
+    val rawPayload = extracted?.bytes ?: bytes
+    if (SubtitleArchiveExtractor.looksLikeHtml(rawPayload)) {
       throw IllegalStateException("Downloaded file is HTML, not a subtitle")
     }
+    val payload = normalizeSubtitleEncoding(rawPayload, extension)
 
     val saveFolderUri = preferences.subtitleSaveFolder.get()
     val folderName = ChecksumUtils.getCRC32(mediaTitle)
@@ -189,6 +193,52 @@ class OnlineSubtitleFileStore(
       "srt", "ass", "ssa", "sub" -> "text/plain"
       else -> "application/octet-stream"
     }
+
+  private fun normalizeSubtitleEncoding(rawBytes: ByteArray, extension: String): ByteArray {
+    if (extension !in STANDARD_SUBTITLE_EXTENSIONS) return rawBytes
+    if (rawBytes.isEmpty()) return rawBytes
+
+    // 1. Check for UTF-8 Byte Order Mark (BOM: EF BB BF)
+    if (rawBytes.size >= 3 &&
+      rawBytes[0] == 0xEF.toByte() &&
+      rawBytes[1] == 0xBB.toByte() &&
+      rawBytes[2] == 0xBF.toByte()
+    ) {
+      return rawBytes.copyOfRange(3, rawBytes.size)
+    }
+
+    // 2. Check for UTF-16LE BOM (FF FE)
+    if (rawBytes.size >= 2 && rawBytes[0] == 0xFF.toByte() && rawBytes[1] == 0xFE.toByte()) {
+      return runCatching {
+        String(rawBytes, 2, rawBytes.size - 2, Charsets.UTF_16LE).toByteArray(Charsets.UTF_8)
+      }.getOrDefault(rawBytes)
+    }
+
+    // 3. Check for UTF-16BE BOM (FE FF)
+    if (rawBytes.size >= 2 && rawBytes[0] == 0xFE.toByte() && rawBytes[1] == 0xFF.toByte()) {
+      return runCatching {
+        String(rawBytes, 2, rawBytes.size - 2, Charsets.UTF_16BE).toByteArray(Charsets.UTF_8)
+      }.getOrDefault(rawBytes)
+    }
+
+    // 4. Verify if rawBytes is already valid UTF-8
+    val utf8Decoder = Charsets.UTF_8.newDecoder()
+      .onMalformedInput(CodingErrorAction.REPORT)
+      .onUnmappableCharacter(CodingErrorAction.REPORT)
+
+    try {
+      utf8Decoder.decode(ByteBuffer.wrap(rawBytes))
+      return rawBytes
+    } catch (_: Exception) {
+      // High-byte character encoding detected (e.g. Windows-1252 / ISO-8859-1)
+    }
+
+    // 5. Decode from Windows-1252 / ANSI and re-encode to clean UTF-8
+    return runCatching {
+      val decoded = String(rawBytes, Charset.forName("windows-1252"))
+      decoded.toByteArray(Charsets.UTF_8)
+    }.getOrDefault(rawBytes)
+  }
 
   private companion object {
     val STANDARD_SUBTITLE_EXTENSIONS = setOf("srt", "ass", "ssa", "vtt", "sub")

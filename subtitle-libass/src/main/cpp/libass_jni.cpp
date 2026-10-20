@@ -32,6 +32,14 @@ struct Renderer {
   int nextId = 1;
   std::vector<Track> tracks;
   ANativeWindow* window = nullptr;
+  std::vector<uint8_t> frameBuffer;
+  void ensureBufferSize(int w, int h) {
+    const size_t required = static_cast<size_t>(w) * h * 4;
+    if (frameBuffer.size() < required) {
+      frameBuffer.resize(required);
+    }
+    std::fill(frameBuffer.begin(), frameBuffer.begin() + required, 0);
+  }
 #if MEDIA3_LIBASS_HAS_NATIVE
   ASS_Library* library = nullptr;
   ASS_Renderer* renderer = nullptr;
@@ -488,19 +496,20 @@ Java_androidx_media3_subtitle_libass_LibassNative_nativeRenderSurface(JNIEnv*, j
   if (!state->window) return JNI_FALSE;
   ANativeWindow_Buffer buffer{};
   if (ANativeWindow_lock(state->window, &buffer, nullptr) != 0) return JNI_FALSE;
-  std::vector<uint8_t> rgba(static_cast<size_t>(state->width) * state->height * 4, 0);
+  state->ensureBufferSize(state->width, state->height);
+  uint8_t* rgba = state->frameBuffer.data();
 #if MEDIA3_LIBASS_HAS_NATIVE
   for (const auto& track : state->tracks) if (track.enabled && track.ass) {
     int changed = 0;
     ASS_Image* image = ass_render_frame(state->renderer, track.ass, positionUs / 1000, &changed);
-    blendImage(image, state->width, state->height, rgba.data());
+    blendImage(image, state->width, state->height, rgba);
   }
 #endif
   const int copyHeight = std::min(state->height, buffer.height);
   const int copyWidth = std::min(state->width, buffer.width);
   for (int y = 0; y < copyHeight; ++y) {
     std::memcpy(static_cast<uint8_t*>(buffer.bits) + static_cast<size_t>(y) * buffer.stride * 4,
-        rgba.data() + static_cast<size_t>(y) * state->width * 4, static_cast<size_t>(copyWidth) * 4);
+        rgba + static_cast<size_t>(y) * state->width * 4, static_cast<size_t>(copyWidth) * 4);
   }
   ANativeWindow_unlockAndPost(state->window);
   return JNI_TRUE;
@@ -512,7 +521,8 @@ Java_androidx_media3_subtitle_libass_LibassNative_nativeRenderRgba(JNIEnv* env, 
   const jsize expected = state->width * state->height * 4;
   if (env->GetArrayLength(output) < expected) return JNI_FALSE;
   std::lock_guard lock(state->mutex);
-  std::vector<uint8_t> rgba(expected, 0);
+  state->ensureBufferSize(state->width, state->height);
+  uint8_t* rgba = state->frameBuffer.data();
   int imageCount = 0;
 #if MEDIA3_LIBASS_HAS_NATIVE
   for (const auto& track : state->tracks) {
@@ -520,13 +530,13 @@ Java_androidx_media3_subtitle_libass_LibassNative_nativeRenderRgba(JNIEnv* env, 
       int changed = 0;
       ASS_Image* image = ass_render_frame(state->renderer, track.ass, static_cast<long long>(positionUs / 1000), &changed);
       for (ASS_Image* current = image; current != nullptr; current = current->next) ++imageCount;
-      blendImage(image, state->width, state->height, rgba.data());
+      blendImage(image, state->width, state->height, rgba);
     }
   }
 #else
   (void)positionUs;
 #endif
-  env->SetByteArrayRegion(output, 0, expected, reinterpret_cast<const jbyte*>(rgba.data()));
+  env->SetByteArrayRegion(output, 0, expected, reinterpret_cast<const jbyte*>(rgba));
 #if MEDIA3_LIBASS_HAS_NATIVE
   __android_log_print(ANDROID_LOG_DEBUG, kTag, "render positionUs=%lld tracks=%zu images=%d",
       static_cast<long long>(positionUs), state->tracks.size(), imageCount);

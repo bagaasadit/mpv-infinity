@@ -20,10 +20,10 @@ object SubtitleArchiveExtractor {
   private val subtitleExtensions = setOf("srt", "vtt", "ass", "ssa", "sub")
   private val extensionPriority =
     mapOf(
-      "srt" to 0,
-      "vtt" to 1,
-      "ass" to 2,
-      "ssa" to 3,
+      "ass" to 0,
+      "ssa" to 1,
+      "vtt" to 2,
+      "srt" to 3,
       "sub" to 4,
     )
 

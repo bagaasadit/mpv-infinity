@@ -25,36 +25,47 @@ import kotlin.math.roundToInt
 import kotlin.math.tanh
 
 /**
- * Audiophile Multichannel Downmixer and Peak Limiter for Media3 / ExoPlayer.
+ * Audiophile Multichannel Downmixer, Binaural Crossfeed & Peak Limiter for Media3 / ExoPlayer.
+ * Engineered for In-Ear Monitors (IEM), Audiophile DACs, and Mobile Transducers.
  *
- * Problem Solved:
- * Standard downmixing matrices sum 5.1 / 7.1 channels into stereo. During intense action scenes
- * (dialog + explosions + surround effects), the unconstrained sum often reaches 2.5 - 3.5x (+8 dBFS to +11 dBFS).
- * In integer PCM, this causes severe digital clipping, waveform wrapping, and ALSA buffer underruns on Android.
- *
- * Solution:
+ * Capabilities:
  * 1. Accumulate downmixed channels in 32-bit Float domain without intermediate truncation.
- * 2. LFE (.1 subwoofer) channel is completely omitted from micro-speakers/headphones to prevent phase distortion and mud.
- * 3. Instantaneous attack peak limiter with smooth exponential release (50 ms) targeting -1.0 dBFS (0.89125f).
- * 4. Zero-latency: guarantees exact A/V lip-sync with 0 ms video delay.
- * 5. Continuous soft-knee tanh saturation prevents hard integer wrapping under extreme transients with zero corner distortion.
- * 6. Quantizes to high-fidelity 16-bit stereo PCM for universal DAC / Bluetooth compatibility.
- * 7. Zero-allocation loop: caches sample array to eliminate GC pressure on realtime audio thread.
- * 8. Supports 16-bit, 24-bit, 32-bit Integer PCM and 32-bit Float PCM without crashes.
+ * 2. LFE (.1 subwoofer) channel mixing (+0.5f / -6 dB) restored for cinematic visceral bass on IEMs (ITU-R BS.775).
+ * 3. Dynamic Bauer Stereophonic-to-Binaural (BS2B) IIR Crossfeed to eliminate in-head localization fatigue on IEMs.
+ * 4. Center-channel dialogue clarity weighting multiplier.
+ * 5. High-headroom transparent peak limiter (-0.1 dBFS / 0.9885f ceiling) with soft-knee saturation.
+ * 6. True 32-bit Float PCM output (C.ENCODING_PCM_FLOAT) support for bit-perfect external DACs and Android AudioFlinger.
+ * 7. Zero-allocation loop: pre-allocated arrays eliminate GC pressure on realtime audio thread.
+ * 8. Universal input support: 16-bit, 24-bit, 32-bit Integer PCM and 32-bit Float PCM.
  */
 @OptIn(UnstableApi::class)
 class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
   companion object {
-    private const val TARGET_CEILING = 0.89125f // -1.0 dBFS
+    private const val TARGET_CEILING = 0.9885f // -0.1 dBFS (Audiophile True Peak Margin)
     private const val RELEASE_TIME_SEC = 0.050f // 50 ms release
+
+    // BS2B Filter Constants (Default 700Hz, -3.7dB feed)
+    private const val BS2B_FC = 700.0
+    private const val BS2B_FEED_GAIN = 0.65f
   }
+
+  // Configuration Switches
+  var enableLfeMixing: Boolean = true
+  var enableBinauralCrossfeed: Boolean = true
+  var dialogueBoostGain: Float = 1.0f
+  var outputFloatingPoint: Boolean = true
 
   private var currentGain = 1.0f
   private var releaseCoeff = 0.9995f
 
   // Pre-allocated array to eliminate GC allocation churn on the realtime audio thread
   private var channelSamples = FloatArray(16)
+
+  // BS2B IIR Filter State Variables
+  private var crossfeedHistL = 0.0f
+  private var crossfeedHistR = 0.0f
+  private var bs2bAlpha = 0.084f // Filter coefficient at 48kHz
 
   public override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
     if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
@@ -74,15 +85,20 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       channelSamples = FloatArray(inputAudioFormat.channelCount)
     }
 
-    // Compute release coefficient for exponential decay based on sample rate
-    val sampleRate = inputAudioFormat.sampleRate.coerceAtLeast(8000)
-    releaseCoeff = exp(-1.0f / (sampleRate * RELEASE_TIME_SEC))
+    // Compute dynamic BS2B filter coefficients based on actual input sample rate
+    val sampleRate = inputAudioFormat.sampleRate.coerceAtLeast(8000).toDouble()
+    val dt = 1.0 / sampleRate
+    val rc = 1.0 / (2.0 * Math.PI * BS2B_FC)
+    bs2bAlpha = (dt / (rc + dt)).toFloat()
 
-    // Output is always 2-channel stereo 16-bit PCM
+    releaseCoeff = exp(-1.0f / (sampleRate.toFloat() * RELEASE_TIME_SEC))
+
+    val outputEncoding = if (outputFloatingPoint) C.ENCODING_PCM_FLOAT else C.ENCODING_PCM_16BIT
+
     return AudioFormat(
       inputAudioFormat.sampleRate,
       2,
-      C.ENCODING_PCM_16BIT,
+      outputEncoding,
     )
   }
 
@@ -101,16 +117,20 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     val remainingBytes = inputBuffer.remaining()
     val frameCount = remainingBytes / frameSize
     if (frameCount == 0) {
-      // Consume partial frame bytes to prevent busy-loop deadlock in DefaultAudioSink
       inputBuffer.position(inputBuffer.limit())
       return
     }
 
-    val outputBytes = frameCount * 2 * 2 // 2 channels * 2 bytes (16-bit)
+    val isOutputFloat = outputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
+    val bytesPerOutputSample = if (isOutputFloat) 4 else 2
+    val outputBytes = frameCount * 2 * bytesPerOutputSample
     val outputBuffer = replaceOutputBuffer(outputBytes)
     outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
 
     inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
+
+    val lfeGain = if (enableLfeMixing) 0.5f else 0.0f
+    val centerWeight = 0.7071f * dialogueBoostGain
 
     for (f in 0 until frameCount) {
       // 1. Read input channel samples into float [-1.0f, 1.0f]
@@ -151,12 +171,12 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
           val fl = channelSamples[0]
           val fr = channelSamples[1]
           val fc = channelSamples[2]
-          // LFE (channelSamples[3]) is dropped for mobile/headphone clarity
+          val lfe = channelSamples[3]
           val sl = channelSamples[4]
           val sr = channelSamples[5]
 
-          leftSum = fl + 0.7071f * fc + 0.7071f * sl
-          rightSum = fr + 0.7071f * fc + 0.7071f * sr
+          leftSum = fl + centerWeight * fc + 0.7071f * sl + lfeGain * lfe
+          rightSum = fr + centerWeight * fc + 0.7071f * sr + lfeGain * lfe
         }
 
         // 7.1 (FL, FR, FC, LFE, BL, BR, SL, SR) - TrueHD & DTS-HD MA
@@ -164,14 +184,14 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
           val fl = channelSamples[0]
           val fr = channelSamples[1]
           val fc = channelSamples[2]
-          // LFE (channelSamples[3]) is dropped
+          val lfe = channelSamples[3]
           val bl = channelSamples[4]
           val br = channelSamples[5]
           val sl = channelSamples[6]
           val sr = channelSamples[7]
 
-          leftSum = fl + 0.7071f * fc + 0.5f * bl + 0.7071f * sl
-          rightSum = fr + 0.7071f * fc + 0.5f * br + 0.7071f * sr
+          leftSum = fl + centerWeight * fc + 0.5f * bl + 0.7071f * sl + lfeGain * lfe
+          rightSum = fr + centerWeight * fc + 0.5f * br + 0.7071f * sr + lfeGain * lfe
         }
 
         // 6.1 (FL, FR, FC, LFE, BC, SL, SR)
@@ -179,12 +199,13 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
           val fl = channelSamples[0]
           val fr = channelSamples[1]
           val fc = channelSamples[2]
+          val lfe = channelSamples[3]
           val bc = channelSamples[4]
           val sl = channelSamples[5]
           val sr = channelSamples[6]
 
-          leftSum = fl + 0.7071f * fc + 0.5f * bc + 0.7071f * sl
-          rightSum = fr + 0.7071f * fc + 0.5f * bc + 0.7071f * sr
+          leftSum = fl + centerWeight * fc + 0.5f * bc + 0.7071f * sl + lfeGain * lfe
+          rightSum = fr + centerWeight * fc + 0.5f * bc + 0.7071f * sr + lfeGain * lfe
         }
 
         // 5.0 (FL, FR, FC, SL, SR - no LFE)
@@ -195,8 +216,8 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
           val sl = channelSamples[3]
           val sr = channelSamples[4]
 
-          leftSum = fl + 0.7071f * fc + 0.7071f * sl
-          rightSum = fr + 0.7071f * fc + 0.7071f * sr
+          leftSum = fl + centerWeight * fc + 0.7071f * sl
+          rightSum = fr + centerWeight * fc + 0.7071f * sr
         }
 
         // 4.0 Quadraphonic (FL, FR, BL, BR)
@@ -215,8 +236,8 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
           val fl = channelSamples[0]
           val fr = channelSamples.getOrElse(1) { 0f }
           val fc = channelSamples.getOrElse(2) { 0f }
-          leftSum = fl + 0.7071f * fc
-          rightSum = fr + 0.7071f * fc
+          leftSum = fl + centerWeight * fc
+          rightSum = fr + centerWeight * fc
           for (c in 3 until channelCount) {
             val s = channelSamples[c] * 0.5f
             if (c % 2 == 1) leftSum += s else rightSum += s
@@ -224,7 +245,19 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         }
       }
 
-      // 3. Peak Limiter / Gain Computer
+      // 3. Bauer Stereophonic-to-Binaural (BS2B) Crossfeed for IEM / Headphone Soundstage
+      if (enableBinauralCrossfeed) {
+        crossfeedHistL += bs2bAlpha * (leftSum - crossfeedHistL)
+        crossfeedHistR += bs2bAlpha * (rightSum - crossfeedHistR)
+
+        val binauralL = 0.85f * leftSum + BS2B_FEED_GAIN * crossfeedHistR
+        val binauralR = 0.85f * rightSum + BS2B_FEED_GAIN * crossfeedHistL
+
+        leftSum = binauralL
+        rightSum = binauralR
+      }
+
+      // 4. Peak Limiter / Gain Computer
       if (leftSum.isNaN() || leftSum.isInfinite()) leftSum = 0f
       if (rightSum.isNaN() || rightSum.isInfinite()) rightSum = 0f
 
@@ -248,16 +281,21 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       var outL = leftSum * currentGain
       var outR = rightSum * currentGain
 
-      // 4. True continuous soft-knee tanh saturation
+      // 5. True continuous soft-knee tanh saturation
       outL = softClipTanh(outL)
       outR = softClipTanh(outR)
 
-      // 5. Quantize to 16-bit integer PCM
-      val pcmL = (outL * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
-      val pcmR = (outR * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
+      // 6. Quantize / Output Serialization
+      if (isOutputFloat) {
+        outputBuffer.putFloat(outL)
+        outputBuffer.putFloat(outR)
+      } else {
+        val pcmL = (outL * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
+        val pcmR = (outR * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
 
-      outputBuffer.putShort(pcmL)
-      outputBuffer.putShort(pcmR)
+        outputBuffer.putShort(pcmL)
+        outputBuffer.putShort(pcmR)
+      }
     }
 
     outputBuffer.flip()
@@ -265,10 +303,14 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
   override fun onFlush() {
     currentGain = 1.0f
+    crossfeedHistL = 0.0f
+    crossfeedHistR = 0.0f
   }
 
   override fun onReset() {
     currentGain = 1.0f
+    crossfeedHistL = 0.0f
+    crossfeedHistR = 0.0f
   }
 
   /**

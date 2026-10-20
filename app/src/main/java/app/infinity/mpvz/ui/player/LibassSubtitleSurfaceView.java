@@ -30,11 +30,11 @@ public final class LibassSubtitleSurfaceView extends TextureView implements Text
     renderExecutor.scheduleAtFixedRate(() -> {
       LibassSubtitleRenderer current = renderer;
       long now = System.nanoTime();
-      if (surfaceReady && current != null && now - lastRenderNs >= 33_000_000L) {
+      if (surfaceReady && current != null && now - lastRenderNs >= 8_000_000L) {
         lastRenderNs = now;
         try { current.renderSurface(positionUs); } catch (IllegalStateException ignored) { }
       }
-    }, 0, 16, TimeUnit.MILLISECONDS);
+    }, 0, 8, TimeUnit.MILLISECONDS);
   }
 
   public void setRenderer(@Nullable LibassSubtitleRenderer value) {

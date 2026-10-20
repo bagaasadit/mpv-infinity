@@ -42,10 +42,10 @@ data class AutoCropEdges(
  * a bar behind, but it must never be allowed to crop real picture content.
  */
 object AutoCropAnalyzer {
-  private const val DARK_LUMA = 28
-  private const val CONTENT_LUMA = 42
+  private const val DARK_LUMA = 14
+  private const val CONTENT_LUMA = 16
   private const val DARK_PIXEL_RATIO = 0.965f
-  private const val MIN_CONTENT_PIXEL_RATIO = 0.035f
+  private const val MIN_CONTENT_PIXEL_RATIO = 0.025f
   private const val MAX_EDGE_FRACTION = 0.32f
   private const val MIN_EDGE_FRACTION = 0.02f
   private const val BOUNDARY_OVERLAP_PIXELS = 0

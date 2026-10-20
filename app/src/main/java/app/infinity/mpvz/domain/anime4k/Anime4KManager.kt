@@ -24,7 +24,8 @@ class Anime4KManager(
     val DEFAULT_QUALITY = Quality.BALANCED
 
     // GLSL tokens that require FP32 (highp) float precision. Passes containing any
-    // of these (FSR EASU/RCAS) are excluded from the FP16/mediump optimization.
+    // of these (FSR EASU/RCAS, CNN convolutions, Denoise, Restore) are preserved in FP32
+    // to eliminate quantization noise and contour banding on high-tier GPUs (e.g. Adreno 725).
     private val FP32_MARKERS =
       listOf(
         "floatBitsToUint",
@@ -38,6 +39,11 @@ class Anime4KManager(
         "APrxLoRcpF1",
         "APrxLoRsqF1",
         "APrxMedRcpF1",
+        "conv",
+        "CNN",
+        "Restore",
+        "Upscale",
+        "Denoise",
       )
   }
 

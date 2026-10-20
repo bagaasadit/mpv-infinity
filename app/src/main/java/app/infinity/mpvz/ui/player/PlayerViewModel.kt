@@ -934,25 +934,33 @@ class PlayerViewModel : ViewModel(),
   fun applyEqualizerMpvFilters(immediate: Boolean = false) {
     val state = equalizerState.value
 
-    // 1. Hardware Android AudioFx (Equalizer & LoudnessEnhancer matching AFinity)
-    audioEqualizerManager.updateState(
-      enabled = state.isEnabled,
-      bandGains = state.bandGains,
-      volumeBoostDb = state.volumeBoostDb,
-    )
-
-    // 2. MPV Audio Filter Fallback
-    // Changing MPV "af" filter property during playback causes MPV to recreate audio filter graph.
-    // Debouncing while dragging prevents audio stutter/breaking.
-    equalizerMpvDebounceJob?.cancel()
-    if (immediate) {
-      updateMpvAfProperty(state)
+    if (isNativeEngineActive()) {
+      // 1. Native Media3 pipeline: Use Android Hardware AudioFx exclusively
+      audioEqualizerManager.updateState(
+        enabled = state.isEnabled,
+        bandGains = state.bandGains,
+        volumeBoostDb = state.volumeBoostDb,
+      )
     } else {
-      equalizerMpvDebounceJob =
-        viewModelScope.launch(Dispatchers.Default) {
-          delay(150)
-          updateMpvAfProperty(state)
-        }
+      // 2. MPV Lib pipeline: Disable Hardware AudioFx to prevent Double EQ stacking (+12dB distortion)
+      audioEqualizerManager.updateState(
+        enabled = false,
+        bandGains = emptyList(),
+        volumeBoostDb = 0,
+      )
+
+      // Changing MPV "af" filter property during playback causes MPV to recreate audio filter graph.
+      // Debouncing while dragging prevents audio stutter/breaking.
+      equalizerMpvDebounceJob?.cancel()
+      if (immediate) {
+        updateMpvAfProperty(state)
+      } else {
+        equalizerMpvDebounceJob =
+          viewModelScope.launch(Dispatchers.Default) {
+            delay(150)
+            updateMpvAfProperty(state)
+          }
+      }
     }
   }
 
