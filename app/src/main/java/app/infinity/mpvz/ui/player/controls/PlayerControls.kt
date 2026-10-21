@@ -2073,6 +2073,7 @@ fun PlayerControls(
           if (isAmbientEnabled) add(PlayerButton.AMBIENT_MODE)
           if (backgroundPlaybackEnabled) add(PlayerButton.BACKGROUND_PLAYBACK)
           if (statisticsPage == 6) add(PlayerButton.TIME_NETWORK)
+          if (statisticsPage in 1..6) add(PlayerButton.STATISTICS_PAGE)
         }
       }
 
@@ -2168,6 +2169,19 @@ private fun NativeStatsPageOverlay(
       when (page) {
         1 -> {
           Text("Output: $quality · $outputRange · $colorSpace", style = MaterialTheme.typography.bodySmall, color = Color.White)
+          val hdr = snapshot.hdrMetadata
+          if (hdr != null && hdr.isHdr) {
+            val maxMasteringText = hdr.maxMasteringLuminance?.let { "${it} Nits" } ?: "1000 Nits (Default)"
+            val minMasteringText = hdr.minMasteringLuminance?.let { "${it} Nits (True Black)" } ?: "0.0001 Nits (OLED Black)"
+            val cllText = hdr.maxCll?.let { "${it} Nits" } ?: "--"
+            val fallText = hdr.maxFall?.let { "${it} Nits" } ?: "--"
+            val dpuText = if (hdr.isDolbyVision) "Qualcomm Hardware DPU (Dolby Vision)" else "Qualcomm Hardware DPU (HDR10)"
+            Text("HDR Format: ${hdr.formatName}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFD54F))
+            Text("Luminance: MaxCLL $cllText · MaxFALL $fallText", style = MaterialTheme.typography.bodySmall, color = Color.White)
+            Text("Mastering: Max $maxMasteringText · Min $minMasteringText", style = MaterialTheme.typography.bodySmall, color = Color.White)
+            Text("Target Layar: ${hdr.targetDisplayNits} Nits (Poco F5 Flow AMOLED)", style = MaterialTheme.typography.bodySmall, color = Color.White)
+            Text("Pipeline: $dpuText", style = MaterialTheme.typography.bodySmall, color = Color(0xFF81C784))
+          }
           Text("Video: $videoCodec · Decoder: $videoDecoder", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Bitrate: $videoBitrate · Duration: ${snapshot.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = Color.White)
           val aheadSecs = String.format("%.1f", snapshot.totalBufferedDurationMs / 1000.0)
@@ -2193,6 +2207,11 @@ private fun NativeStatsPageOverlay(
         }
         5 -> {
           Text("Output: $outputRange · $colorSpace · $quality", style = MaterialTheme.typography.bodySmall, color = Color.White)
+          val hdr = snapshot.hdrMetadata
+          if (hdr != null && hdr.isHdr) {
+            val cll = hdr.maxCll?.let { "$it Nits" } ?: "1000 Nits"
+            Text("Luminance: $cll (Mastering: ${hdr.maxMasteringLuminance ?: 1000} Nits)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFD54F))
+          }
           Text("Video: $videoCodec · $videoBitrate", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Audio: $audioCodec · $audioBitrate · Chapters: ${snapshot.chapters.size}", style = MaterialTheme.typography.bodySmall, color = Color.White)
         }

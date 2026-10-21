@@ -1257,6 +1257,33 @@ fun RenderPlayerButton(
       }
     }
 
+    PlayerButton.STATISTICS_PAGE -> {
+      val isStatsActive = statisticsPage in 1..6
+      ControlsButton(
+        icon = Icons.RoundedFilled.Info,
+        onClick = {
+          val nextPage = if (statisticsPage == 1) 0 else 1
+          if (activity.isNativeEngineActive()) {
+            advancedPreferences.enabledStatisticsPage.set(nextPage)
+          } else {
+            if (statisticsPage == 1) {
+              PlaybackSession.command("script-binding", "stats/display-stats-toggle")
+              advancedPreferences.enabledStatisticsPage.set(0)
+            } else {
+              if (statisticsPage == 0 || statisticsPage == 6 || statisticsPage == 7) {
+                PlaybackSession.command("script-binding", "stats/display-stats-toggle")
+              }
+              PlaybackSession.command("script-binding", "stats/display-page-1")
+              advancedPreferences.enabledStatisticsPage.set(1)
+            }
+          }
+          onOpenSheet(Sheets.None)
+        },
+        color = if (isStatsActive) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
       PlayerButton.NONE -> { // Do nothing
       }
     }
