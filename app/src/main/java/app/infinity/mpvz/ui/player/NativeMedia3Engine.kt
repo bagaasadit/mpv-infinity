@@ -1561,7 +1561,8 @@ class NativeMedia3Engine(context: Context) {
       ?.also { lastKnownDurationMs = it }
       ?: lastKnownDurationMs
     val colorInfo = video?.colorInfo
-    val parsedHdr = HdrMetadataParser.parseFromMedia3Format(video)
+    val titleOrUri = preparationUri?.let { Uri.decode(it.lastPathSegment ?: it.toString()) }
+    val parsedHdr = HdrMetadataParser.parseFromMedia3Format(video, titleOrUri)
     val dynamicRange = if (parsedHdr.isHdr) {
       parsedHdr.formatName
     } else {

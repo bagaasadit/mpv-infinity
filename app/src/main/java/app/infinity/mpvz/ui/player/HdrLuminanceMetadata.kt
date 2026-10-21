@@ -62,50 +62,67 @@ object HdrMetadataParser {
     }
   }
 
-  fun parseFromMedia3Format(format: Format?): HdrLuminanceMetadata {
-    if (format == null) return HdrLuminanceMetadata("SDR (Rec.709)")
+  fun parseFromMedia3Format(format: Format?, titleOrUri: String? = null): HdrLuminanceMetadata {
+    val metaLower = titleOrUri.orEmpty().lowercase()
+    val mime = format?.sampleMimeType.orEmpty().lowercase()
+    val codecs = format?.codecs.orEmpty().lowercase()
+    val colorInfo = format?.colorInfo
 
-    val mime = format.sampleMimeType.orEmpty().lowercase()
-    val codecs = format.codecs.orEmpty().lowercase()
-    val colorInfo = format.colorInfo
+    val filenameHasDv = metaLower.contains("dolby vision") ||
+      metaLower.contains("dolby.vision") ||
+      metaLower.contains("dolbyvision") ||
+      metaLower.contains("dovi") ||
+      metaLower.contains(".dv.") ||
+      metaLower.contains("-dv.") ||
+      metaLower.contains("_dv_") ||
+      metaLower.contains(" dv ") ||
+      metaLower.contains(".dv ")
+    val filenameHasHdr = filenameHasDv ||
+      metaLower.contains("hdr") ||
+      metaLower.contains("hdr10") ||
+      metaLower.contains("hlg")
 
     val isDv = mime.contains("dolby-vision") ||
       codecs.startsWith("dvh1") ||
       codecs.startsWith("dvhe") ||
       codecs.startsWith("dav1") ||
-      codecs.startsWith("dva1")
+      codecs.startsWith("dva1") ||
+      filenameHasDv
 
     val dvProfile = when {
-      codecs.contains(".05") || codecs.startsWith("dvh1.05") || codecs.startsWith("dvhe.05") -> "Profile 5 (Apple TV / Web-DL)"
-      codecs.contains(".08") || codecs.startsWith("dvh1.08") || codecs.startsWith("dvhe.08") -> "Profile 8.1"
-      codecs.contains(".07") || codecs.startsWith("dvh1.07") || codecs.startsWith("dvhe.07") -> "Profile 7 (UHD Blu-ray)"
+      codecs.contains(".05") || codecs.startsWith("dvh1.05") || codecs.startsWith("dvhe.05") || metaLower.contains("profile 5") || metaLower.contains("profile.5") || metaLower.contains(".p5.") || metaLower.contains("appletv") || metaLower.contains("atvp") -> "Profile 5 (Apple TV / Web-DL)"
+      codecs.contains(".08") || codecs.startsWith("dvh1.08") || codecs.startsWith("dvhe.08") || metaLower.contains("profile 8") || metaLower.contains("profile.8") || metaLower.contains(".p8.") -> "Profile 8.1"
+      codecs.contains(".07") || codecs.startsWith("dvh1.07") || codecs.startsWith("dvhe.07") || metaLower.contains("profile 7") || metaLower.contains("profile.7") || metaLower.contains(".p7.") || metaLower.contains("remux") -> "Profile 7 (UHD Blu-ray)"
       isDv -> "Dolby Vision"
       else -> null
     }
 
     val isHdr = isDv ||
       colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 ||
-      colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG
+      colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG ||
+      colorInfo?.colorSpace == C.COLOR_SPACE_BT2020 ||
+      filenameHasHdr
+
+    val staticInfo = parseCta861StaticInfo(colorInfo?.hdrStaticInfo)
 
     val formatName = when {
       dvProfile != null -> "Dolby Vision $dvProfile"
-      colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG -> "HLG (Hybrid Log-Gamma)"
-      colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 -> "HDR10 (PQ)"
-      isHdr -> "HDR"
+      isDv -> "Dolby Vision"
+      colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG || metaLower.contains("hlg") -> "HLG (Hybrid Log-Gamma)"
+      colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 || metaLower.contains("hdr10") -> "HDR10 (PQ)"
+      isHdr -> "HDR10 (PQ)"
       else -> "SDR (Rec.709)"
     }
-
-    val staticInfo = parseCta861StaticInfo(colorInfo?.hdrStaticInfo)
 
     return HdrLuminanceMetadata(
       formatName = formatName,
       isHdr = isHdr,
       isDolbyVision = isDv,
       dvProfile = dvProfile,
-      maxMasteringLuminance = staticInfo?.maxMastering,
-      minMasteringLuminance = staticInfo?.minMastering,
-      maxCll = staticInfo?.maxCll,
-      maxFall = staticInfo?.maxFall,
+      maxMasteringLuminance = staticInfo?.maxMastering ?: (if (isHdr) 1000 else null),
+      minMasteringLuminance = staticInfo?.minMastering ?: (if (isHdr) 0.0001 else null),
+      maxCll = staticInfo?.maxCll ?: (if (isHdr) 1000 else null),
+      maxFall = staticInfo?.maxFall ?: (if (isHdr) 280 else null),
       targetDisplayNits = 1000,
     )
   }

@@ -67,7 +67,7 @@ class AppearancePreferences(
   val topRightControls =
     preferenceStore.getString(
       "top_right_controls",
-      "CURRENT_CHAPTER,DECODER,AUDIO_TRACK,SUBTITLES,MORE_OPTIONS",
+      "CURRENT_CHAPTER,DECODER,STATISTICS_PAGE,AUDIO_TRACK,SUBTITLES,MORE_OPTIONS",
     )
 
   val bottomRightControls =
@@ -85,11 +85,14 @@ class AppearancePreferences(
   val portraitBottomControls =
     preferenceStore.getString(
       "portrait_bottom_controls",
-      "SCREEN_ROTATION,DECODER,AUDIO_TRACK,SUBTITLES,BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,REPEAT_MODE,SHUFFLE,VIDEO_ZOOM,FRAME_NAVIGATION,CLIP,ASPECT_RATIO,PICTURE_IN_PICTURE,LOCK_CONTROLS,MORE_OPTIONS",
+      "SCREEN_ROTATION,DECODER,AUDIO_TRACK,SUBTITLES,BOOKMARKS_CHAPTERS,STATISTICS_PAGE,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,REPEAT_MODE,SHUFFLE,VIDEO_ZOOM,FRAME_NAVIGATION,CLIP,ASPECT_RATIO,PICTURE_IN_PICTURE,LOCK_CONTROLS,MORE_OPTIONS",
     )
 
   private val clipButtonMigrationComplete =
     preferenceStore.getBoolean("clip_button_migration_complete", false)
+
+  private val statsButtonMigrationComplete =
+    preferenceStore.getBoolean("stats_button_migration_complete", false)
 
   init {
     if (!clipButtonMigrationComplete.get()) {
@@ -109,6 +112,25 @@ class AppearancePreferences(
         portraitBottomControls.set("${portraitBottomControls.get()},CLIP")
       }
       clipButtonMigrationComplete.set(true)
+    }
+
+    if (!statsButtonMigrationComplete.get()) {
+      val landscapeButtons =
+        listOf(
+          topLeftControls.get(),
+          topRightControls.get(),
+          bottomRightControls.get(),
+          bottomLeftControls.get(),
+        ).flatMap { it.split(',') }
+          .map { it.trim().uppercase() }
+      if ("STATISTICS_PAGE" !in landscapeButtons) {
+        topRightControls.set("${topRightControls.get()},STATISTICS_PAGE")
+      }
+      val portraitButtons = portraitBottomControls.get().split(',').map { it.trim().uppercase() }
+      if ("STATISTICS_PAGE" !in portraitButtons) {
+        portraitBottomControls.set("${portraitBottomControls.get()},STATISTICS_PAGE")
+      }
+      statsButtonMigrationComplete.set(true)
     }
   }
 
