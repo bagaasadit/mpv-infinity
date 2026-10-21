@@ -648,8 +648,6 @@ fun PlayerControls(
         NativeStatsPageOverlay(page = statisticsPage, snapshot = nativeSnapshot, modifier = statsModifier)
       } else if (statisticsPage == 6) {
         CustomStatsPageSixOverlay(viewModel = viewModel, modifier = statsModifier)
-      } else if (statisticsPage == 1) {
-        MpvStatsPageOneOverlay(modifier = statsModifier)
       }
     }
 
@@ -2075,7 +2073,6 @@ fun PlayerControls(
           if (isAmbientEnabled) add(PlayerButton.AMBIENT_MODE)
           if (backgroundPlaybackEnabled) add(PlayerButton.BACKGROUND_PLAYBACK)
           if (statisticsPage == 6) add(PlayerButton.TIME_NETWORK)
-          if (statisticsPage in 1..6) add(PlayerButton.STATISTICS_PAGE)
         }
       }
 
@@ -2171,46 +2168,6 @@ private fun NativeStatsPageOverlay(
       when (page) {
         1 -> {
           Text("Output: $quality · $outputRange · $colorSpace", style = MaterialTheme.typography.bodySmall, color = Color.White)
-          val hdr = snapshot.hdrMetadata
-          val isHdrActive = hdr?.isHdr == true || outputRange.contains("HDR") || outputRange.contains("Dolby") || outputRange.contains("HLG")
-          val formatTitle = when {
-            hdr?.formatName?.isNotBlank() == true -> hdr.formatName
-            outputRange.isNotBlank() && outputRange != "--" -> outputRange
-            else -> "SDR (Rec.709)"
-          }
-          val maxCllNum = hdr?.maxCll ?: (if (isHdrActive) 1000 else 100)
-          val maxFallNum = hdr?.maxFall ?: (if (isHdrActive) 280 else 50)
-          val minLumaNum = hdr?.minMasteringLuminance ?: 0.0001
-
-          // Real-time dynamic frame luminance (Detik Ini)
-          val timeStep = (snapshot.positionMs / 300L)
-          val seed = (snapshot.durationMs xor 0x5DEECE66DL).toInt()
-          val wave1 = kotlin.math.sin((timeStep + (seed % 100)) * 0.12) * 0.45
-          val wave2 = kotlin.math.cos((timeStep + (seed % 50)) * 0.04) * 0.35
-          val wave3 = kotlin.math.sin((timeStep + (seed % 25)) * 0.28) * 0.20
-          val dynamicFactor = ((wave1 + wave2 + wave3 + 1.0) / 2.0).coerceIn(0.01, 0.98)
-          val liveFrameNits = if (snapshot.isPlaying) {
-            (minLumaNum + dynamicFactor * (maxCllNum - minLumaNum)).toInt().coerceIn(1, maxCllNum)
-          } else {
-            maxFallNum
-          }
-
-          val cllText = hdr?.maxCll?.let { "${it} Nits" } ?: (if (isHdrActive) "1000 Nits (Mastering)" else "--")
-          val fallText = hdr?.maxFall?.let { "${it} Nits" } ?: (if (isHdrActive) "280 Nits (Average)" else "--")
-          val maxMasteringText = hdr?.maxMasteringLuminance?.let { "${it} Nits" } ?: (if (isHdrActive) "1000 Nits" else "--")
-          val minMasteringText = hdr?.minMasteringLuminance?.let { "${it} Nits (True Black)" } ?: (if (isHdrActive) "0.0001 Nits (OLED Black)" else "--")
-          val dpuText = when {
-            hdr?.isDolbyVision == true || formatTitle.contains("Dolby Vision") -> "Qualcomm Hardware DPU (Dolby Vision)"
-            isHdrActive -> "Qualcomm Hardware DPU (HDR10 / HLG)"
-            else -> "Qualcomm Hardware DPU (SDR)"
-          }
-
-          Text("⚡ Nits Detik Ini: $liveFrameNits Nits  [● REAL-TIME]", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFEB3B), fontWeight = FontWeight.Bold)
-          Text("HDR Format: $formatTitle", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFD54F))
-          Text("Luminance (Konten): MaxCLL $cllText · MaxFALL $fallText", style = MaterialTheme.typography.bodySmall, color = Color.White)
-          Text("Mastering Studio: Max $maxMasteringText · Min $minMasteringText", style = MaterialTheme.typography.bodySmall, color = Color.White)
-          Text("Target Layar: ${hdr?.targetDisplayNits ?: 1000} Nits (Poco F5 Flow AMOLED)", style = MaterialTheme.typography.bodySmall, color = Color.White)
-          Text("Pipeline: $dpuText", style = MaterialTheme.typography.bodySmall, color = Color(0xFF81C784))
           Text("Video: $videoCodec · Decoder: $videoDecoder", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Bitrate: $videoBitrate · Duration: ${snapshot.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = Color.White)
           val aheadSecs = String.format("%.1f", snapshot.totalBufferedDurationMs / 1000.0)
@@ -2236,11 +2193,6 @@ private fun NativeStatsPageOverlay(
         }
         5 -> {
           Text("Output: $outputRange · $colorSpace · $quality", style = MaterialTheme.typography.bodySmall, color = Color.White)
-          val hdr = snapshot.hdrMetadata
-          if (hdr != null && hdr.isHdr) {
-            val cll = hdr.maxCll?.let { "$it Nits" } ?: "1000 Nits"
-            Text("Luminance: $cll (Mastering: ${hdr.maxMasteringLuminance ?: 1000} Nits)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFD54F))
-          }
           Text("Video: $videoCodec · $videoBitrate", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Audio: $audioCodec · $audioBitrate · Chapters: ${snapshot.chapters.size}", style = MaterialTheme.typography.bodySmall, color = Color.White)
         }
@@ -2274,79 +2226,6 @@ private fun nativeStatsCodecLabel(mimeType: String?, codecs: String?): String {
     else -> codecs?.takeIf { it.isNotBlank() }
       ?: mimeType?.substringAfterLast('/')?.uppercase()
       ?: "--"
-  }
-}
-
-@Composable
-private fun MpvStatsPageOneOverlay(
-  modifier: Modifier = Modifier,
-) {
-  val gamma = PlaybackSession.getPropertyString("video-params/gamma").orEmpty().lowercase()
-  val primaries = PlaybackSession.getPropertyString("video-params/primaries").orEmpty().lowercase()
-  val maxCll = PlaybackSession.getPropertyDouble("video-params/max-cll")?.toInt()
-  val maxFall = PlaybackSession.getPropertyDouble("video-params/max-fall")?.toInt()
-  val minLuma = PlaybackSession.getPropertyDouble("video-params/min-luma")
-  val maxLuma = PlaybackSession.getPropertyDouble("video-params/max-luma")?.toInt()
-  val sigPeak = PlaybackSession.getPropertyDouble("video-params/sig-peak")
-  val mediaTitle = PlaybackSession.getPropertyString("media-title").orEmpty().lowercase()
-  val videoCodec = PlaybackSession.getPropertyString("video-codec") ?: "HEVC"
-
-  val isDv = mediaTitle.contains("dolby vision") ||
-    mediaTitle.contains("dolby.vision") ||
-    mediaTitle.contains("dolbyvision") ||
-    mediaTitle.contains("dovi") ||
-    mediaTitle.contains(".dv.") ||
-    mediaTitle.contains("-dv.") ||
-    mediaTitle.contains(" dv ")
-  val isHdr = isDv || gamma == "pq" || gamma == "hlg" || primaries.contains("2020") || mediaTitle.contains("hdr")
-
-  val formatTitle = when {
-    isDv && (mediaTitle.contains("profile 5") || mediaTitle.contains(".p5.") || mediaTitle.contains("appletv") || mediaTitle.contains("atvp")) -> "Dolby Vision Profile 5 (Apple TV / Web-DL)"
-    isDv && (mediaTitle.contains("profile 7") || mediaTitle.contains(".p7.") || mediaTitle.contains("remux")) -> "Dolby Vision Profile 7 (UHD Blu-ray)"
-    isDv -> "Dolby Vision (libmpv tone-mapped)"
-    gamma == "hlg" || mediaTitle.contains("hlg") -> "HLG (Hybrid Log-Gamma)"
-    gamma == "pq" || mediaTitle.contains("hdr10") -> "HDR10 (PQ)"
-    isHdr -> "HDR10 (PQ)"
-    else -> "SDR (Rec.709)"
-  }
-
-  val cllText = maxCll?.takeIf { it > 0 }?.let { "${it} Nits" } ?: (if (isHdr) "1000 Nits (Mastering)" else "--")
-  val fallText = maxFall?.takeIf { it > 0 }?.let { "${it} Nits" } ?: (if (isHdr) "280 Nits (Average)" else "--")
-  val maxMasteringText = maxLuma?.takeIf { it > 0 }?.let { "${it} Nits" }
-    ?: sigPeak?.takeIf { it > 0 }?.let { "${(it * 100).toInt()} Nits" }
-    ?: (if (isHdr) "1000 Nits" else "--")
-  val minMasteringText = minLuma?.takeIf { it > 0 }?.let { "${it} Nits (True Black)" } ?: (if (isHdr) "0.0001 Nits (OLED Black)" else "--")
-
-  val posSec = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0
-  val isPaused = PlaybackSession.getPropertyBoolean("pause") == true
-  val timeStep = (posSec * 3.33).toLong()
-  val wave1 = kotlin.math.sin(timeStep * 0.12) * 0.45
-  val wave2 = kotlin.math.cos(timeStep * 0.04) * 0.35
-  val wave3 = kotlin.math.sin(timeStep * 0.28) * 0.20
-  val dynamicFactor = ((wave1 + wave2 + wave3 + 1.0) / 2.0).coerceIn(0.01, 0.98)
-  val maxCllNum = maxCll?.takeIf { it > 0 } ?: (if (isHdr) 1000 else 100)
-  val liveFrameNits = if (!isPaused) {
-    (dynamicFactor * maxCllNum).toInt().coerceIn(1, maxCllNum)
-  } else {
-    maxFall?.takeIf { it > 0 } ?: 280
-  }
-
-  Surface(
-    modifier = modifier,
-    color = Color.Transparent,
-    shape = MaterialTheme.shapes.medium,
-  ) {
-    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-      Text("MPV statistics — Page 1 (HDR & Nits)", style = MaterialTheme.typography.titleSmall, color = Color.White)
-      Text("Engine: MPV (libmpv)", style = MaterialTheme.typography.bodySmall, color = Color.White)
-      Text("⚡ Nits Detik Ini: $liveFrameNits Nits  [● REAL-TIME]", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFEB3B), fontWeight = FontWeight.Bold)
-      Text("HDR Format: $formatTitle", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFD54F))
-      Text("Luminance (Konten): MaxCLL $cllText · MaxFALL $fallText", style = MaterialTheme.typography.bodySmall, color = Color.White)
-      Text("Mastering Studio: Max $maxMasteringText · Min $minMasteringText", style = MaterialTheme.typography.bodySmall, color = Color.White)
-      Text("Target Layar: 1000 Nits (Poco F5 Flow AMOLED)", style = MaterialTheme.typography.bodySmall, color = Color.White)
-      Text("Pipeline: libmpv GPU Shader / Tone-Mapping", style = MaterialTheme.typography.bodySmall, color = Color(0xFF81C784))
-      Text("Video: $videoCodec · Color: $primaries / $gamma", style = MaterialTheme.typography.bodySmall, color = Color.White)
-    }
   }
 }
 

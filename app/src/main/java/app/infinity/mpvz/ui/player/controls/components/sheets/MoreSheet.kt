@@ -279,8 +279,6 @@ fun MoreSheet(
               Text(
                 if (page == 7) {
                   "Console"
-                } else if (page == 1) {
-                  "Page 1 (HDR & Nits)"
                 } else {
                   stringResource(
                     if (page == 0) {

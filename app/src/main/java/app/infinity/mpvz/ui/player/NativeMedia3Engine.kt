@@ -95,7 +95,6 @@ data class NativePlaybackSnapshot(
   val subtitleTracks: List<NativeTrack> = emptyList(),
   val audioTracks: List<NativeTrack> = emptyList(),
   val chapters: List<NativeChapter> = emptyList(),
-  val hdrMetadata: HdrLuminanceMetadata? = null,
 )
 
 data class NativeTrack(
@@ -1561,20 +1560,14 @@ class NativeMedia3Engine(context: Context) {
       ?.also { lastKnownDurationMs = it }
       ?: lastKnownDurationMs
     val colorInfo = video?.colorInfo
-    val titleOrUri = preparationUri?.let { Uri.decode(it.lastPathSegment ?: it.toString()) }
-    val parsedHdr = HdrMetadataParser.parseFromMedia3Format(video, titleOrUri)
-    val dynamicRange = if (parsedHdr.isHdr) {
-      parsedHdr.formatName
-    } else {
-      video?.let {
-        val mime = it.sampleMimeType.orEmpty().lowercase()
-        val codecs = it.codecs.orEmpty().lowercase()
-        when {
-          mime.contains("dolby-vision") || codecs.startsWith("dvhe") || codecs.startsWith("dvh1") -> "Dolby Vision"
-          colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG -> "HLG"
-          colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 -> "HDR10"
-          else -> "SDR"
-        }
+    val dynamicRange = video?.let {
+      val mime = it.sampleMimeType.orEmpty().lowercase()
+      val codecs = it.codecs.orEmpty().lowercase()
+      when {
+        mime.contains("dolby-vision") || codecs.startsWith("dvhe") || codecs.startsWith("dvh1") -> "Dolby Vision"
+        colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG -> "HLG"
+        colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 -> "HDR10"
+        else -> "SDR"
       }
     }
     val colorSpace =
@@ -1620,7 +1613,6 @@ class NativeMedia3Engine(context: Context) {
       subtitleTracks = subtitles,
       audioTracks = audioTracks,
       chapters = chapters,
-      hdrMetadata = parsedHdr,
     )
   }
 
