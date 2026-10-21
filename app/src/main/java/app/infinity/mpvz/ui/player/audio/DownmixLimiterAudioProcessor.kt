@@ -54,6 +54,20 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   // Configuration Switches
   var enableLfeMixing: Boolean = true
   var enableBinauralCrossfeed: Boolean = true
+
+  /**
+   * Runs the crossfeed + limiter stage on native 2.0 content.
+   *
+   * Stereo is already a two-channel layout, so no downmix happens; the samples are passed
+   * straight to the BS2B crossfeed and peak limiter. This is the most common case on phones
+   * (web series, anime episodes, most MP4/MKV releases), and it is exactly the content that
+   * benefits most from crossfeed on in-ear monitors.
+   *
+   * Disable it when the phone speaker is the active output: crossfeed narrows the stereo
+   * image, which sounds worse on a pair of speakers 7 cm apart.
+   */
+  var enableStereoCrossfeed: Boolean = true
+
   var dialogueBoostGain: Float = 1.0f
   var outputFloatingPoint: Boolean = false
 
@@ -77,8 +91,16 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       throw UnhandledAudioFormatException(inputAudioFormat)
     }
 
-    // Only process when downmixing multichannel audio (> 2 channels)
-    if (inputAudioFormat.channelCount <= 2) {
+    // Mono has no stereo image to crossfeed, so it stays on the passthrough path.
+    // Stereo and above are processed: multichannel is downmixed, stereo goes straight to
+    // crossfeed + limiter without any channel reduction.
+    if (inputAudioFormat.channelCount < 2) {
+      return AudioFormat.NOT_SET
+    }
+
+    // Stereo only needs the crossfeed/limiter stage. When that is disabled there is nothing
+    // left to do for a 2-channel source, so keep the passthrough path untouched.
+    if (inputAudioFormat.channelCount == 2 && !enableStereoCrossfeed && !enableBinauralCrossfeed) {
       return AudioFormat.NOT_SET
     }
 
@@ -96,10 +118,16 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
     val outputEncoding = if (outputFloatingPoint) C.ENCODING_PCM_FLOAT else C.ENCODING_PCM_16BIT
 
+    // Stereo is not downmixed, so it must keep the sink's own sample encoding. Forcing 16-bit
+    // here would silently truncate float or 24-bit stereo sources before they ever reach the
+    // output, which is the opposite of what the audio-fidelity pass is meant to achieve.
+    val targetEncoding =
+      if (inputAudioFormat.channelCount == 2) inputAudioFormat.encoding else outputEncoding
+
     return AudioFormat(
       inputAudioFormat.sampleRate,
       2,
-      outputEncoding,
+      targetEncoding,
     )
   }
 
@@ -122,9 +150,18 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       return
     }
 
-    val isOutputFloat = outputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
-    val bytesPerOutputSample = if (isOutputFloat) 4 else 2
-    val outputBytes = frameCount * 2 * bytesPerOutputSample
+    // Serialization must mirror the encoding reported by onConfigure. Stereo keeps the sink's
+    // native encoding (16-bit, 24-bit, 32-bit int, or float), so all four cases are handled here
+    // rather than assuming the multichannel 16-bit/float pair.
+    val outputEncoding = outputAudioFormat.encoding
+    val isOutputFloat = outputEncoding == C.ENCODING_PCM_FLOAT
+    val outBytesPerSample =
+      when (outputEncoding) {
+        C.ENCODING_PCM_FLOAT, C.ENCODING_PCM_32BIT -> 4
+        C.ENCODING_PCM_24BIT -> 3
+        else -> 2
+      }
+    val outputBytes = frameCount * 2 * outBytesPerSample
     val outputBuffer = replaceOutputBuffer(outputBytes)
     outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
 
@@ -167,6 +204,12 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       var rightSum = 0.0f
 
       when (channelCount) {
+        // 2.0 Stereo: no downmix needed, hand the channels straight to crossfeed + limiter.
+        2 -> {
+          leftSum = channelSamples[0]
+          rightSum = channelSamples[1]
+        }
+
         // 5.1 (FL, FR, FC, LFE, SL, SR)
         6 -> {
           val fl = channelSamples[0]
@@ -247,7 +290,7 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       }
 
       // 3. Bauer Stereophonic-to-Binaural (BS2B) Crossfeed for IEM / Headphone Soundstage
-      if (enableBinauralCrossfeed) {
+      if (enableBinauralCrossfeed && (channelCount > 2 || enableStereoCrossfeed)) {
         crossfeedHistL += bs2bAlpha * (leftSum - crossfeedHistL)
         crossfeedHistR += bs2bAlpha * (rightSum - crossfeedHistR)
 
@@ -288,15 +331,29 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       outR = softClipTanh(outR)
 
       // 6. Quantize / Output Serialization
-      if (isOutputFloat) {
-        outputBuffer.putFloat(outL)
-        outputBuffer.putFloat(outR)
-      } else {
-        val pcmL = (outL * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
-        val pcmR = (outR * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
+      when (outputEncoding) {
+        C.ENCODING_PCM_FLOAT -> {
+          outputBuffer.putFloat(outL)
+          outputBuffer.putFloat(outR)
+        }
 
-        outputBuffer.putShort(pcmL)
-        outputBuffer.putShort(pcmR)
+        C.ENCODING_PCM_32BIT -> {
+          outputBuffer.putInt((outL * 2147483520.0f).roundToInt())
+          outputBuffer.putInt((outR * 2147483520.0f).roundToInt())
+        }
+
+        C.ENCODING_PCM_24BIT -> {
+          outputBuffer.putPacked24(outL)
+          outputBuffer.putPacked24(outR)
+        }
+
+        else -> {
+          val pcmL = (outL * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
+          val pcmR = (outR * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
+
+          outputBuffer.putShort(pcmL)
+          outputBuffer.putShort(pcmR)
+        }
       }
     }
 
@@ -328,5 +385,12 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     val excess = (absX - 0.85f) / 0.15f
     val compressed = 0.85f + 0.145f * tanh(excess)
     return sign * compressed
+  }
+
+  private fun ByteBuffer.putPacked24(sample: Float) {
+    val value = (sample * 8388607.0f).roundToInt().coerceIn(-8388608, 8388607)
+    put((value and 0xFF).toByte())
+    put(((value ushr 8) and 0xFF).toByte())
+    put(((value ushr 16) and 0xFF).toByte())
   }
 }

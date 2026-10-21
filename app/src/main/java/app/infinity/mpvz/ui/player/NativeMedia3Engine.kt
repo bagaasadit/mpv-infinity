@@ -36,6 +36,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.common.audio.AudioProcessor
+import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
 import app.infinity.mpvz.ui.player.audio.DownmixLimiterAudioProcessor
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
@@ -140,6 +141,17 @@ class NativeMedia3Engine(context: Context) {
   private val dataSourceFactory = DefaultDataSource.Factory(context.applicationContext, httpDataSourceFactory)
   private val assHandler = AssHandler(renderType = AssRenderType.OVERLAY_CANVAS)
   private val assSubtitleParserFactory = AssSubtitleParserFactory(assHandler)
+
+  /**
+   * Tracks whether the sound is leaving through the phone speaker, wired headphones, or Bluetooth.
+   * The downmix/crossfeed stage is tuned per route; without this the binaural filter would also
+   * run on the tiny built-in speakers and audibly narrow the stereo image there.
+   */
+  private val audioOutputRouter = AudioOutputRouter(context.applicationContext)
+
+  /** Most recent audio processor handed to the sink, kept so route changes can retune it. */
+  private val registeredAudioProcessor = java.util.concurrent.atomic.AtomicReference<DownmixLimiterAudioProcessor?>(null)
+
   private val extractorsFactory: ExtractorsFactory =
     androidx.media3.extractor.DefaultExtractorsFactory()
       .withAssMkvSupport(assSubtitleParserFactory, assHandler)
@@ -188,11 +200,16 @@ class NativeMedia3Engine(context: Context) {
           enableFloatOutput: Boolean,
           enableAudioTrackPlaybackParams: Boolean
         ): AudioSink? {
+          val activeOutput = audioOutputRouter.currentOutput
           val downmixLimiterProcessor = DownmixLimiterAudioProcessor().apply {
-            enableLfeMixing = true
-            enableBinauralCrossfeed = true
+            enableLfeMixing = activeOutput.supportsLfeFoldDown
+            enableBinauralCrossfeed = activeOutput.supportsCrossfeed
+            // Stereo is the dominant source on phones; run the same crossfeed on it instead of
+            // silently skipping every 2.0 file, but only when the active route can benefit.
+            enableStereoCrossfeed = activeOutput.supportsCrossfeed
             outputFloatingPoint = false // PCM 16-bit guarantees 100% stability on Qualcomm Audio HAL
           }
+          registeredAudioProcessor.set(downmixLimiterProcessor)
           return DefaultAudioSink.Builder(context)
             .setAudioProcessors(arrayOf(downmixLimiterProcessor))
             // Force standard stereo capabilities: prevents Media3 from opening direct 8-channel passthrough to analog jack
@@ -456,6 +473,7 @@ class NativeMedia3Engine(context: Context) {
     )
     player.setHandleAudioBecomingNoisy(false) // PlayerActivity manages noisyReceiver
     assHandler.init(player)
+    startAudioOutputTracking()
     Log.i(logTag, "Native Media3 configured: stuckBufferingDetectionTimeoutMs=${Int.MAX_VALUE}")
     // Large UHD/Dolby Vision files can take a long time to decode an exact frame after a seek.
     // Start at the nearest keyframe so the decoder can resume immediately and refill forward.
@@ -1489,8 +1507,28 @@ class NativeMedia3Engine(context: Context) {
     publishSnapshot()
   }
 
+  /**
+   * Begins watching the audio route so the crossfeed stage follows the active transducer.
+   *
+   * Called when Native playback starts. A route change while audio is already running cannot
+   * rebuild the audio sink in place, so the processor is retuned for the *next* sink build and
+   * the current buffer simply plays out with the previous tuning. This avoids an audible glitch
+   * every time a headset is plugged in.
+   */
+  fun startAudioOutputTracking() {
+    audioOutputRouter.startObserving { newOutput ->
+      registeredAudioProcessor.get()?.apply {
+        enableBinauralCrossfeed = newOutput.supportsCrossfeed
+        enableStereoCrossfeed = newOutput.supportsCrossfeed
+        enableLfeMixing = newOutput.supportsLfeFoldDown
+      }
+    }
+  }
+
   fun release() {
     clearLoop()
+    audioOutputRouter.stopObserving()
+    registeredAudioProcessor.set(null)
     loopHandler.removeCallbacks(timelineRunnable)
     loopHandler.removeCallbacks(seekRunnable)
     pendingSeekPositionMs = null

@@ -233,8 +233,22 @@ class MPVView(
     PlaybackSession.setOptionString("vd-lavc-dr", "auto")
     PlaybackSession.setOptionString("vd-lavc-queue", "no")
 
-    if (decoderPreferences.useYUV420P.get()) {
-      PlaybackSession.setOptionString("vf", "format=yuv420p")
+    // Build the video filter chain in one place. The YUV420P compatibility format and the
+    // CPU deband filter both live in mpv's single "vf" chain; setting them from two different
+    // code paths (initOptions and postInitOptions) silently discarded whichever ran last, which
+    // looked like "the setting is checked but nothing happens" and let banding return on dark
+    // gradients. Compose the chain once instead.
+    val videoFilterChain =
+      buildList {
+        if (decoderPreferences.useYUV420P.get()) {
+          add("format=yuv420p")
+        }
+        if (decoderPreferences.debanding.get() == Debanding.CPU) {
+          add("@deband:gradfun=radius=12")
+        }
+      }
+    if (videoFilterChain.isNotEmpty()) {
+      PlaybackSession.setOptionString("vf", videoFilterChain.joinToString(","))
     }
     val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
     PlaybackSession.setOptionString("msg-level", "all=$logLevel")
@@ -326,9 +340,11 @@ class MPVView(
   override fun postInitOptions() {
     applyOsdSafeAreaMargins()
 
+    // Debanding.CPU is already part of the "vf" chain built in initOptions, so only the GPU
+    // path still needs wiring here. Running both would apply the gradfun filter twice.
     when (decoderPreferences.debanding.get()) {
       Debanding.None -> {}
-      Debanding.CPU -> PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
+      Debanding.CPU -> {}
       Debanding.GPU -> {
         PlaybackSession.setOptionString("deband", "yes")
         PlaybackSession.setOptionString("deband-iterations", decoderPreferences.debandIterations.get().toString())

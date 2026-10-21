@@ -15,10 +15,77 @@ class DownmixLimiterAudioProcessorTest {
   private val processor = DownmixLimiterAudioProcessor()
 
   @Test
-  fun stereoPassesThroughUnchanged() {
+  fun stereoIsProcessedWhenCrossfeedIsEnabled() {
+    // Stereo used to be skipped entirely, which meant the crossfeed never ran on the content
+    // most phone users actually play. It now flows through crossfeed + limiter unchanged in
+    // channel count, so the format must still be reported as configured.
     val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
     val configured = processor.configure(stereoFormat)
-    assertEquals(AudioFormat.NOT_SET, configured)
+    assertEquals(48000, configured.sampleRate)
+    assertEquals(2, configured.channelCount)
+    assertEquals(C.ENCODING_PCM_16BIT, configured.encoding)
+  }
+
+  @Test
+  fun stereoPassesThroughWhenCrossfeedIsFullyDisabled() {
+    val passthrough = DownmixLimiterAudioProcessor().apply {
+      enableStereoCrossfeed = false
+      enableBinauralCrossfeed = false
+    }
+    val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
+    assertEquals(AudioFormat.NOT_SET, passthrough.configure(stereoFormat))
+  }
+
+  @Test
+  fun stereoCrossfeedBleedsChannelsAcrossEars() {
+    val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
+    processor.configure(stereoFormat)
+    processor.flush()
+
+    // Left channel at half amplitude, right channel silent. After crossfeed the right ear must
+    // receive some signal instead of staying at exact digital silence.
+    val frameCount = 4800
+    val inputBytes = ByteBuffer.allocate(frameCount * 2 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    repeat(frameCount) {
+      inputBytes.putShort(16384.toShort())
+      inputBytes.putShort(0)
+    }
+    inputBytes.flip()
+
+    processor.queueInput(inputBytes)
+    val output = processor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    var maxRight = 0
+    while (output.hasRemaining()) {
+      output.get() // left
+      val right = kotlin.math.abs(output.get().toInt())
+      if (right > maxRight) maxRight = right
+    }
+    assertTrue("Crossfeed must bleed left into right, got maxRight=$maxRight", maxRight > 0)
+  }
+
+  @Test
+  fun stereoLimiterPreventsClipping() {
+    val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
+    processor.configure(stereoFormat)
+    processor.flush()
+
+    val frameCount = 480
+    val inputBytes = ByteBuffer.allocate(frameCount * 2 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    repeat(frameCount) {
+      inputBytes.putShort(32767.toShort())
+      inputBytes.putShort(32767.toShort())
+    }
+    inputBytes.flip()
+
+    processor.queueInput(inputBytes)
+    val output = processor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    var maxObserved = 0
+    while (output.hasRemaining()) {
+      val sample = output.get().toInt()
+      if (sample > maxObserved) maxObserved = sample
+    }
+    assertTrue("Stereo output must stay inside 16-bit range, got $maxObserved", maxObserved <= 32767)
+    assertTrue("Limiter must constrain stereo amplitude, got $maxObserved", maxObserved <= 32700)
   }
 
   @Test
@@ -59,6 +126,46 @@ class DownmixLimiterAudioProcessorTest {
     assertEquals(96000, configured32.sampleRate)
     assertEquals(2, configured32.channelCount)
     assertEquals(C.ENCODING_PCM_16BIT, configured32.encoding)
+  }
+
+  @Test
+  fun stereoTwentyFourBitPreservesEncodingAndLimits() {
+    val stereo24 = AudioFormat(48000, 2, C.ENCODING_PCM_24BIT)
+    val configured = processor.configure(stereo24)
+    assertEquals(48000, configured.sampleRate)
+    assertEquals(2, configured.channelCount)
+    assertEquals(C.ENCODING_PCM_24BIT, configured.encoding)
+
+    processor.flush()
+    val frameCount = 100
+    // 2 channels * 3 bytes = 6 bytes per frame
+    val inputBytes = ByteBuffer.allocate(frameCount * 2 * 3).order(ByteOrder.LITTLE_ENDIAN)
+    repeat(frameCount) {
+      // Max positive 24-bit PCM: 0x7FFFFF (8388607)
+      inputBytes.put(0xFF.toByte())
+      inputBytes.put(0xFF.toByte())
+      inputBytes.put(0x7F.toByte())
+      // Right channel
+      inputBytes.put(0xFF.toByte())
+      inputBytes.put(0xFF.toByte())
+      inputBytes.put(0x7F.toByte())
+    }
+    inputBytes.flip()
+
+    processor.queueInput(inputBytes)
+    val output = processor.output.order(ByteOrder.LITTLE_ENDIAN)
+    assertTrue("Output buffer must have data", output.hasRemaining())
+    assertEquals(frameCount * 2 * 3, output.remaining())
+
+    var maxObserved = 0
+    while (output.hasRemaining()) {
+      val b0 = output.get().toInt() and 0xFF
+      val b1 = output.get().toInt() and 0xFF
+      val b2 = output.get().toInt() // sign-extended
+      val sample = (b2 shl 16) or (b1 shl 8) or b0
+      if (sample > maxObserved) maxObserved = sample
+    }
+    assertTrue("24-bit sample must not exceed max 24-bit value, got $maxObserved", maxObserved <= 8388607)
   }
 
   @Test
