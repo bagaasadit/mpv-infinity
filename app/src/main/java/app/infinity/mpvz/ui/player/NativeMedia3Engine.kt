@@ -169,11 +169,11 @@ class NativeMedia3Engine(context: Context) {
         val targetBufferBytes = when {
           isLowRam || maxHeapMb < 256 -> 32 * 1024 * 1024       // 32MB: Safe for 32-bit / Low-RAM
           totalMemMb < 6000L || maxHeapMb < 512 -> 64 * 1024 * 1024 // 64MB: Mid-range devices
-          else -> 128 * 1024 * 1024                             // 128MB: High-end 64-bit devices
+          else -> 160 * 1024 * 1024                             // 160MB: Tailored for 4K 80Mbps UHD Blu-ray remux on Poco F5 (16s headroom)
         }
-        val maxBufferMs = if (isLowRam) 45_000 else 120_000
-        val minBufferMs = if (isLowRam) 15_000 else 30_000
-        val startBufferMs = if (isLowRam) 1_500 else 2_000
+        val maxBufferMs = if (isLowRam) 30_000 else 50_000
+        val minBufferMs = if (isLowRam) 10_000 else 20_000
+        val startBufferMs = if (isLowRam) 1_500 else 2_500
 
         DefaultLoadControl.Builder()
           .setBufferDurationsMs(
@@ -182,9 +182,9 @@ class NativeMedia3Engine(context: Context) {
             startBufferMs,
             4_000,
           )
-          .setBackBuffer(if (isLowRam) 10_000 else 30_000, false)
+          .setBackBuffer(if (isLowRam) 10_000 else 20_000, false)
           .setTargetBufferBytes(targetBufferBytes)
-          .setPrioritizeTimeOverSizeThresholds(true)
+          .setPrioritizeTimeOverSizeThresholds(false)
           .build()
       },
     )
