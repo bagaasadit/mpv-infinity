@@ -28,10 +28,6 @@ import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.FileDataSource
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
-import androidx.media3.datasource.cache.SimpleCache
-import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -57,18 +53,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.pow
-
-private object NativeMedia3Cache {
-  @Volatile private var cache: SimpleCache? = null
-  @Synchronized
-  fun get(context: Context): SimpleCache {
-    return cache ?: SimpleCache(
-      java.io.File(context.applicationContext.cacheDir, "media3-native-cache"),
-      LeastRecentlyUsedCacheEvictor(2048L * 1024L * 1024L),
-      StandaloneDatabaseProvider(context.applicationContext),
-    ).also { cache = it }
-  }
-}
 
 data class NativePlaybackSnapshot(
   val isPlaying: Boolean = false,
