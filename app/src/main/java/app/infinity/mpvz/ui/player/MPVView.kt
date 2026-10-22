@@ -312,12 +312,9 @@ class MPVView(
     PlaybackSession.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
     PlaybackSession.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
 
-    // High-fidelity frame pacing for 120Hz display:
-    // display-resample with oversample interpolation eliminates the 23.976 fps micro-stutter
-    // caused by fractional refresh rate mismatch (120 / 23.976 = 5.005 refreshes/frame).
-    PlaybackSession.setOptionString("video-sync", "display-resample")
-    PlaybackSession.setOptionString("interpolation", "yes")
-    PlaybackSession.setOptionString("tscale", "oversample")
+    // Use audio-based video sync for stable frame pacing and to prevent audio track underrun.
+    PlaybackSession.setOptionString("video-sync", "audio")
+    PlaybackSession.setOptionString("interpolation", "no")
 
     // Anime4K shader initialization (MUST be in initOptions, not after file load!)
     if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) {
