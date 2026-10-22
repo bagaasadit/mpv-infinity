@@ -228,14 +228,12 @@ android {
 
 androidComponents {
   val abiCodes =
-    mutableMapOf(
+    mapOf(
       "armeabi-v7a" to 1,
       "arm64-v8a" to 2,
+      "x86" to 3,
+      "x86_64" to 4,
     )
-  if (enableX86) {
-    abiCodes["x86"] = 3
-    abiCodes["x86_64"] = 4
-  }
 
   onVariants { variant ->
     val isUniversalOnly =

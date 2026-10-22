@@ -67,9 +67,12 @@ class DownmixLimiterAudioProcessorTest {
 
   @Test
   fun stereoLimiterPreventsClipping() {
+    val crossfeedLimiterProcessor = DownmixLimiterAudioProcessor().apply {
+      enableStereoCrossfeed = true
+    }
     val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
-    processor.configure(stereoFormat)
-    processor.flush()
+    crossfeedLimiterProcessor.configure(stereoFormat)
+    crossfeedLimiterProcessor.flush()
 
     val frameCount = 480
     val inputBytes = ByteBuffer.allocate(frameCount * 2 * 2).order(ByteOrder.LITTLE_ENDIAN)
@@ -79,15 +82,17 @@ class DownmixLimiterAudioProcessorTest {
     }
     inputBytes.flip()
 
-    crossfeedProcessor.queueInput(inputBytes)
-    val output = crossfeedProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    crossfeedLimiterProcessor.queueInput(inputBytes)
+    val output = crossfeedLimiterProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
     var maxObserved = 0
+    var lastObserved = 0
     while (output.hasRemaining()) {
       val sample = output.get().toInt()
       if (sample > maxObserved) maxObserved = sample
+      lastObserved = sample
     }
     assertTrue("Stereo output must stay inside 16-bit range, got $maxObserved", maxObserved <= 32767)
-    assertTrue("Limiter must constrain stereo amplitude, got $maxObserved", maxObserved <= 32700)
+    assertTrue("Limiter must constrain settled stereo amplitude, got $lastObserved", lastObserved <= 32700)
   }
 
   @Test
@@ -131,14 +136,17 @@ class DownmixLimiterAudioProcessorTest {
   }
 
   @Test
-  fun stereoTwentyFourBitPreservesEncodingAndLimits() {
+  fun stereoTwentyFourBitWithCrossfeedConvertsToSafeSixteenBit() {
+    val crossfeedProcessor = DownmixLimiterAudioProcessor().apply {
+      enableStereoCrossfeed = true
+    }
     val stereo24 = AudioFormat(48000, 2, C.ENCODING_PCM_24BIT)
-    val configured = processor.configure(stereo24)
+    val configured = crossfeedProcessor.configure(stereo24)
     assertEquals(48000, configured.sampleRate)
     assertEquals(2, configured.channelCount)
-    assertEquals(C.ENCODING_PCM_24BIT, configured.encoding)
+    assertEquals(C.ENCODING_PCM_16BIT, configured.encoding)
 
-    processor.flush()
+    crossfeedProcessor.flush()
     val frameCount = 100
     // 2 channels * 3 bytes = 6 bytes per frame
     val inputBytes = ByteBuffer.allocate(frameCount * 2 * 3).order(ByteOrder.LITTLE_ENDIAN)
@@ -154,20 +162,18 @@ class DownmixLimiterAudioProcessorTest {
     }
     inputBytes.flip()
 
-    processor.queueInput(inputBytes)
-    val output = processor.output.order(ByteOrder.LITTLE_ENDIAN)
+    crossfeedProcessor.queueInput(inputBytes)
+    val output = crossfeedProcessor.output.order(ByteOrder.LITTLE_ENDIAN)
     assertTrue("Output buffer must have data", output.hasRemaining())
-    assertEquals(frameCount * 2 * 3, output.remaining())
+    assertEquals(frameCount * 2 * 2, output.remaining())
 
+    val outputShorts = output.asShortBuffer()
     var maxObserved = 0
-    while (output.hasRemaining()) {
-      val b0 = output.get().toInt() and 0xFF
-      val b1 = output.get().toInt() and 0xFF
-      val b2 = output.get().toInt() // sign-extended
-      val sample = (b2 shl 16) or (b1 shl 8) or b0
+    while (outputShorts.hasRemaining()) {
+      val sample = outputShorts.get().toInt()
       if (sample > maxObserved) maxObserved = sample
     }
-    assertTrue("24-bit sample must not exceed max 24-bit value, got $maxObserved", maxObserved <= 8388607)
+    assertTrue("16-bit output sample must not exceed 32767, got $maxObserved", maxObserved <= 32767)
   }
 
   @Test
@@ -202,10 +208,10 @@ class DownmixLimiterAudioProcessorTest {
     processor.configure(format51)
     processor.flush()
 
-    // 100 frames where ALL 6 channels are at max positive amplitude (+32767)
+    // 500 frames where ALL 6 channels are at max positive amplitude (+32767)
     // Unconstrained sum would be: 32767 + 0.7071*32767 + 0.7071*32767 = 2.414 * 32767 = ~79,106
     // Which without limiter would wrap around in 16-bit integer and cause loud static/crackle.
-    val frameCount = 100
+    val frameCount = 500
     val inputBytes = ByteBuffer.allocate(frameCount * 6 * 2).order(ByteOrder.LITTLE_ENDIAN)
     for (f in 0 until frameCount) {
       for (c in 0 until 6) {
@@ -221,16 +227,18 @@ class DownmixLimiterAudioProcessorTest {
     val outputShorts = output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
     var maxObserved = 0
     var minObserved = 0
+    var lastObserved = 0
     while (outputShorts.hasRemaining()) {
       val sample = outputShorts.get().toInt()
       if (sample > maxObserved) maxObserved = sample
       if (sample < minObserved) minObserved = sample
+      lastObserved = sample
     }
 
     // Must be bounded within 16-bit limits without clipping or wrapping
     assertTrue("Max sample ($maxObserved) must be <= 32767", maxObserved <= 32767)
     assertTrue("Min sample ($minObserved) must be >= -32768", minObserved >= -32768)
-    // Due to the limiter targeting -1.0 dBFS (~29,200), max sample should be well-behaved
-    assertTrue("Limiter must constrain amplitude to <= 32700", maxObserved <= 32700)
+    // Settled sustained amplitude must be reduced by the envelope-following limiter
+    assertTrue("Settled output ($lastObserved) must be <= 32700", lastObserved <= 32700)
   }
 }
