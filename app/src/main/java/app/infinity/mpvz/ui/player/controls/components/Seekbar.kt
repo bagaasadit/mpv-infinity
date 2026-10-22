@@ -291,6 +291,7 @@ internal fun SeekbarWithTimers(
   chapters: ImmutableList<Segment>,
   skipSegments: ImmutableList<SkipSegment>,
   paused: Boolean,
+  controlsShown: Boolean = true,
   seekbarStyle: SeekbarStyle = SeekbarStyle.Wavy,
   useWavySeekbar: Boolean = true,
   showWavyVisualizer: Boolean = false,
@@ -346,6 +347,7 @@ internal fun SeekbarWithTimers(
         chapters = chapters,
         skipSegments = skipSegments,
         paused = paused,
+        controlsShown = controlsShown,
         isPortrait = isPortrait,
         isUserInteracting = isUserInteracting,
         seekbarStyle = seekbarStyle,
@@ -421,6 +423,7 @@ internal fun SeekbarWithTimers(
         chapters = chapters,
         skipSegments = skipSegments,
         paused = paused,
+        controlsShown = controlsShown,
         isPortrait = isPortrait,
         isUserInteracting = isUserInteracting,
         seekbarStyle = seekbarStyle,
@@ -464,6 +467,7 @@ private fun SeekbarContent(
   chapters: ImmutableList<Segment>,
   skipSegments: ImmutableList<SkipSegment>,
   paused: Boolean,
+  controlsShown: Boolean = true,
   isPortrait: Boolean,
   isUserInteracting: Boolean,
   seekbarStyle: SeekbarStyle,
@@ -622,6 +626,7 @@ private fun SeekbarContent(
             duration = duration,
             chapters = chapters,
             isPaused = paused,
+            controlsShown = controlsShown,
             isScrubbing = isVisuallyInteracting,
             useWavySeekbar = useWavySeekbar && !waveSeekbarActive,
             seekbarStyle = SeekbarStyle.Wavy,
@@ -998,6 +1003,7 @@ private fun SquigglySeekbar(
   duration: Float,
   chapters: ImmutableList<Segment>,
   isPaused: Boolean,
+  controlsShown: Boolean = true,
   isScrubbing: Boolean,
   useWavySeekbar: Boolean,
   seekbarStyle: SeekbarStyle,
@@ -1078,9 +1084,9 @@ private fun SquigglySeekbar(
     }
   }
 
-  // Animate wave movement only when not paused
-  LaunchedEffect(isPaused, useWavySeekbar) {
-    if (isPaused || !useWavySeekbar) return@LaunchedEffect
+  // Animate wave movement only when not paused and controls are visible
+  LaunchedEffect(isPaused, useWavySeekbar, controlsShown) {
+    if (isPaused || !useWavySeekbar || !controlsShown) return@LaunchedEffect
 
     var lastFrameTime = withFrameMillis { it }
     while (isActive) {
@@ -1525,7 +1531,8 @@ fun SeekbarStylePreview(
       positionProvider = { previewProgress * 100f },
       duration = 100f,
       chapters = persistentListOf(),
-      isPaused = false,
+      isPaused = true,
+      controlsShown = false,
       isScrubbing = false,
       useWavySeekbar = useWavySeekbar,
       seekbarStyle = SeekbarStyle.Wavy,

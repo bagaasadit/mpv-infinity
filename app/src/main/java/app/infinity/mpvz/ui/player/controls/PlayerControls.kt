@@ -1751,6 +1751,7 @@ fun PlayerControls(
               chapters = seekbarChapters,
               skipSegments = skipSegmentsImmutable,
               paused = paused,
+              controlsShown = controlsShown,
               seekbarStyle = seekbarStyle,
               useWavySeekbar = useWavySeekbar,
               timerTextColor = Color.White,
