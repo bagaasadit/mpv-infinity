@@ -124,12 +124,14 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       targetEncoding,
     )
 
-    Log.i(
-      TAG,
-      "AudioTrack sink format configured: input=${inputAudioFormat.channelCount}ch " +
-        "${encodingToString(inputAudioFormat.encoding)} @ ${inputAudioFormat.sampleRate}Hz -> " +
-        "output=${outputFormat.channelCount}ch ${encodingToString(outputFormat.encoding)} @ ${outputFormat.sampleRate}Hz",
-    )
+    runCatching {
+      Log.i(
+        TAG,
+        "AudioTrack sink format configured: input=${inputAudioFormat.channelCount}ch " +
+          "${encodingToString(inputAudioFormat.encoding)} @ ${inputAudioFormat.sampleRate}Hz -> " +
+          "output=${outputFormat.channelCount}ch ${encodingToString(outputFormat.encoding)} @ ${outputFormat.sampleRate}Hz",
+      )
+    }
 
     return outputFormat
   }

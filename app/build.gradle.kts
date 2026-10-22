@@ -220,6 +220,10 @@ android {
     checkReleaseBuilds = false
     abortOnError = false
   }
+
+  testOptions {
+    unitTests.isReturnDefaultValues = true
+  }
 }
 
 androidComponents {
