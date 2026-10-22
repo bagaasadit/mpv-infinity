@@ -362,10 +362,12 @@ fun PlayerControls(
 
   val isAudioOnly by viewModel.isAudioOnly.collectAsState()
   val mpvChapters by viewModel.chapters.collectAsState(persistentListOf())
-  val chapters = if (nativeEngineActive && nativeSnapshot.chapters.isNotEmpty()) {
-    nativeSnapshot.chapters.map { dev.vivvvek.seeker.Segment(it.title, it.startSeconds) }.toImmutableList()
-  } else {
-    mpvChapters
+  val chapters = remember(nativeEngineActive, nativeSnapshot.chapters, mpvChapters) {
+    if (nativeEngineActive && nativeSnapshot.chapters.isNotEmpty()) {
+      nativeSnapshot.chapters.map { dev.vivvvek.seeker.Segment(it.title, it.startSeconds) }.toImmutableList()
+    } else {
+      mpvChapters
+    }
   }
   val currentChapter = if (nativeEngineActive) {
     chapters.indexOfLast { it.start <= nativeSnapshot.positionMs / 1000f }.takeIf { it >= 0 }
