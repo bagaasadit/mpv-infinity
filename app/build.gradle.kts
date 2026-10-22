@@ -60,10 +60,6 @@ android {
       useSupportLibrary = true
     }
 
-    ndk {
-      abiFilters += activeAbis
-    }
-
     buildConfigField("String", "GIT_SHA", "\"${getCommitSha()}\"")
     buildConfigField("int", "GIT_COUNT", getCommitCount())
 
