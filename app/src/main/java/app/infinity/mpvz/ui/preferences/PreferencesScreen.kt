@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,9 +86,13 @@ object PreferencesScreen : Screen {
   override fun Content() {
     val backstack = LocalBackStack.current
     val colorScheme = MaterialTheme.colorScheme
-    val sections = settingsSections()
-
+    val context = LocalContext.current
     val configuration = LocalConfiguration.current
+    val resources = context.resources
+    val sections = remember(configuration, colorScheme) {
+      buildSettingsSections(resources, colorScheme)
+    }
+
     val isTablet = configuration.smallestScreenWidthDp >= 600
 
     var selectedScreen by remember { mutableStateOf<Screen>(AppearancePreferencesScreen) }
@@ -189,111 +194,112 @@ object PreferencesScreen : Screen {
     }
   }
 
-  @Composable
-  private fun settingsSections(): List<SettingsSection> {
-    val colorScheme = MaterialTheme.colorScheme
+  private fun buildSettingsSections(
+    resources: android.content.res.Resources,
+    colorScheme: androidx.compose.material3.ColorScheme,
+  ): List<SettingsSection> {
     return listOf(
       SettingsSection(
-        title = stringResource(R.string.pref_section_appearance),
+        title = resources.getString(R.string.pref_section_appearance),
         tint = colorScheme.onSurfaceVariant,
         items =
           listOf(
             SettingsDestination(
-              title = stringResource(R.string.pref_appearance_title),
-              summary = stringResource(R.string.pref_appearance_summary),
+              title = resources.getString(R.string.pref_appearance_title),
+              summary = resources.getString(R.string.pref_appearance_summary),
               icon = Icons.RoundedFilled.Palette,
               screen = AppearancePreferencesScreen,
             ),
           ),
       ),
       SettingsSection(
-        title = stringResource(R.string.pref_section_playback),
+        title = resources.getString(R.string.pref_section_playback),
         tint = colorScheme.onSurfaceVariant,
         items =
           listOf(
             SettingsDestination(
-              title = stringResource(R.string.pref_player),
+              title = resources.getString(R.string.pref_player),
               summary =
                 listOf(
-                  stringResource(R.string.pref_section_general),
-                  stringResource(R.string.pref_player_seeking_title),
-                  stringResource(R.string.pref_section_display_controls),
-                  stringResource(R.string.pref_screenshots_section),
+                  resources.getString(R.string.pref_section_general),
+                  resources.getString(R.string.pref_player_seeking_title),
+                  resources.getString(R.string.pref_section_display_controls),
+                  resources.getString(R.string.pref_screenshots_section),
                 ).joinToString(", "),
               icon = Icons.RoundedFilled.Slideshow,
               screen = PlayerPreferencesScreen,
             ),
             SettingsDestination(
-              title = stringResource(R.string.pref_decoder),
-              summary = stringResource(R.string.pref_decoder_summary),
+              title = resources.getString(R.string.pref_decoder),
+              summary = resources.getString(R.string.pref_decoder_summary),
               icon = Icons.RoundedFilled.DeveloperBoard,
               screen = DecoderPreferencesScreen,
             ),
             SettingsDestination(
-              title = stringResource(R.string.pref_audio),
-              summary = stringResource(R.string.pref_audio_summary),
+              title = resources.getString(R.string.pref_audio),
+              summary = resources.getString(R.string.pref_audio_summary),
               icon = Icons.RoundedFilled.Audiotrack,
               screen = AudioPreferencesScreen,
             ),
             SettingsDestination(
-              title = stringResource(R.string.pref_subtitles),
-              summary = stringResource(R.string.pref_subtitles_summary),
+              title = resources.getString(R.string.pref_subtitles),
+              summary = resources.getString(R.string.pref_subtitles_summary),
               icon = Icons.RoundedFilled.Subtitles,
               screen = SubtitlesPreferencesScreen,
             ),
           ),
       ),
       SettingsSection(
-        title = stringResource(R.string.pref_section_gestures_controls),
+        title = resources.getString(R.string.pref_section_gestures_controls),
         tint = colorScheme.onSurfaceVariant,
         items =
           listOf(
             SettingsDestination(
-              title = stringResource(R.string.pref_gesture),
-              summary = stringResource(R.string.pref_gesture_summary),
+              title = resources.getString(R.string.pref_gesture),
+              summary = resources.getString(R.string.pref_gesture_summary),
               icon = Icons.RoundedFilled.Gesture,
               screen = GesturePreferencesScreen,
             ),
             SettingsDestination(
-              title = stringResource(R.string.pref_layout_title),
-              summary = stringResource(R.string.pref_layout_summary),
+              title = resources.getString(R.string.pref_layout_title),
+              summary = resources.getString(R.string.pref_layout_summary),
               icon = Icons.RoundedFilled.GridView,
               screen = PlayerControlsPreferencesScreen,
             ),
           ),
       ),
       SettingsSection(
-        title = stringResource(R.string.pref_section_advanced),
+        title = resources.getString(R.string.pref_section_advanced),
         tint = colorScheme.onSurfaceVariant,
         items =
           listOf(
             SettingsDestination(
-              title = stringResource(R.string.pref_advanced),
+              title = resources.getString(R.string.pref_advanced),
               summary =
                 listOf(
-                  stringResource(R.string.pref_section_app_language),
-                  stringResource(R.string.pref_section_backup_restore),
-                  stringResource(R.string.pref_section_mpv_config),
+                  resources.getString(R.string.pref_section_app_language),
+                  resources.getString(R.string.pref_section_backup_restore),
+                  resources.getString(R.string.pref_section_mpv_config),
                 ).joinToString(", "),
               icon = Icons.Alternatives.AdvancedSettings,
               screen = AdvancedPreferencesScreen,
             ),
             SettingsDestination(
-              title = stringResource(R.string.pref_codecs_title),
-              summary = stringResource(R.string.pref_codecs_summary),
+              title = resources.getString(R.string.pref_codecs_title),
+              summary = resources.getString(R.string.pref_codecs_summary),
               icon = Icons.RoundedFilled.Memory,
               screen = CodecCapabilitiesScreen,
             ),
           ),
       ),
       SettingsSection(
-        title = stringResource(R.string.pref_section_about),
+        title = resources.getString(R.string.pref_section_about),
         tint = colorScheme.onSurfaceVariant,
         items =
           listOf(
             SettingsDestination(
-              title = stringResource(R.string.pref_about_title),
-              summary = stringResource(R.string.pref_about_summary),
+              title = resources.getString(R.string.pref_about_title),
+              summary = resources.getString(R.string.pref_about_summary),
               icon = Icons.RoundedFilled.Info,
               screen = AboutScreen,
             ),
