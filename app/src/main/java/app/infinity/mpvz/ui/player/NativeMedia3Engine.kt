@@ -201,12 +201,12 @@ class NativeMedia3Engine(context: Context) {
           enableAudioTrackPlaybackParams: Boolean
         ): AudioSink? {
           val activeOutput = audioOutputRouter.currentOutput
+          Log.i(logTag, "Building AudioSink: activeOutput=$activeOutput, forcing STEREO PCM_16BIT capabilities")
           val downmixLimiterProcessor = DownmixLimiterAudioProcessor().apply {
-            enableLfeMixing = activeOutput.supportsLfeFoldDown
-            enableBinauralCrossfeed = activeOutput.supportsCrossfeed
-            // Stereo is the dominant source on phones; run the same crossfeed on it instead of
-            // silently skipping every 2.0 file, but only when the active route can benefit.
-            enableStereoCrossfeed = activeOutput.supportsCrossfeed
+            // Crossfeed and LFE folddown default to OFF per audiophile & stability requirements
+            enableLfeMixing = false
+            enableBinauralCrossfeed = false
+            enableStereoCrossfeed = false
             outputFloatingPoint = false // PCM 16-bit guarantees 100% stability on Qualcomm Audio HAL
           }
           registeredAudioProcessor.set(downmixLimiterProcessor)
@@ -1517,10 +1517,17 @@ class NativeMedia3Engine(context: Context) {
    */
   fun startAudioOutputTracking() {
     audioOutputRouter.startObserving { newOutput ->
+      Log.i(logTag, "Audio output route resolved: $newOutput (crossfeed/LFE default OFF)")
       registeredAudioProcessor.get()?.apply {
-        enableBinauralCrossfeed = newOutput.supportsCrossfeed
-        enableStereoCrossfeed = newOutput.supportsCrossfeed
-        enableLfeMixing = newOutput.supportsLfeFoldDown
+        if (enableBinauralCrossfeed) {
+          enableBinauralCrossfeed = newOutput.supportsCrossfeed
+        }
+        if (enableStereoCrossfeed) {
+          enableStereoCrossfeed = newOutput.supportsCrossfeed
+        }
+        if (enableLfeMixing) {
+          enableLfeMixing = newOutput.supportsLfeFoldDown
+        }
       }
     }
   }

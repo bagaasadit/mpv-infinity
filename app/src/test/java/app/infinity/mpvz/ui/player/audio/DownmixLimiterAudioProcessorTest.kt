@@ -15,32 +15,34 @@ class DownmixLimiterAudioProcessorTest {
   private val processor = DownmixLimiterAudioProcessor()
 
   @Test
-  fun stereoIsProcessedWhenCrossfeedIsEnabled() {
-    // Stereo used to be skipped entirely, which meant the crossfeed never ran on the content
-    // most phone users actually play. It now flows through crossfeed + limiter unchanged in
-    // channel count, so the format must still be reported as configured.
+  fun stereoPassesThroughWhenCrossfeedIsDefaultDisabled() {
+    // Crossfeed and LFE default to disabled
     val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
-    val configured = processor.configure(stereoFormat)
+    assertEquals(AudioFormat.NOT_SET, processor.configure(stereoFormat))
+  }
+
+  @Test
+  fun stereoIsProcessedWhenCrossfeedIsEnabled() {
+    val enabledProcessor = DownmixLimiterAudioProcessor().apply {
+      enableStereoCrossfeed = true
+      enableBinauralCrossfeed = true
+    }
+    val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
+    val configured = enabledProcessor.configure(stereoFormat)
     assertEquals(48000, configured.sampleRate)
     assertEquals(2, configured.channelCount)
     assertEquals(C.ENCODING_PCM_16BIT, configured.encoding)
   }
 
   @Test
-  fun stereoPassesThroughWhenCrossfeedIsFullyDisabled() {
-    val passthrough = DownmixLimiterAudioProcessor().apply {
-      enableStereoCrossfeed = false
-      enableBinauralCrossfeed = false
+  fun stereoCrossfeedBleedsChannelsAcrossEars() {
+    val crossfeedProcessor = DownmixLimiterAudioProcessor().apply {
+      enableStereoCrossfeed = true
+      enableBinauralCrossfeed = true
     }
     val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
-    assertEquals(AudioFormat.NOT_SET, passthrough.configure(stereoFormat))
-  }
-
-  @Test
-  fun stereoCrossfeedBleedsChannelsAcrossEars() {
-    val stereoFormat = AudioFormat(48000, 2, C.ENCODING_PCM_16BIT)
-    processor.configure(stereoFormat)
-    processor.flush()
+    crossfeedProcessor.configure(stereoFormat)
+    crossfeedProcessor.flush()
 
     // Left channel at half amplitude, right channel silent. After crossfeed the right ear must
     // receive some signal instead of staying at exact digital silence.
@@ -52,8 +54,8 @@ class DownmixLimiterAudioProcessorTest {
     }
     inputBytes.flip()
 
-    processor.queueInput(inputBytes)
-    val output = processor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    crossfeedProcessor.queueInput(inputBytes)
+    val output = crossfeedProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
     var maxRight = 0
     while (output.hasRemaining()) {
       output.get() // left
@@ -77,8 +79,8 @@ class DownmixLimiterAudioProcessorTest {
     }
     inputBytes.flip()
 
-    processor.queueInput(inputBytes)
-    val output = processor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    crossfeedProcessor.queueInput(inputBytes)
+    val output = crossfeedProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
     var maxObserved = 0
     while (output.hasRemaining()) {
       val sample = output.get().toInt()

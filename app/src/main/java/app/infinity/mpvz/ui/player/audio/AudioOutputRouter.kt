@@ -67,9 +67,9 @@ class AudioOutputRouter(
   private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
   private val handler = Handler(Looper.getMainLooper())
 
-  /** Last resolved route. Speaker is the safe default when the platform reports nothing. */
+  /** Last resolved route. Initialized immediately so active device is known at startup. */
   @Volatile
-  var currentOutput: AudioOutputType = AudioOutputType.Speaker
+  var currentOutput: AudioOutputType = resolve()
     private set
 
   private var deviceCallback: AudioDeviceCallback? = null
@@ -114,6 +114,9 @@ class AudioOutputRouter(
     stopObserving()
     listener = onRouteChanged
     currentOutput = resolve()
+
+    // Immediately inform the listener of the currently active route on startup
+    onRouteChanged(currentOutput)
 
     val callback =
       object : AudioDeviceCallback() {

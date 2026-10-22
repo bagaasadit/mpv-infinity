@@ -9,6 +9,7 @@
 
 package app.infinity.mpvz.ui.player.audio
 
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
@@ -22,19 +23,18 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.roundToInt
-import kotlin.math.tanh
 
 /**
- * Audiophile Multichannel Downmixer, Binaural Crossfeed & Peak Limiter for Media3 / ExoPlayer.
+ * Audiophile Multichannel Downmixer, Headroom Attenuator, Binaural Crossfeed & Dithered Quantizer.
  * Engineered for In-Ear Monitors (IEM), Audiophile DACs, and Mobile Transducers.
  *
  * Capabilities:
- * 1. Accumulate downmixed channels in 32-bit Float domain without intermediate truncation.
- * 2. LFE (.1 subwoofer) channel mixing (+0.5f / -6 dB) restored for cinematic visceral bass on IEMs (ITU-R BS.775).
- * 3. Dynamic Bauer Stereophonic-to-Binaural (BS2B) IIR Crossfeed to eliminate in-head localization fatigue on IEMs.
+ * 1. Accumulate downmixed channels in 32-bit Float domain with calibrated headroom to prevent clipping.
+ * 2. LFE (.1 subwoofer) channel mixing (default off, toggleable for cinematic visceral bass on IEMs).
+ * 3. Dynamic Bauer Stereophonic-to-Binaural (BS2B) IIR Crossfeed (default off, toggleable for IEM soundstage).
  * 4. Center-channel dialogue clarity weighting multiplier.
- * 5. High-headroom transparent peak limiter (-0.1 dBFS / 0.9885f ceiling) with soft-knee saturation.
- * 6. True 32-bit Float PCM output (C.ENCODING_PCM_FLOAT) support for bit-perfect external DACs and Android AudioFlinger.
+ * 5. High-headroom transparent linear peak limiter (-0.1 dBFS / 0.9885f ceiling) WITHOUT non-linear tanh saturation.
+ * 6. High-precision TPDF (Triangular Probability Density Function) dither when quantizing to 16-bit PCM.
  * 7. Zero-allocation loop: pre-allocated arrays eliminate GC pressure on realtime audio thread.
  * 8. Universal input support: 16-bit, 24-bit, 32-bit Integer PCM and 32-bit Float PCM.
  */
@@ -42,7 +42,8 @@ import kotlin.math.tanh
 class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
   companion object {
-    private const val TARGET_CEILING_PCM16 = 0.89125f // -1.0 dBFS
+    private const val TAG = "DownmixLimiter"
+    private const val TARGET_CEILING_PCM16 = 0.9885f // -0.1 dBFS transparent ceiling
     private const val TARGET_CEILING_FLOAT = 0.9885f // -0.1 dBFS
     private const val RELEASE_TIME_SEC = 0.050f // 50 ms release
 
@@ -51,22 +52,10 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     private const val BS2B_FEED_GAIN = 0.65f
   }
 
-  // Configuration Switches
-  var enableLfeMixing: Boolean = true
-  var enableBinauralCrossfeed: Boolean = true
-
-  /**
-   * Runs the crossfeed + limiter stage on native 2.0 content.
-   *
-   * Stereo is already a two-channel layout, so no downmix happens; the samples are passed
-   * straight to the BS2B crossfeed and peak limiter. This is the most common case on phones
-   * (web series, anime episodes, most MP4/MKV releases), and it is exactly the content that
-   * benefits most from crossfeed on in-ear monitors.
-   *
-   * Disable it when the phone speaker is the active output: crossfeed narrows the stereo
-   * image, which sounds worse on a pair of speakers 7 cm apart.
-   */
-  var enableStereoCrossfeed: Boolean = true
+  // Configuration Switches (Default OFF per audiophile & stability requirements)
+  var enableLfeMixing: Boolean = false
+  var enableBinauralCrossfeed: Boolean = false
+  var enableStereoCrossfeed: Boolean = false
 
   var dialogueBoostGain: Float = 1.0f
   var outputFloatingPoint: Boolean = false
@@ -81,6 +70,9 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   private var crossfeedHistL = 0.0f
   private var crossfeedHistR = 0.0f
   private var bs2bAlpha = 0.084f // Filter coefficient at 48kHz
+
+  // Fast PRNG state for zero-allocation TPDF dithering
+  private var ditherState: Int = 0x1234567
 
   public override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
     if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
@@ -118,17 +110,28 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
     val outputEncoding = if (outputFloatingPoint) C.ENCODING_PCM_FLOAT else C.ENCODING_PCM_16BIT
 
-    // Stereo is not downmixed, so it must keep the sink's own sample encoding. Forcing 16-bit
-    // here would silently truncate float or 24-bit stereo sources before they ever reach the
-    // output, which is the opposite of what the audio-fidelity pass is meant to achieve.
+    // For safety on Qualcomm AudioTrack HAL, output integer 16-bit unless explicitly requested.
     val targetEncoding =
-      if (inputAudioFormat.channelCount == 2) inputAudioFormat.encoding else outputEncoding
+      if (inputAudioFormat.channelCount == 2 && !outputFloatingPoint && inputAudioFormat.encoding == C.ENCODING_PCM_16BIT) {
+        C.ENCODING_PCM_16BIT
+      } else {
+        outputEncoding
+      }
 
-    return AudioFormat(
+    val outputFormat = AudioFormat(
       inputAudioFormat.sampleRate,
       2,
       targetEncoding,
     )
+
+    Log.i(
+      TAG,
+      "AudioTrack sink format configured: input=${inputAudioFormat.channelCount}ch " +
+        "${encodingToString(inputAudioFormat.encoding)} @ ${inputAudioFormat.sampleRate}Hz -> " +
+        "output=${outputFormat.channelCount}ch ${encodingToString(outputFormat.encoding)} @ ${outputFormat.sampleRate}Hz",
+    )
+
+    return outputFormat
   }
 
   override fun queueInput(inputBuffer: ByteBuffer) {
@@ -289,6 +292,17 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         }
       }
 
+      // 2b. Apply calibrated headroom attenuation for multichannel summing to prevent clipping
+      val headroomScale =
+        when (channelCount) {
+          8, 7 -> 0.58f // ~-4.7 dB headroom for 7.1 / 6.1 master audio
+          6, 5 -> 0.65f // ~-3.7 dB headroom for 5.1 / 5.0 surround
+          4 -> 0.75f // ~-2.5 dB headroom for 4.0 quad
+          else -> 1.0f // 2.0 Stereo keeps unity gain
+        }
+      leftSum *= headroomScale
+      rightSum *= headroomScale
+
       // 3. Bauer Stereophonic-to-Binaural (BS2B) Crossfeed for IEM / Headphone Soundstage
       if (enableBinauralCrossfeed && (channelCount > 2 || enableStereoCrossfeed)) {
         crossfeedHistL += bs2bAlpha * (leftSum - crossfeedHistL)
@@ -301,7 +315,7 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         rightSum = binauralR
       }
 
-      // 4. Peak Limiter / Gain Computer
+      // 4. Clean Linear Peak Limiter (Transparent, zero harmonic distortion, no tanh saturation)
       if (leftSum.isNaN() || leftSum.isInfinite()) leftSum = 0f
       if (rightSum.isNaN() || rightSum.isInfinite()) rightSum = 0f
 
@@ -323,14 +337,10 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         }
       }
 
-      var outL = leftSum * currentGain
-      var outR = rightSum * currentGain
+      val outL = (leftSum * currentGain).coerceIn(-1.0f, 1.0f)
+      val outR = (rightSum * currentGain).coerceIn(-1.0f, 1.0f)
 
-      // 5. True continuous soft-knee tanh saturation
-      outL = softClipTanh(outL)
-      outR = softClipTanh(outR)
-
-      // 6. Quantize / Output Serialization
+      // 5. Quantize / Output Serialization
       when (outputEncoding) {
         C.ENCODING_PCM_FLOAT -> {
           outputBuffer.putFloat(outL)
@@ -348,8 +358,13 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         }
 
         else -> {
-          val pcmL = (outL * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
-          val pcmR = (outR * 32767.0f).roundToInt().coerceIn(-32768, 32767).toShort()
+          // High-precision TPDF Dither when downscaling float/multichannel to 16-bit PCM
+          val needsDither = encoding != C.ENCODING_PCM_16BIT || channelCount > 2 || currentGain < 0.999f
+          val ditherL = if (needsDither) nextDither() - nextDither() else 0.0f
+          val ditherR = if (needsDither) nextDither() - nextDither() else 0.0f
+
+          val pcmL = (outL * 32767.0f + ditherL).roundToInt().coerceIn(-32768, 32767).toShort()
+          val pcmR = (outR * 32767.0f + ditherR).roundToInt().coerceIn(-32768, 32767).toShort()
 
           outputBuffer.putShort(pcmL)
           outputBuffer.putShort(pcmR)
@@ -372,20 +387,21 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     crossfeedHistR = 0.0f
   }
 
-  /**
-   * Continuous Soft-Knee Tanh Saturation:
-   * Linear for |x| <= 0.85f (-1.4 dBFS).
-   * Smoothly and asymptotically approaches ~0.995 without flat-corner clipping.
-   */
-  private fun softClipTanh(x: Float): Float {
-    val absX = abs(x)
-    if (absX <= 0.85f) return x
-
-    val sign = if (x > 0.0f) 1.0f else -1.0f
-    val excess = (absX - 0.85f) / 0.15f
-    val compressed = 0.85f + 0.145f * tanh(excess)
-    return sign * compressed
+  private fun nextDither(): Float {
+    ditherState = ditherState xor (ditherState shl 13)
+    ditherState = ditherState xor (ditherState ushr 17)
+    ditherState = ditherState xor (ditherState shl 5)
+    return ((ditherState and 0x7FFFFFFF).toFloat() / 2147483648.0f) - 0.5f
   }
+
+  private fun encodingToString(encoding: Int): String =
+    when (encoding) {
+      C.ENCODING_PCM_16BIT -> "PCM_16BIT"
+      C.ENCODING_PCM_24BIT -> "PCM_24BIT"
+      C.ENCODING_PCM_32BIT -> "PCM_32BIT"
+      C.ENCODING_PCM_FLOAT -> "PCM_FLOAT"
+      else -> "ENCODING_$encoding"
+    }
 
   private fun ByteBuffer.putPacked24(sample: Float) {
     val value = (sample * 8388607.0f).roundToInt().coerceIn(-8388608, 8388607)
