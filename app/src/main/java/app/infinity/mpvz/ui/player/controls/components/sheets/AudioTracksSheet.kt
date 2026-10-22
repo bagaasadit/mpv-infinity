@@ -181,6 +181,27 @@ fun AudioTracksSheet(
                 )
               }
             }
+
+            val dialogueBoost by audioPreferences.dialogueBoost.collectAsState()
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Text(
+              text = stringResource(id = R.string.pref_audio_dialogue_boost_title),
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.smaller))
+            LazyRow(
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+            ) {
+              items(app.infinity.mpvz.preferences.DialogueBoost.entries) { boost ->
+                FilterChip(
+                  selected = dialogueBoost == boost,
+                  onClick = { audioPreferences.dialogueBoost.set(boost) },
+                  label = { Text(text = stringResource(id = boost.titleRes)) },
+                  leadingIcon = null,
+                )
+              }
+            }
           }
         }
       }

@@ -241,4 +241,51 @@ class DownmixLimiterAudioProcessorTest {
     // Settled sustained amplitude must be reduced by the envelope-following limiter
     assertTrue("Settled output ($lastObserved) must be <= 32700", lastObserved <= 32700)
   }
+
+  @Test
+  fun dialogueBoostScalesCenterChannelGain() {
+    val format51 = AudioFormat(48000, 6, C.ENCODING_PCM_16BIT)
+
+    val baselineProcessor = DownmixLimiterAudioProcessor().apply {
+      dialogueBoostGain = 1.0f
+    }
+    baselineProcessor.configure(format51)
+    baselineProcessor.flush()
+
+    val inputBaseline = ByteBuffer.allocate(6 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    inputBaseline.putShort(0)
+    inputBaseline.putShort(0)
+    inputBaseline.putShort(10000.toShort())
+    inputBaseline.putShort(0)
+    inputBaseline.putShort(0)
+    inputBaseline.putShort(0)
+    inputBaseline.flip()
+
+    baselineProcessor.queueInput(inputBaseline)
+    val baseOutput = baselineProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    val baseSampleL = baseOutput.get().toInt()
+
+    val lightProcessor = DownmixLimiterAudioProcessor().apply {
+      dialogueBoostGain = 1.25f
+    }
+    lightProcessor.configure(format51)
+    lightProcessor.flush()
+
+    val inputLight = ByteBuffer.allocate(6 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    inputLight.putShort(0)
+    inputLight.putShort(0)
+    inputLight.putShort(10000.toShort())
+    inputLight.putShort(0)
+    inputLight.putShort(0)
+    inputLight.putShort(0)
+    inputLight.flip()
+
+    lightProcessor.queueInput(inputLight)
+    val lightOutput = lightProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    val lightSampleL = lightOutput.get().toInt()
+
+    assertTrue("Light dialogue boost sample ($lightSampleL) must be greater than baseline ($baseSampleL)", lightSampleL > baseSampleL)
+    val ratio = lightSampleL.toFloat() / baseSampleL.toFloat()
+    assertEquals("Ratio must be approximately 1.25", 1.25f, ratio, 0.05f)
+  }
 }

@@ -114,7 +114,21 @@ data class NativeChapter(
 )
 
 /** A source-local Android Media3 playback engine. */
-class NativeMedia3Engine(context: Context) {
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import app.infinity.mpvz.preferences.AudioPreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+
+class NativeMedia3Engine(
+  private val context: Context,
+) : KoinComponent {
+  private val audioPreferences: AudioPreferences by inject()
+  private val engineScope = CoroutineScope(Dispatchers.Main.immediate)
+  private var dialogueBoostJob: Job? = null
   private val appContext = context.applicationContext
   private val logTag = "Mpv∞-Media3"
   private val httpDataSourceFactory = DefaultHttpDataSource.Factory()
@@ -187,6 +201,7 @@ class NativeMedia3Engine(context: Context) {
           val activeOutput = audioOutputRouter.currentOutput
           Log.i(logTag, "Building AudioSink: activeOutput=$activeOutput, forcing STEREO PCM_16BIT capabilities")
           val downmixLimiterProcessor = DownmixLimiterAudioProcessor().apply {
+            dialogueBoostGain = audioPreferences.dialogueBoost.get().gain
             // Crossfeed and LFE folddown default to OFF per audiophile & stability requirements
             enableLfeMixing = false
             enableBinauralCrossfeed = false
@@ -1500,6 +1515,17 @@ class NativeMedia3Engine(context: Context) {
    * every time a headset is plugged in.
    */
   fun startAudioOutputTracking() {
+    dialogueBoostJob?.cancel()
+    dialogueBoostJob =
+      audioPreferences.dialogueBoost.changes()
+        .onEach { boost ->
+          registeredAudioProcessor.get()?.let { proc ->
+            proc.dialogueBoostGain = boost.gain
+            Log.i(logTag, "Dialogue boost changed to: ${boost.name} (gain=${boost.gain})")
+          }
+        }
+        .launchIn(engineScope)
+
     audioOutputRouter.startObserving { newOutput ->
       Log.i(logTag, "Audio output route resolved: $newOutput (crossfeed/LFE default OFF)")
       registeredAudioProcessor.get()?.apply {
@@ -1518,6 +1544,8 @@ class NativeMedia3Engine(context: Context) {
 
   fun release() {
     clearLoop()
+    dialogueBoostJob?.cancel()
+    dialogueBoostJob = null
     audioOutputRouter.stopObserving()
     registeredAudioProcessor.set(null)
     loopHandler.removeCallbacks(timelineRunnable)

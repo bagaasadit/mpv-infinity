@@ -47,6 +47,7 @@ import app.infinity.mpvz.preferences.AudioChannels
 import app.infinity.mpvz.preferences.AudioPlayerOrientation
 import app.infinity.mpvz.preferences.AudioPreferences
 import app.infinity.mpvz.preferences.AudioVisualizerStyle
+import app.infinity.mpvz.preferences.DialogueBoost
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
@@ -317,6 +318,23 @@ object AudioPreferencesScreen : Screen {
                 summary = {
                   Text(
                     stringResource(R.string.pref_audio_drc_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+              val dialogueBoost by preferences.dialogueBoost.collectAsState()
+              ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_dialogue_boost_title),
+                value = dialogueBoost,
+                onValueChange = { preferences.dialogueBoost.set(it) },
+                values = DialogueBoost.entries,
+                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                title = { Text(stringResource(R.string.pref_audio_dialogue_boost_title)) },
+                summary = {
+                  Text(
+                    stringResource(dialogueBoost.titleRes),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

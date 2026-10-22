@@ -33,6 +33,7 @@ class AudioPreferences(
   val audioOrientation = preferenceStore.getEnum("audio_player_orientation", AudioPlayerOrientation.Auto)
   val audioAmbientMode = preferenceStore.getBoolean("audio_ambient_mode", true)
   val audioWavySeekbar = preferenceStore.getBoolean("audio_wavy_seekbar", true)
+  val dialogueBoost = preferenceStore.getEnum("audio_dialogue_boost", DialogueBoost.Off)
 
 
   init {
@@ -73,4 +74,13 @@ enum class AudioChannels(
   Mono(R.string.pref_audio_channels_mono, "audio-channels", "mono"),
   Stereo(R.string.pref_audio_channels_stereo, "audio-channels", "stereo"),
   ReverseStereo(R.string.pref_audio_channels_stereo_reversed, "af", "pan=[stereo|c0=c1|c1=c0]"),
+}
+
+enum class DialogueBoost(
+  val gain: Float,
+  @StringRes val titleRes: Int,
+) {
+  Off(1.0f, R.string.pref_dialogue_boost_off),
+  Light(1.25f, R.string.pref_dialogue_boost_light),
+  Medium(1.41f, R.string.pref_dialogue_boost_medium),
 }
