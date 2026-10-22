@@ -267,10 +267,10 @@ fun PlayerControls(
   // A Native seek is committed asynchronously. Do not clear the preview on pointer-up: the next
   // snapshot can still contain the old position, and the seekbar would animate 20m -> 10m before
   // jumping back to the committed 20m target. Clear it only after Media3 reports the target.
-  LaunchedEffect(nativeEngineActive, nativeSnapshot.positionMs, nativeSeekPreviewPosition, isSeeking) {
+  LaunchedEffect(nativeEngineActive, nativeSeekPreviewPosition, isSeeking) {
     val target = nativeSeekPreviewPosition
     if (nativeEngineActive && !isSeeking && target != null) {
-      val actualSeconds = nativeSnapshot.positionMs / 1000f
+      val actualSeconds = (activity?.nativePositionMs?.value ?: 0L) / 1000f
       if (kotlin.math.abs(actualSeconds - target) <= 1.5f) {
         nativeSeekPreviewPosition = null
       } else {
@@ -288,7 +288,8 @@ fun PlayerControls(
   var stableDemuxerCacheTime by remember { mutableFloatStateOf(0f) }
   val currentDemuxerCacheTime =
     if (nativeEngineActive) {
-      val nativeBufferEndpoint = (nativeSnapshot.positionMs + nativeSnapshot.totalBufferedDurationMs) / 1000f
+      val livePos = activity?.nativePositionMs?.value ?: 0L
+      val nativeBufferEndpoint = (livePos + nativeSnapshot.totalBufferedDurationMs) / 1000f
       nativeBufferEndpoint
         .takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && seekbarDuration > 0f }
         ?.coerceIn(0f, seekbarDuration)
@@ -1653,9 +1654,10 @@ fun PlayerControls(
             val remaining  by PlaybackSession.propFloat["playtime-remaining"].collectAsState()
             val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
             val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
+            val liveNativePositionMs by (activity?.nativePositionMs ?: remember { MutableStateFlow(0L) }).collectAsState()
             val displayedSeekbarPosition =
               if (nativeEngineActive) {
-                nativeSeekPreviewPosition ?: (nativeSnapshot.positionMs / 1000f)
+                nativeSeekPreviewPosition ?: (liveNativePositionMs / 1000f)
               } else {
                 precisePosition
               }
@@ -1713,7 +1715,7 @@ fun PlayerControls(
             SeekbarWithTimers(
               position = displayedSeekbarPosition,
               committedPosition = if (nativeEngineActive && nativeSeekPreviewPosition != null) {
-                nativeSnapshot.positionMs / 1000f
+                liveNativePositionMs / 1000f
               } else {
                 displayedSeekbarPosition
               },

@@ -190,6 +190,7 @@ class PlayerActivity :
     }
   }
   val nativePlaybackSnapshot get() = nativeEngine.snapshot
+  val nativePositionMs get() = nativeEngine.positionMs
   private var activeEngineMode = PlaybackEngineMode.MPV
   private var engineHandoffJob: Job? = null
   private var manualEngineOverride: Pair<String, PlaybackEngineMode>? = null

@@ -323,6 +323,8 @@ class NativeMedia3Engine(
   )
   private val _snapshot = MutableStateFlow(NativePlaybackSnapshot())
   val snapshot: StateFlow<NativePlaybackSnapshot> = _snapshot.asStateFlow()
+  private val _positionMs = MutableStateFlow(0L)
+  val positionMs: StateFlow<Long> = _positionMs.asStateFlow()
   private val _subtitleCueText = MutableStateFlow("")
   val subtitleCueText: StateFlow<String> = _subtitleCueText.asStateFlow()
   private var selectedNativeSubtitleKey: Pair<Int, Int>? = null
@@ -1644,6 +1646,7 @@ class NativeMedia3Engine(
       }
     val currentPos = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L)
     if (currentPos > 0L) lastKnownPositionMs = currentPos
+    _positionMs.value = currentPos
     _snapshot.value = NativePlaybackSnapshot(
       isPlaying = player.isPlaying,
       isReady = player.playbackState == Player.STATE_READY,
@@ -1682,6 +1685,7 @@ class NativeMedia3Engine(
       ?: lastKnownDurationMs
     val currentPos = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L)
     if (currentPos > 0L) lastKnownPositionMs = currentPos
+    _positionMs.value = currentPos
     val isPlaying = player.isPlaying
     val isReady = player.playbackState == Player.STATE_READY
     val isBuffering = player.playbackState == Player.STATE_BUFFERING
@@ -1690,6 +1694,10 @@ class NativeMedia3Engine(
     val buffered = player.totalBufferedDuration.coerceAtLeast(0L)
     val speed = player.playbackParameters.speed
 
+    val prevChapterIdx = previous.chapters.indexOfLast { it.startSeconds <= previous.positionMs / 1000f }
+    val newChapterIdx = previous.chapters.indexOfLast { it.startSeconds <= currentPos / 1000f }
+    val chapterChanged = prevChapterIdx != newChapterIdx
+
     if (previous.isPlaying == isPlaying &&
       previous.isReady == isReady &&
       previous.isBuffering == isBuffering &&
@@ -1697,8 +1705,8 @@ class NativeMedia3Engine(
       previous.isEnded == isEnded &&
       previous.speed == speed &&
       previous.durationMs == reportedDurationMs &&
-      kotlin.math.abs(previous.positionMs - currentPos) < 150L &&
-      kotlin.math.abs(previous.totalBufferedDurationMs - buffered) < 500L
+      kotlin.math.abs(previous.totalBufferedDurationMs - buffered) < 500L &&
+      !chapterChanged
     ) {
       return
     }
