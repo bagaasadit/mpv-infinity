@@ -19,7 +19,7 @@ import app.infinity.mpvz.ui.player.PlaybackEngineMode
 class DecoderPreferences(
   preferenceStore: PreferenceStore,
 ) {
-  val playbackEngine = preferenceStore.getEnum("playback_engine", PlaybackEngineMode.AUTO)
+  val playbackEngine = preferenceStore.getEnum("playback_engine", PlaybackEngineMode.NATIVE)
   val profile = preferenceStore.getString("mpv_profile", "gpu-hq")
   val tryHWDecoding = preferenceStore.getBoolean("try_hw_dec", true)
   val gpuNext = preferenceStore.getBoolean("gpu_next", true)
