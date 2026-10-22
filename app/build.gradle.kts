@@ -19,13 +19,11 @@ val keystoreProperties =
   }
 
 val targetAbiProp = project.findProperty("targetAbi")?.toString() ?: localProperties.getProperty("targetAbi")
-val enableX86 = project.findProperty("enableX86") != "false"
-val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 val activeAbis =
   if (!targetAbiProp.isNullOrBlank()) {
     targetAbiProp.split(",").map { it.trim() }
   } else {
-    listOf("arm64-v8a", "armeabi-v7a") + x86Abis
+    listOf("arm64-v8a")
   }
 val universalOnlyDistributions = setOf("noVulkan", "fongmi")
 val releaseVersionCode = 259
@@ -60,6 +58,10 @@ android {
 
     vectorDrawables {
       useSupportLibrary = true
+    }
+
+    ndk {
+      abiFilters += activeAbis
     }
 
     buildConfigField("String", "GIT_SHA", "\"${getCommitSha()}\"")
