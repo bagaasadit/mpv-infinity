@@ -946,7 +946,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Kräftige neonartige Farben mit markanter Wirkung</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Verbesserte Schwarztöne für OLED-Displays</string>
   <!-- Additional synchronized strings -->
-  <string name="app_name">Mpv∞</string>
+  <string name="app_name">mpvZero</string>
   <string name="github_repo_url">https://github.com/bagaasadit/mpv-infinity</string>
   <string name="hdr_mode_bt2020">BT.2020</string>
   <string name="hdr_mode_bt2100_hlg">BT.2100 HLG</string>
