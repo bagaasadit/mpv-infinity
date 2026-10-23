@@ -43,9 +43,11 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
   companion object {
     private const val TAG = "DownmixLimiter"
-    private const val TARGET_CEILING_PCM16 = 0.9885f // -0.1 dBFS transparent ceiling
-    private const val TARGET_CEILING_FLOAT = 0.9885f // -0.1 dBFS
+    private const val TARGET_CEILING_PCM16 = 0.8414f // -1.5 dBFS safe ceiling for mobile DSP / Xiaomi Atmos EQ
+    private const val TARGET_CEILING_FLOAT = 0.8414f // -1.5 dBFS
+    private const val ATTACK_TIME_SEC = 0.0025f // 2.5 ms smooth lookahead attack
     private const val RELEASE_TIME_SEC = 0.050f // 50 ms release
+    private const val LOOKAHEAD_TIME_SEC = 0.0025f // 2.5 ms lookahead delay window
 
     // BS2B Filter Constants (Default 700Hz, -3.7dB feed)
     private const val BS2B_FC = 700.0
@@ -61,7 +63,14 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   var outputFloatingPoint: Boolean = false
 
   private var currentGain = 1.0f
+  private var attackCoeff = 0.9917f
   private var releaseCoeff = 0.9995f
+
+  // Ring buffer for lookahead delay line
+  private var lookaheadFrames = 120
+  private var delayBufferL = FloatArray(120)
+  private var delayBufferR = FloatArray(120)
+  private var delayIndex = 0
 
   // Pre-allocated array to eliminate GC allocation churn on the realtime audio thread
   private var channelSamples = FloatArray(16)
@@ -102,11 +111,23 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
     // Compute dynamic BS2B filter coefficients based on actual input sample rate
     val sampleRate = inputAudioFormat.sampleRate.coerceAtLeast(8000).toDouble()
+    val sampleRateF = sampleRate.toFloat()
     val dt = 1.0 / sampleRate
     val rc = 1.0 / (2.0 * Math.PI * BS2B_FC)
     bs2bAlpha = (dt / (rc + dt)).toFloat()
 
-    releaseCoeff = exp(-1.0f / (sampleRate.toFloat() * RELEASE_TIME_SEC))
+    attackCoeff = exp(-1.0f / (sampleRateF * ATTACK_TIME_SEC))
+    releaseCoeff = exp(-1.0f / (sampleRateF * RELEASE_TIME_SEC))
+
+    lookaheadFrames = (sampleRateF * LOOKAHEAD_TIME_SEC).roundToInt().coerceAtLeast(1)
+    if (delayBufferL.size < lookaheadFrames) {
+      delayBufferL = FloatArray(lookaheadFrames)
+      delayBufferR = FloatArray(lookaheadFrames)
+    } else {
+      delayBufferL.fill(0.0f, 0, lookaheadFrames)
+      delayBufferR.fill(0.0f, 0, lookaheadFrames)
+    }
+    delayIndex = 0
 
     val outputEncoding = if (outputFloatingPoint) C.ENCODING_PCM_FLOAT else C.ENCODING_PCM_16BIT
 
@@ -297,9 +318,9 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
       // 2b. Apply calibrated headroom attenuation for multichannel summing to prevent clipping
       val headroomScale =
         when (channelCount) {
-          8, 7 -> 0.58f // ~-4.7 dB headroom for 7.1 / 6.1 master audio
-          6, 5 -> 0.65f // ~-3.7 dB headroom for 5.1 / 5.0 surround
-          4 -> 0.75f // ~-2.5 dB headroom for 4.0 quad
+          8, 7 -> 0.45f // ~-6.9 dB headroom for 7.1 / 6.1 master audio (loosened by ~2.2 dB)
+          6, 5 -> 0.52f // ~-5.7 dB headroom for 5.1 / 5.0 surround (loosened by ~1.9 dB)
+          4 -> 0.65f // ~-3.7 dB headroom for 4.0 quad (loosened by ~1.2 dB)
           else -> 1.0f // 2.0 Stereo keeps unity gain
         }
       leftSum *= headroomScale
@@ -317,30 +338,43 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         rightSum = binauralR
       }
 
-      // 4. Clean Linear Peak Limiter (Transparent, zero harmonic distortion, no tanh saturation)
+      // 4. Smooth Lookahead Peak Limiter with Soft Knee (Transparent, zero overshoot)
       if (leftSum.isNaN() || leftSum.isInfinite()) leftSum = 0f
       if (rightSum.isNaN() || rightSum.isInfinite()) rightSum = 0f
 
       val targetCeiling = if (isOutputFloat) TARGET_CEILING_FLOAT else TARGET_CEILING_PCM16
+      val kneeStart = targetCeiling * 0.7071f
       val sampleMax = max(abs(leftSum), abs(rightSum))
-      if (sampleMax > targetCeiling) {
-        val targetGain = targetCeiling / sampleMax
-        // Instant attack: catch transients immediately
-        if (targetGain < currentGain) {
-          currentGain = targetGain
+
+      val rawTargetGain =
+        if (sampleMax <= kneeStart) {
+          1.0f
+        } else if (sampleMax < targetCeiling) {
+          val x = (sampleMax - kneeStart) / (targetCeiling - kneeStart)
+          val linearTarget = targetCeiling / sampleMax
+          val t = x * x * (3.0f - 2.0f * x)
+          1.0f - t * (1.0f - linearTarget)
         } else {
-          currentGain = currentGain * releaseCoeff + targetGain * (1.0f - releaseCoeff)
+          targetCeiling / sampleMax
         }
+
+      if (rawTargetGain < currentGain) {
+        currentGain = currentGain * attackCoeff + rawTargetGain * (1.0f - attackCoeff)
       } else {
-        // Exponential release back towards 1.0 (unity gain)
         currentGain = currentGain * releaseCoeff + 1.0f * (1.0f - releaseCoeff)
         if (currentGain > 1.0f) {
           currentGain = 1.0f
         }
       }
 
-      val outL = (leftSum * currentGain).coerceIn(-1.0f, 1.0f)
-      val outR = (rightSum * currentGain).coerceIn(-1.0f, 1.0f)
+      val delayedL = delayBufferL[delayIndex]
+      val delayedR = delayBufferR[delayIndex]
+      delayBufferL[delayIndex] = leftSum
+      delayBufferR[delayIndex] = rightSum
+      delayIndex = (delayIndex + 1) % lookaheadFrames
+
+      val outL = (delayedL * currentGain).coerceIn(-targetCeiling, targetCeiling)
+      val outR = (delayedR * currentGain).coerceIn(-targetCeiling, targetCeiling)
 
       // 5. Quantize / Output Serialization
       when (outputEncoding) {
@@ -381,12 +415,18 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     currentGain = 1.0f
     crossfeedHistL = 0.0f
     crossfeedHistR = 0.0f
+    delayBufferL.fill(0.0f, 0, lookaheadFrames)
+    delayBufferR.fill(0.0f, 0, lookaheadFrames)
+    delayIndex = 0
   }
 
   override fun onReset() {
     currentGain = 1.0f
     crossfeedHistL = 0.0f
     crossfeedHistR = 0.0f
+    delayBufferL.fill(0.0f, 0, lookaheadFrames)
+    delayBufferR.fill(0.0f, 0, lookaheadFrames)
+    delayIndex = 0
   }
 
   private fun nextDither(): Float {

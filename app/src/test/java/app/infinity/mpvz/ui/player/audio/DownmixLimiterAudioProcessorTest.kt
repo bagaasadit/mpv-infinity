@@ -92,7 +92,7 @@ class DownmixLimiterAudioProcessorTest {
       lastObserved = sample
     }
     assertTrue("Stereo output must stay inside 16-bit range, got $maxObserved", maxObserved <= 32767)
-    assertTrue("Limiter must constrain settled stereo amplitude, got $lastObserved", lastObserved <= 32700)
+    assertTrue("Limiter must constrain settled stereo amplitude to ceiling, got $lastObserved", lastObserved <= 27600)
   }
 
   @Test
@@ -238,8 +238,84 @@ class DownmixLimiterAudioProcessorTest {
     // Must be bounded within 16-bit limits without clipping or wrapping
     assertTrue("Max sample ($maxObserved) must be <= 32767", maxObserved <= 32767)
     assertTrue("Min sample ($minObserved) must be >= -32768", minObserved >= -32768)
-    // Settled sustained amplitude must be reduced by the envelope-following limiter
-    assertTrue("Settled output ($lastObserved) must be <= 32700", lastObserved <= 32700)
+    // Settled sustained amplitude must be reduced to ceiling (~-1.5 dBFS = ~27570)
+    assertTrue("Settled output ($lastObserved) must be <= 27600", lastObserved <= 27600)
+  }
+
+  @Test
+  fun limitingPreventsCeilingOvershootAndOverflowOnExtreme71BassSignal() {
+    val processor71 = DownmixLimiterAudioProcessor()
+    val format71 = AudioFormat(48000, 8, C.ENCODING_PCM_16BIT)
+    processor71.configure(format71)
+    processor71.flush()
+
+    // 1000 frames of coherent maximum positive bass across all 8 channels (FL, FR, FC, LFE, BL, BR, SL, SR)
+    val frameCount = 1000
+    val inputBytes = ByteBuffer.allocate(frameCount * 8 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    for (f in 0 until frameCount) {
+      for (c in 0 until 8) {
+        inputBytes.putShort(32767.toShort())
+      }
+    }
+    inputBytes.flip()
+
+    processor71.queueInput(inputBytes)
+    val output = processor71.output
+    assertTrue("Output buffer must have data", output.hasRemaining())
+
+    val outputShorts = output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    var maxObserved = 0
+    var minObserved = 0
+    var lastObserved = 0
+    while (outputShorts.hasRemaining()) {
+      val sample = outputShorts.get().toInt()
+      if (sample > maxObserved) maxObserved = sample
+      if (sample < minObserved) minObserved = sample
+      lastObserved = sample
+    }
+
+    // Zero overshoot over -1.5 dBFS ceiling (27571) plus dither margin
+    assertTrue("Max 7.1 sample ($maxObserved) must not overshoot ceiling 27580", maxObserved <= 27580)
+    assertTrue("Min 7.1 sample ($minObserved) must not undershoot ceiling -27580", minObserved >= -27580)
+    assertTrue("Settled 7.1 output ($lastObserved) must be <= 27600", lastObserved <= 27600)
+  }
+
+  @Test
+  fun limitingPreventsCeilingOvershootAndOverflowOnExtreme51BassSignal() {
+    val processor51 = DownmixLimiterAudioProcessor()
+    val format51 = AudioFormat(48000, 6, C.ENCODING_PCM_16BIT)
+    processor51.configure(format51)
+    processor51.flush()
+
+    // 1000 frames of coherent maximum positive bass across all 6 channels
+    val frameCount = 1000
+    val inputBytes = ByteBuffer.allocate(frameCount * 6 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    for (f in 0 until frameCount) {
+      for (c in 0 until 6) {
+        inputBytes.putShort(32767.toShort())
+      }
+    }
+    inputBytes.flip()
+
+    processor51.queueInput(inputBytes)
+    val output = processor51.output
+    assertTrue("Output buffer must have data", output.hasRemaining())
+
+    val outputShorts = output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+    var maxObserved = 0
+    var minObserved = 0
+    var lastObserved = 0
+    while (outputShorts.hasRemaining()) {
+      val sample = outputShorts.get().toInt()
+      if (sample > maxObserved) maxObserved = sample
+      if (sample < minObserved) minObserved = sample
+      lastObserved = sample
+    }
+
+    // Zero overshoot over -1.5 dBFS ceiling (27571) plus dither margin
+    assertTrue("Max 5.1 sample ($maxObserved) must not overshoot ceiling 27580", maxObserved <= 27580)
+    assertTrue("Min 5.1 sample ($minObserved) must not undershoot ceiling -27580", minObserved >= -27580)
+    assertTrue("Settled 5.1 output ($lastObserved) must be <= 27600", lastObserved <= 27600)
   }
 
   @Test
