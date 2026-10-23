@@ -173,6 +173,7 @@ android {
   }
 
   compileOptions {
+    isCoreLibraryDesugaringEnabled = true
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
@@ -311,6 +312,8 @@ dependencies {
   implementation("io.github.peerless2012:ass-kt:0.5.1")
   implementation("io.github.peerless2012:ass-media:0.5.1")
   implementation(libs.jellyfin.media3.ffmpeg.decoder)
+
+  coreLibraryDesugaring(libs.desugar.jdk.libs)
 
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
