@@ -822,13 +822,6 @@ private val OPEN_SOURCE_LIBRARIES =
       url = "https://github.com/google/accompanist",
     ),
     OpenSourceLibrary(
-      name = "MediaInfo Android",
-      artifact = "com.github.marlboro-advance:mediainfoAndroid",
-      descriptionRes = R.string.oss_mediainfo_android_description,
-      license = "BSD-2-Clause",
-      url = "https://github.com/marlboro-advance/mediainfoAndroid",
-    ),
-    OpenSourceLibrary(
       name = "FSAF",
       artifact = "com.github.K1rakishou:Fuck-Storage-Access-Framework",
       descriptionRes = R.string.oss_fsaf_description,

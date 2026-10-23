@@ -321,7 +321,6 @@ dependencies {
 
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
-  implementation(libs.mediainfo.lib)
   implementation(libs.androidx.profileinstaller)
 
   "standardImplementation"(files("libs/mpvlib.aar"))

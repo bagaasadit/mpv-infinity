@@ -4018,7 +4018,8 @@ class PlayerActivity :
    * @param extras Bundle containing subtitle URIs
    */
   private fun addSubtitlesFromExtras(extras: Bundle) {
-    if (!extras.containsKey("subs") && !extras.containsKey("subs.enable")) return
+    if (!extras.containsKey("subs") && !extras.containsKey("subs.enable") &&
+        !extras.containsKey("subtitles_location") && !extras.containsKey("subtitle")) return
 
     val subList = extractSubtitleUriList(extras, "subs")
     val subsToEnable = extractSubtitleUriList(extras, "subs.enable")
@@ -4066,6 +4067,22 @@ class PlayerActivity :
 
     val fromStringList = extras.getStringArrayList(key)?.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
     if (!fromStringList.isNullOrEmpty()) return fromStringList
+
+    // Support single subtitle URI (e.g. MX Player / Stremio "subtitles_location" or "subtitle")
+    if (key == "subs") {
+      for (fallbackKey in listOf("subtitles_location", "subtitle")) {
+        val single = extras.getString(fallbackKey)?.let { runCatching { Uri.parse(it) }.getOrNull() }
+          ?: runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+              extras.getParcelable(fallbackKey, Uri::class.java)
+            } else {
+              @Suppress("DEPRECATION")
+              extras.getParcelable<Uri>(fallbackKey)
+            }
+          }.getOrNull()
+        if (single != null) return listOf(single)
+      }
+    }
 
     return emptyList()
   }
