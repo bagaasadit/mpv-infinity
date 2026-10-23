@@ -77,13 +77,18 @@ jobs:
           with open('/tmp/gradle_build.log', errors='replace') as f:
               text = f.read()
           import re
-          m = re.search(r'(\* What went wrong:.*?(?=\* Try:|\Z))', text, re.DOTALL)
-          if m:
-              err = m.group(1)[:3000].replace('\n', '%0A').replace('\r', '')
-              print(f'::error title=GradleFailure::{err}')
+          kotlin_errs = [l for l in text.splitlines() if l.strip().startswith('e: ')]
+          if kotlin_errs:
+              err = '\n'.join(kotlin_errs[:25])[:3500].replace('\n', '%0A').replace('\r', '')
+              print(f'::error title=KotlinCompilationError::{err}')
           else:
-              err = text[-2000:].replace('\n', '%0A').replace('\r', '')
-              print(f'::error title=GradleFailure::{err}')
+              m = re.search(r'(\* What went wrong:.*?(?=\* Try:|\Z))', text, re.DOTALL)
+              if m:
+                  err = m.group(1)[:3000].replace('\n', '%0A').replace('\r', '')
+                  print(f'::error title=GradleFailure::{err}')
+              else:
+                  err = text[-2000:].replace('\n', '%0A').replace('\r', '')
+                  print(f'::error title=GradleFailure::{err}')
           "
             exit 1
           }
