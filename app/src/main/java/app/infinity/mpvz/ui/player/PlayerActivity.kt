@@ -3476,12 +3476,12 @@ class PlayerActivity :
         File(filesDir, "input.conf").exists() &&
         File(filesDir, "scripts").exists()
 
-    if (assetsAlreadyPrepared && syncPrefs.getLong("bundled_assets_version", -1L) == currentVersion) {
-      return
+    if (!assetsAlreadyPrepared || syncPrefs.getLong("bundled_assets_version", -1L) != currentVersion) {
+      Utils.copyAssets(this@PlayerActivity)
+      syncPrefs.edit().putLong("bundled_assets_version", currentVersion).apply()
     }
 
-    Utils.copyAssets(this@PlayerActivity)
-    syncPrefs.edit().putLong("bundled_assets_version", currentVersion).apply()
+    app.infinity.mpvz.utils.media.SystemFontSymlinkManager.ensureSystemFontSymlinks(this@PlayerActivity)
   }
 
   private fun scheduleDeferredSubtitleFontsSync() {
@@ -4015,19 +4015,25 @@ class PlayerActivity :
    *
    * @param extras Bundle containing subtitle URIs
    */
-  private fun addSubtitlesFromExtras(extras: Bundle) {
-    if (!extras.containsKey("subs") && !extras.containsKey("subs.enable") &&
-        !extras.containsKey("subtitles_location") && !extras.containsKey("subtitle")) return
+  private fun extractIntentSubtitleEntries(extras: Bundle?): List<IntentSubtitleLoadEntry<Uri>> {
+    if (extras == null) return emptyList()
+    if (!extras.containsKey("subs") && !extras.containsKey("subtitles") &&
+        !extras.containsKey("subs.enable") && !extras.containsKey("subtitles_location") &&
+        !extras.containsKey("subtitle")) return emptyList()
 
     val subList = extractSubtitleUriList(extras, "subs")
     val subsToEnable = extractSubtitleUriList(extras, "subs.enable")
     val hasSubsToEnable = extras.containsKey("subs.enable")
-    val subtitleEntries =
-      IntentSubtitleLoadPolicy.entriesToLoad(
-        subtitles = subList,
-        enabledSubtitles = subsToEnable,
-        hasEnabledSubtitleExtra = hasSubsToEnable,
-      )
+    return IntentSubtitleLoadPolicy.entriesToLoad(
+      subtitles = subList,
+      enabledSubtitles = subsToEnable,
+      hasEnabledSubtitleExtra = hasSubsToEnable,
+    )
+  }
+
+  private fun addSubtitlesFromExtras(extras: Bundle) {
+    val subtitleEntries = extractIntentSubtitleEntries(extras)
+    if (subtitleEntries.isEmpty()) return
 
     intentSubtitleJob?.cancel()
     intentSubtitleJob =
@@ -4068,6 +4074,9 @@ class PlayerActivity :
 
     // Support single subtitle URI (e.g. MX Player / Stremio "subtitles_location" or "subtitle")
     if (key == "subs") {
+      val fromSubtitles = extractSubtitleUriList(extras, "subtitles")
+      if (fromSubtitles.isNotEmpty()) return fromSubtitles
+
       for (fallbackKey in listOf("subtitles_location", "subtitle")) {
         val single = extras.getString(fallbackKey)?.let { runCatching { Uri.parse(it) }.getOrNull() }
           ?: runCatching {
@@ -5731,14 +5740,13 @@ class PlayerActivity :
   private fun setReturnIntent() {
     Log.d(TAG, "Setting return intent")
 
-    val action =
-      if ((callingPackage != null && callingPackage != packageName) ||
-        intent.getBooleanExtra("return_result", false)
-      ) {
-        "is.xyz.mpv.MPVActivity.result"
-      } else {
-        RESULT_INTENT
-      }
+    val isExternalCaller = (callingPackage != null && callingPackage != packageName) ||
+      intent.getBooleanExtra("return_result", false)
+    val action = if (isExternalCaller) {
+      "com.mxtech.intent.result.VIEW"
+    } else {
+      RESULT_INTENT
+    }
 
     val nativeEngineActive = activeEngineMode == PlaybackEngineMode.NATIVE || isNativeEngineActive()
     val currentPositionMs: Long =
@@ -5760,6 +5768,7 @@ class PlayerActivity :
 
     val resultIntent =
       Intent(action).apply {
+        intent.data?.let { data = it }
         putExtra("position", currentPositionMs.toInt())
         putExtra("position_ms", currentPositionMs)
         putExtra("duration", currentDurationMs.toInt())
@@ -6240,6 +6249,8 @@ class PlayerActivity :
         "uri=${nativeItem.playableUri}",
     )
     if (canUseNative) {
+      val intentSubtitleEntries = extractIntentSubtitleEntries(intent.extras)
+      val subtitleNames = extractSubtitleStringArray(intent.extras ?: Bundle(), "subs.name", "subs.names", "subs.filename")
       withContext(Dispatchers.Main) {
         if (ownsPlaybackSession()) {
           PlaybackSession.stop(clearQueue = false)
@@ -6253,6 +6264,20 @@ class PlayerActivity :
         binding.player.visibility = View.GONE
         setNativeVideoSurfaceVisible(true)
         viewModel.clearNativeExternalSubtitles()
+
+        val subtitleConfigs = intentSubtitleEntries.map { entry ->
+          val uri = entry.value
+          if (uri.scheme == "content") {
+            runCatching {
+              contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+          }
+          val customName = subtitleNames.getOrNull(entry.metadataIndex)?.takeIf { it.isNotBlank() }
+          val subFileName = customName ?: getFileNameFromUri(uri).takeIf { it.isNotBlank() } ?: uri.lastPathSegment ?: "subtitle"
+          viewModel.registerNativeExternalSubtitle(uri, subFileName, entry.select)
+          nativeEngine.createSubtitleConfiguration(uri, entry.select, label = customName)
+        }
+
         val nativePlayableUri = PlaybackSession.resolvePlayableUriForNative(nativeItem)
         nativeEngine.setRepeatMode(viewModel.repeatMode.value)
         nativeEngine.play(
@@ -6263,6 +6288,7 @@ class PlayerActivity :
           mimeType = nativeItem.mimeType,
           sourceUri = nativeItem.originalUri.toUri(),
           sourceHint = fileName.ifBlank { nativeItem.title.orEmpty() },
+          subtitleConfigurations = subtitleConfigs,
         )
         viewModel.onVideoLoadCompleted()
       }

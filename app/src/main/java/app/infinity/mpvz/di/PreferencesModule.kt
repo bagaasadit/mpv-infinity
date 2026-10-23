@@ -18,7 +18,6 @@ import app.infinity.mpvz.preferences.GesturePreferences
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.SettingsManager
 import app.infinity.mpvz.preferences.SubtitlesPreferences
-import app.infinity.mpvz.preferences.YtdlPreferences
 import app.infinity.mpvz.preferences.preference.AndroidPreferenceStore
 import app.infinity.mpvz.preferences.preference.PreferenceStore
 import org.koin.android.ext.koin.androidContext
@@ -38,6 +37,5 @@ val PreferencesModule =
     singleOf(::AudioPreferences)
     singleOf(::AdvancedPreferences)
     single { BrowserPreferences(get(), androidContext()) }
-    singleOf(::YtdlPreferences)
     singleOf(::SettingsManager)
   }

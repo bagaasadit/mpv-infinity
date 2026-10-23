@@ -810,13 +810,6 @@ private val OPEN_SOURCE_LIBRARIES =
       url = "https://github.com/Kotlin/kotlinx.collections.immutable",
     ),
     OpenSourceLibrary(
-      name = "Desugar JDK Libs",
-      artifact = "com.android.tools:desugar_jdk_libs",
-      descriptionRes = R.string.oss_desugar_jdk_libs_description,
-      license = "Apache-2.0",
-      url = "https://github.com/google/desugar_jdk_libs",
-    ),
-    OpenSourceLibrary(
       name = "mpv",
       artifact = "libmpv",
       descriptionRes = R.string.oss_mpv_description,

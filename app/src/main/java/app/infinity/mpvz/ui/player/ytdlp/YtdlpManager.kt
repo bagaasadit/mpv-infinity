@@ -10,11 +10,6 @@
 package app.infinity.mpvz.ui.player.ytdlp
 
 import android.content.Context
-import app.infinity.mpvz.preferences.SubtitlesPreferences
-import app.infinity.mpvz.preferences.YtdlPreferences
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 data class YtdlpPlaylistEntry(
@@ -33,12 +28,8 @@ data class YtdlpPlaylistMetadata(
 )
 
 object YtdlpManager {
-  private val _installationInfo = MutableStateFlow<YtdlpInstallationInfo?>(YtdlpInstallationInfo.NotInstalled)
-  val installationInfo: StateFlow<YtdlpInstallationInfo?> = _installationInfo.asStateFlow()
-
   fun getYtdlDir(context: Context): File = File(context.filesDir, "ytdl").apply { if (!exists()) mkdirs() }
   fun getExecutablePath(context: Context): String = ""
-  suspend fun refreshInstallationInfo(context: Context): YtdlpInstallationInfo = YtdlpInstallationInfo.NotInstalled
 
   fun requiresYtdlp(source: String): Boolean = false
   fun isPotentialPlaylistUrl(source: String): Boolean = false
@@ -61,12 +52,6 @@ object YtdlpManager {
 
   suspend fun ensureRuntimeInstalled(context: Context, onLog: (String) -> Unit = {}): Boolean = false
   suspend fun copyAssets(context: Context) {}
-
-  fun setupMpvOptions(
-    context: Context,
-    ytdlPreferences: YtdlPreferences,
-    subtitlesPreferences: SubtitlesPreferences,
-  ) {}
 
   suspend fun runInstall(context: Context, onLog: (String) -> Unit = {}): Boolean = false
   suspend fun runUpdate(context: Context, onLog: (String) -> Unit = {}): Boolean = false

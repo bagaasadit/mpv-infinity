@@ -13,11 +13,24 @@
 # Attributes required by Kotlinx Serialization, Koin, Compose, and Room
 -keepattributes Signature
 -keepattributes *Annotation*
+-keepattributes InnerClasses,EnclosingMethod
 
 # Suppress harmless third-party warnings
 -dontwarn org.xmlpull.v1.**
 -dontnote org.xmlpull.v1.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder
+
+# =====================================================================
+# LOGGING STRIPPING (assumenosideeffects)
+# =====================================================================
+# Strip verbose, debug, and info logs in minified builds (230+ call-sites)
+# Preserves Log.w, Log.e, Log.wtf for crash diagnostics and CrashActivity
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}
 
 # =====================================================================
 # 1. LIBMPV JNI BRIDGE & CALLBACKS (SACRED)
@@ -26,22 +39,34 @@
     native <methods>;
 }
 
-# MPVLib and MPVNode are invoked via JNI reflection from libplayer.so
--keep class is.xyz.mpv.MPVLib { *; }
--keep class is.xyz.mpv.MPVNode* { *; }
--keep class is.xyz.mpv.BaseMPVView { public protected *; }
+# MPVLib, MPVNode, BaseMPVView, and all JNI interfaces (EventObserver, LogObserver, MpvFormat, MpvEvent)
+-keep class is.xyz.mpv.** { *; }
 
 # =====================================================================
 # 2. MEDIA3 / EXOPLAYER RENDERERS & DECODERS
 # =====================================================================
-# Media3 AARs supply their own consumer rules. Only reflective extensions need keep:
 # Jellyfin FFmpeg Audio Decoder is instantiated reflectively by DefaultRenderersFactory
 -dontwarn androidx.media3.decoder.ffmpeg.**
 -keep class androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer {
     public <init>(...);
 }
 
+# Native libass / ASS subtitle renderer bindings
+-keep class io.github.peerless2012.** { *; }
+
 # =====================================================================
-# 4. ROOM DATABASE ENTITIES
+# 3. ROOM DATABASE & DAOS
 # =====================================================================
 -keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao interface * { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }
+
+# =====================================================================
+# 4. KOTLINX SERIALIZATION
+# =====================================================================
+-keepclassmembers class * {
+    @kotlinx.serialization.SerialName <fields>;
+}
+-keepclasseswithmembers class * {
+    kotlinx.serialization.KSerializer serializer(...);
+}

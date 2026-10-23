@@ -1021,6 +1021,17 @@ class PlayerViewModel : ViewModel(),
       }
     }
 
+    // 6. Safe downmix & master brickwall peak limiter
+    val isStereoTarget = audioPreferences.audioChannels.get() in listOf(
+      AudioChannels.AutoSafe,
+      AudioChannels.Stereo,
+      AudioChannels.ReverseStereo,
+    )
+    if (isStereoTarget) {
+      filterList.add("lavfi=[aformat=channel_layouts=stereo]")
+    }
+    filterList.add("lavfi=[alimiter=level_in=1:level_out=1:limit=0.944:attack=5:release=60:asc=1:asc_level=0.5]")
+
     val afString = filterList.joinToString(",")
     PlaybackSession.setPropertyString("af", afString)
   }

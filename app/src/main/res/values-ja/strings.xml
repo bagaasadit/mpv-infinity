@@ -15,32 +15,10 @@
   <string name="pref_appearance_darkmode_dark">ダーク</string>
   <string name="pref_appearance_amoled_mode_title">AMOLEDブラックモード</string>
   <string name="pref_appearance_amoled_mode_summary">ダークテーマで完全な黒の背景を使用します</string>
-  <string name="pref_appearance_system_font_title">システムフォントを使用</string>
-  <string name="pref_appearance_system_font_summary">Google Sans Flexの代わりにAndroidのシステム書体をMpv∞全体で使用します</string>
-  <string name="pref_appearance_unlimited_name_lines_title">名前をすべて表示</string>
   <string name="pref_appearance_hide_player_buttons_background_title">プレーヤーボタンの背景を非表示</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">プレーヤーボタンの背景を常に暗くする</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">ライト、ダーク、自動の各テーマでプレーヤー操作ボタンの背景を暗く保ちます</string>
   <string name="pref_appearance_hide_player_buttons_background_summary">プレーヤーのすべての操作ボタンの背景を非表示にします</string>
-  <string name="pref_appearance_category_thumbnails">サムネイル</string>
-  <string name="pref_appearance_show_unplayed_old_video_label_title">新しい未再生動画にラベルを表示</string>
-  <string name="pref_appearance_unplayed_old_video_days_title">新着動画ラベルの日数しきい値</string>
-  <string name="pref_appearance_show_video_thumbnails_title">動画のサムネイルを表示</string>
-  <string name="pref_appearance_thumbnail_generation_title">サムネイル生成方法</string>
-  <string name="pref_appearance_thumbnail_generation_summary">埋め込みアートワークや特定位置のフレームなど、サムネイルの生成方法を選択します</string>
-  <string name="pref_appearance_thumbnail_generation_change_title">サムネイル生成方法を変更しますか？</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">キャッシュされたサムネイルが消去されます。閲覧時に、選択した方法で新しいサムネイルが生成されます。</string>
-  <string name="pref_appearance_thumbnail_quality_title">サムネイルの品質</string>
-  <string name="pref_appearance_thumbnail_quality_summary">サムネイルの最大解像度：%1$d px。高品質にするとストレージ使用量が増え、生成に時間がかかる場合があります。</string>
-  <string name="pref_appearance_thumbnail_position_title">サムネイルのフレーム位置</string>
-  <string name="pref_appearance_thumbnail_position_summary">動画の%1$d%%の位置のフレームを取得します</string>
-  <string name="pref_appearance_show_network_thumbnails_title">ネットワークのサムネイルを表示（試験的）</string>
-  <string name="pref_appearance_show_network_thumbnails_summary">ネットワークストリームのサムネイルを生成します（モバイルネットワークでのデータ使用量が増える場合があります）</string>
-  <string name="pref_appearance_theme_picker_label">アプリのテーマ</string>
-  <string name="pref_appearance_auto_scroll_title">最後に再生した項目へ自動スクロール</string>
-  <string name="pref_appearance_watched_threshold_title">視聴済みのしきい値</string>
-  <string name="pref_appearance_watched_threshold_summary">再生が%d%%に達したら動画を視聴済みにします</string>
-  <string name="pref_appearance_watched_threshold_summary_infinite">自動で視聴済みにしない（無限）</string>
   <string name="toast_playback_load_failed">このリンクを読み込めませんでした</string>
   <!-- Theme names -->
   <string name="theme_default">デフォルト</string>
@@ -52,9 +30,6 @@
   <string name="settings_search_no_results">設定が見つかりません</string>
   <string name="settings_search_title">検索</string>
   <!-- Player Preferences Hardcoded -->
-  <string name="pref_autoplay_next_video_title">次の動画を自動再生</string>
-  <string name="pref_autoplay_next_video_summary">現在の動画が終了したら次の動画を自動的に再生します</string>
-  <string name="pref_autoplay_next_video_summary_disabled">終了後も現在の動画に留まります</string>
   <string name="pref_auto_pip_title">自動ピクチャーインピクチャー</string>
   <string name="pref_auto_pip_summary">ホームまたは戻るを押したときに自動的にPIPモードへ移行します</string>
   <string name="pref_auto_pip_home_only_title">ホームジェスチャーのみでPIP</string>
@@ -109,7 +84,6 @@
   <string name="pref_player_seeking_title">シーク</string>
   <string name="pref_player_close_after_eof">再生終了後に閉じる</string>
   <string name="pref_player_remember_brightness">画面の明るさを記憶</string>
-  <string name="pref_player_gestures">ジェスチャー</string>
   <string name="pref_player_gestures_brightness">明るさジェスチャー</string>
   <string name="pref_player_gestures_volume">音量ジェスチャー</string>
   <string name="pref_player_gestures_pinch_to_zoom">ピンチでズーム</string>
@@ -122,11 +96,9 @@
   <string name="pref_player_gestures_horizontal_swipe_sensitivity">横スワイプの感度</string>
   <string name="pref_player_gestures_horizontal_swipe_sensitivity_summary">1回のスワイプで移動する距離を調整します</string>
   <string name="pref_player_gestures_hold_for_multiple_speed">長押しで複数倍速</string>
-  <string name="pref_player_controls">コントロール</string>
   <string name="pref_player_controls_allow_gestures_in_panels">パネル内でジェスチャーを許可</string>
   <string name="pref_player_controls_show_loading_circle">読み込み中の円を表示</string>
   <string name="pref_player_display_show_status_bar">操作中にシステムステータスバーを表示</string>
-  <string name="pref_player_display">表示</string>
   <string name="pref_gesture">ジェスチャー</string>
   <string name="pref_gesture_summary">ダブルタップ、メディア操作</string>
   <string name="pref_gesture_double_tap_title">ダブルタップ</string>
@@ -156,7 +128,6 @@
 前へ：PREV
 再生/一時停止：PLAYPAUSE
 次へ：NEXT</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_title">サムネイルをタップして選択</string>
   <string name="pref_decoder">デコーダー</string>
   <string name="pref_decoder_summary">ハードウェアデコード、ピクセル形式、バンディング除去</string>
   <string name="pref_decoder_profile_title">MPVプロファイル</string>
@@ -203,20 +174,10 @@
   <string name="toast_subtitles_cleared">字幕のダウンロードを消去しました</string>
   <string name="pref_audio">音声</string>
   <string name="pref_audio_summary">優先言語、音声チャンネル、ピッチ補正</string>
-  <string name="pref_audio_orientation_title">オーディオプレーヤーの向き</string>
   <string name="pref_audio_pitch_correction_title">音声ピッチ補正を有効にする</string>
   <string name="pref_audio_pitch_correction_summary">高速再生時に音が高く、低速再生時に低くなるのを防ぎます</string>
   <string name="pref_audio_volume_normalization_title">音量の正規化</string>
   <string name="pref_audio_volume_normalization_summary">一定の音量を保つように音量を自動調整します</string>
-  <string name="pref_audio_visualizer_style_title">ビジュアライザーのスタイル</string>
-  <string name="pref_audio_visualizer_style_blob">ブロブ</string>
-  <string name="pref_audio_visualizer_style_galaxy">ギャラクシー</string>
-  <string name="pref_audio_visualizer_style_cuboid">キューボイド</string>
-  <string name="pref_audio_visualizer_galaxy_credit">CodePenのZain Razaに着想を得ています</string>
-  <string name="pref_audio_ambient_mode_title">アンビエントモード</string>
-  <string name="pref_audio_ambient_mode_summary">音楽プレーヤーでアルバムのアートワークから抽出したダイナミックなグラデーションを表示（ビジュアライザー有効時は無効）</string>
-  <string name="pref_audio_wavy_seekbar_title">波状シークバー</string>
-  <string name="pref_audio_wavy_seekbar_summary">シークバーの上に多層の流体ウェーブビジュアライザーアニメーションを表示</string>
   <string name="pref_audio_channels">音声チャンネル</string>
   <string name="pref_audio_channels_auto">自動</string>
   <string name="pref_audio_channels_auto_safe">安全な自動設定</string>
@@ -250,8 +211,6 @@
   <string name="pref_advanced_clear_fonts_cache">キャッシュ済みフォントを消去</string>
   <string name="pref_advanced_cleared_fonts_cache">キャッシュ済みフォントを消去しました</string>
   <string name="pref_thumbnail_cache_cleared">サムネイルキャッシュを消去しました</string>
-  <string name="pref_thumbnail_cache_clear_failed">サムネイルキャッシュを消去できませんでした：%1$s</string>
-  <string name="pref_advanced_enable_recently_played_title">最近再生した項目</string>
   <string name="pref_anime4k_title">Anime4Kアップスケーリング</string>
   <string name="pref_anime4k_summary">Anime4Kアップスケーリングフィルターを有効にします</string>
   <string name="pref_anime4k_incompatibility">Anime4Kの非互換性</string>
@@ -367,9 +326,6 @@
   <string name="swap_the_volume_and_brightness_slider">音量と明るさのスライダーを入れ替える</string>
   <string name="pref_player_display_reduce_player_animation">プレーヤーのアニメーションを減らす</string>
   <!-- Animation settings -->
-  <string name="pref_anim_controls_style">操作のアニメーションスタイル</string>
-  <string name="pref_anim_video_open">動画を開くときのアニメーション</string>
-  <string name="pref_anim_speed">アニメーション速度</string>
   <string name="pref_player_display_hide_player_control_time">プレーヤー操作の時刻を非表示</string>
   <string name="show_splash_ovals_on_double_tap_to_seek">ダブルタップシーク時に波紋を表示</string>
   <string name="show_time_on_double_tap_to_seek">シーク時間を表示</string>
@@ -408,7 +364,6 @@
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">高精度シークを使用</string>
   <!-- Folders Preferences -->
-  <string name="pref_folders_title">フォルダー</string>
   <!-- M3U Playlist Strings -->
   <!-- M3U Playlist Strings -->
   <string name="pref_player_safe_area_window_title">セーフエリアウィンドウ</string>
@@ -422,7 +377,6 @@
   <string name="pref_section_appearance">外観</string>
   <string name="pref_section_playback">再生</string>
   <string name="pref_section_gestures_controls">ジェスチャーと操作</string>
-  <string name="pref_section_storage">ストレージ</string>
   <string name="pref_section_advanced">詳細設定</string>
   <string name="pref_section_about">このアプリについて</string>
 
@@ -444,9 +398,6 @@
   <!-- Player - General Section                                   -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <string name="pref_section_general">一般</string>
-  <string name="pref_playlist_mode_title">次へ/前へ移動を有効にする</string>
-  <string name="pref_playlist_mode_summary">フォルダー内のすべての動画に次へ/前へボタンを表示します</string>
-  <string name="pref_playlist_mode_summary_disabled">動画を個別に再生（複数選択するとプレイリスト）</string>
 
   <!-- Player - Seeking Section (additional)                      -->
   <string name="pref_online_skip_markers_title">オンラインのスキップマーカーを使用</string>
@@ -686,7 +637,6 @@
   <string name="hdr_mode_linear_short">リニア</string>
   <string name="hdr_mode_linear_description">hdr-toys の Astra および Bottosson シェーダーによるリニア HDR パイプライン</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$sモード出力</string>
-  <string name="pref_section_support">サポート</string>
   <string name="pref_section_system">システム</string>
   <string name="ui_file_size">ファイルサイズ</string>
   <string name="ui_duration">長さ</string>
@@ -758,19 +708,15 @@
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">ネットワーク</string>
   <string name="ui_thumbnail">サムネイル</string>
-  <string name="ui_play">再生</string>
-  <string name="ui_port">ポート</string>
   <string name="ui_save">保存</string>
   <string name="ui_done">完了</string>
   <string name="ui_select_subtitle">字幕を選択</string>
   <string name="ui_no_storage_devices_found">ストレージデバイスが見つかりません</string>
   <string name="ui_no_folders_or_supported_files">フォルダーまたは対応ファイルがありません</string>
-  <string name="ui_select">選択</string>
   <string name="ui_resolution">解像度</string>
   <string name="ui_close">閉じる</string>
   <string name="ui_copy">コピー</string>
   <string name="ui_drag_to_reorder">ドラッグして並べ替え</string>
-  <string name="ui_next">次へ</string>
   <string name="ui_mpv_documentation">mpvドキュメント</string>
   <string name="ui_search_commands_options_properties">コマンド、オプション、プロパティを検索...</string>
   <string name="ui_no_results_found">結果が見つかりません</string>
@@ -825,14 +771,10 @@
   <string name="ui_pan_zoom">パンとズーム</string>
   <string name="ui_decrease_zoom">縮小</string>
   <string name="ui_increase_zoom">拡大</string>
-  <string name="ui_by_ritesh_pandit">mpvZero Team 作</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">端末情報</string>
-  <string name="ui_support_link">UPI ID</string>
-  <string name="ui_visit_github">応援を送る</string>
   <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Mpv∞で使用している主要なオープンソース依存関係。</string>
   <string name="ui_already_using_latest_version">すでに最新バージョンです</string>
-  <string name="ui_support_link_copied">UPI IDをコピーしました！</string>
   <string name="ui_refresh">更新</string>
   <string name="ui_unsaved_changes">未保存の変更</string>
   <string name="ui_help">ヘルプ</string>
@@ -862,8 +804,6 @@
   <string name="ui_script_file_not_found">スクリプトファイルが見つかりません</string>
   <string name="ui_portrait_playback_buttons">縦向き再生ボタン</string>
   <string name="ui_time_network_clock">時刻 + ネットワーク時計</string>
-  <string name="ui_show_media_info_in_chooser">選択画面にメディア情報を表示</string>
-  <string name="ui_show_media_info_in_system">他のアプリのファイルを解析できるよう、システムの「アプリで開く」／共有メニューにメディア情報を表示します。</string>
   <string name="ui_e_g_intro_opening_op">例: intro, opening, op</string>
   <string name="ui_e_g_outro_ending_ed">例: outro, ending, ed</string>
   <string name="ui_image_format">画像形式</string>
@@ -883,7 +823,6 @@
   <string name="ui_paid_sources">有料ソース</string>
   <string name="ui_restricted_requires_paid_api_key">制限あり（有料APIキーが必要）</string>
   <string name="ui_restricted">制限あり</string>
-  <string name="ui_yt_dlp_streaming">yt-dlpストリーミング</string>
   <string name="ui_video_title">動画タイトル</string>
   <string name="ui_1_06_chapter_1">1:06 • チャプター1</string>
   <string name="ui_downloading">ダウンロード中...</string>
@@ -896,7 +835,6 @@
   <string name="oss_okhttp_description">字幕検索やその他のネットワークリクエスト用HTTPクライアント。</string>
   <string name="oss_kotlinx_serialization_description">APIペイロードと内部モデル用のJSONシリアライズ。</string>
   <string name="oss_accompanist_permissions_description">Androidの実行時権限フロー向けComposeヘルパー。</string>
-  <string name="oss_mediainfo_android_description">コーデック、字幕、技術メタデータのメディア解析。</string>
   <string name="oss_fsaf_description">ファイルおよびツリー操作向けStorage Access Frameworkヘルパー。</string>
   <string name="oss_truetype_parser_description">字幕フォント処理のためにフォントメタデータを読み取ります。</string>
   <string name="oss_compose_preference_description">設定画面で使用する設定UIコンポーネント。</string>
@@ -915,12 +853,9 @@
   <string name="oss_google_material_description">Material Designコンポーネントとテーマライブラリ。</string>
   <string name="oss_material_symbols_description">Compose向けMaterial Symbolsアイコンセット。</string>
   <string name="oss_kotlinx_immutable_collections_description">Kotlin向けイミュータブルコレクションインターフェース。</string>
-  <string name="oss_curl_android_description">Android NDK向けlibcurl静的ライブラリ。</string>
-  <string name="oss_desugar_jdk_libs_description">古いAndroid向けJava 8以降のAPIデシュガリング。</string>
   <string name="oss_androidx_activity_description">AndroidのActivityとライフサイクル対応APIをComposeに統合します。</string>
   <string name="oss_mpv_description">音声、動画、字幕用のネイティブメディア再生エンジン。</string>
   <string name="oss_mpvlib_android_description">Standard、No-Vulkan、FongMiビルドで使用するAndroid向けlibmpvラッパー。</string>
-  <string name="oss_quickjs_ng_description">yt-dlpのチャレンジ解決に使用する組み込みJavaScriptエンジン。</string>
   <string name="filter_preset_none">なし</string>
   <string name="filter_preset_vivid">鮮やか</string>
   <string name="filter_preset_warm_tone">暖色調</string>
@@ -998,7 +933,6 @@
   <string name="pref_audio_drc_title">ダイナミックレンジ压縮 (DRC)</string>
   <string name="pref_audio_drc_summary">オーディオのダイナミックレンジを圧縮し、静かな台詞を強調して大きな音を軽めます</string>
   <string name="pref_audio_effects">音声処理</string>
-  <string name="pref_audio_visualizer_style_particle">粒子</string>
   <plurals name="ui_torrent_group_file_count">
     <item quantity="one">%1$d 個の再生可能なファイル</item>
     <item quantity="other">%1$d 個の再生可能なファイル</item>
@@ -1007,13 +941,9 @@
     <item quantity="one">%1$d 個の再生可能なファイル</item>
     <item quantity="other">%1$d 個の再生可能なファイル</item>
   </plurals>
-    <string name="pref_autoplay_next_audio_title">次の音声を自動再生</string>
-    <string name="pref_autoplay_next_audio_summary">現在のトラック終了時に次の音声トラックを自動的に再生します</string>
-    <string name="pref_autoplay_next_audio_summary_disabled">終了時に現在の音声トラックにとどまります</string>
     <string name="pref_enable_hls_proxy_title">HLSストリーミングプロキシを有効化</string>
     <string name="pref_enable_hls_proxy_summary">適応型HLSマニフェストを正規化し、分離された音声/動画ストリームを処理します</string>
     <string name="ui_buffering">バッファリング中…</string>
-    <string name="ui_media">メディア</string>
   <string name="pref_mpv_conf_overrides_title">mpv.conf オプションの制御元</string>
   <string name="pref_mpv_conf_overrides_summary_app_owned">対応するすべての再生オプションをアプリが制御します（推奨）</string>
   <string name="pref_mpv_conf_overrides_summary_config_owned">%1$d 個のグループを選択し、アプリの %2$d 個のオプションを mpv.conf に委ねています</string>
@@ -1050,24 +980,8 @@
 
   <!-- Clip -->
   <string name="clip_action">クリップを作成</string>
-  <string name="clip_options">クリップのオプション</string>
-  <string name="clip_crop">切り抜き</string>
-  <string name="clip_save">クリップを保存</string>
-  <string name="clip_cancel">キャンセル</string>
-  <string name="clip_done">完了</string>
-  <string name="clip_crop_size">切り抜き: %1$d × %2$d</string>
-  <string name="clip_crop_full_frame">切り抜き: フレーム全体</string>
-  <string name="clip_select_crop">残す範囲に合わせて枠のサイズを変更してください</string>
-  <string name="clip_exporting">クリップを作成中… %1$d%%</string>
-  <string name="clip_cancelling">クリップをキャンセル中…</string>
-  <string name="clip_saved">%1$s を保存しました</string>
-  <string name="clip_invalid_range">開始位置より後に終了位置をマークしてください</string>
-  <string name="clip_video_unavailable">動画のサイズはまだ利用できません</string>
-  <string name="clip_export_busy">別のクリップを作成中です</string>
-  <string name="clip_export_failed">クリップの作成に失敗しました: %1$s</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_install_stable">安定版をインストール</string>
   <string name="ui_checking_yt_dlp">yt-dlp を確認中</string>
   <string name="ui_yt_dlp_not_installed">yt-dlp はインストールされていません</string>
   <string name="ui_yt_dlp_stable_release">安定版</string>
@@ -1093,8 +1007,6 @@
   <string name="player_video_quality">動画品質</string>
   <string name="player_video_quality_summary">このストリームで利用可能な品質を選択します。</string>
   <string name="player_video_quality_button">動画品質</string>
-  <string name="pref_player_web_stream_links_title">ストリーミングサイトのリンクを開く</string>
-  <string name="pref_player_web_stream_links_summary">YouTube、Vimeo、Twitch、Odysee、Bilibili のリンクで Mpv∞ を候補に表示。オフにすると各アプリが開きます。</string>
 
   <!-- Downloads -->
 </resources>

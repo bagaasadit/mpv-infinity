@@ -15,32 +15,10 @@
   <string name="pref_appearance_darkmode_dark">Тёмная</string>
   <string name="pref_appearance_amoled_mode_title">Чёрный режим AMOLED</string>
   <string name="pref_appearance_amoled_mode_summary">Использовать полностью чёрный фон для тёмных тем</string>
-  <string name="pref_appearance_system_font_title">Использовать системный шрифт</string>
-  <string name="pref_appearance_system_font_summary">Использовать системный шрифт Android во всём Mpv∞ вместо Google Sans Flex</string>
-  <string name="pref_appearance_unlimited_name_lines_title">Показывать полные названия</string>
   <string name="pref_appearance_hide_player_buttons_background_title">Скрыть фон кнопок проигрывателя</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Всегда использовать тёмный фон кнопок плеера</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Сохранять тёмный фон кнопок управления плеером в светлой, тёмной и автоматической темах</string>
   <string name="pref_appearance_hide_player_buttons_background_summary">Скрыть фон всех кнопок управления проигрывателем</string>
-  <string name="pref_appearance_category_thumbnails">Миниатюры</string>
-  <string name="pref_appearance_show_unplayed_old_video_label_title">Показывать метку для новых непросмотренных видео</string>
-  <string name="pref_appearance_unplayed_old_video_days_title">Порог дней для метки нового видео</string>
-  <string name="pref_appearance_show_video_thumbnails_title">Показывать миниатюры видео</string>
-  <string name="pref_appearance_thumbnail_generation_title">Стратегия создания миниатюр</string>
-  <string name="pref_appearance_thumbnail_generation_summary">Выберите способ создания миниатюр: встроенная обложка или кадр в заданной позиции</string>
-  <string name="pref_appearance_thumbnail_generation_change_title">Изменить стратегию миниатюр?</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">Кэшированные миниатюры будут удалены. При просмотре будут создаваться новые миниатюры с выбранной стратегией.</string>
-  <string name="pref_appearance_thumbnail_quality_title">Качество миниатюр</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Максимальное разрешение миниатюры: %1$d пкс. Более высокое качество требует больше места и может создаваться медленнее.</string>
-  <string name="pref_appearance_thumbnail_position_title">Позиция кадра миниатюры</string>
-  <string name="pref_appearance_thumbnail_position_summary">Захватывать кадр на отметке %1$d%% видео</string>
-  <string name="pref_appearance_show_network_thumbnails_title">Показывать сетевые миниатюры (экспериментально)</string>
-  <string name="pref_appearance_show_network_thumbnails_summary">Создавать миниатюры для сетевых потоков (может увеличить расход мобильного трафика)</string>
-  <string name="pref_appearance_theme_picker_label">Тема приложения</string>
-  <string name="pref_appearance_auto_scroll_title">Автопрокрутка к последнему воспроизведённому</string>
-  <string name="pref_appearance_watched_threshold_title">Порог просмотра</string>
-  <string name="pref_appearance_watched_threshold_summary">Отмечать видео как просмотренное при достижении %d%% воспроизведения</string>
-  <string name="pref_appearance_watched_threshold_summary_infinite">Никогда не отмечать как просмотренное (бесконечно)</string>
   <string name="toast_playback_load_failed">Не удалось загрузить эту ссылку</string>
   <!-- Theme names -->
   <string name="theme_default">По умолчанию</string>
@@ -52,9 +30,6 @@
   <string name="settings_search_no_results">Настройки не найдены</string>
   <string name="settings_search_title">Поиск</string>
   <!-- Player Preferences Hardcoded -->
-  <string name="pref_autoplay_next_video_title">Автовоспроизведение следующего видео</string>
-  <string name="pref_autoplay_next_video_summary">Автоматически воспроизводить следующее видео после окончания текущего</string>
-  <string name="pref_autoplay_next_video_summary_disabled">Оставаться на текущем видео после его завершения</string>
   <string name="pref_auto_pip_title">Автоматический режим «Картинка в картинке»</string>
   <string name="pref_auto_pip_summary">Автоматически переходить в режим PIP при нажатии «Домой» или «Назад»</string>
   <string name="pref_auto_pip_home_only_title">PIP только жестом «Домой»</string>
@@ -109,7 +84,6 @@
   <string name="pref_player_seeking_title">Перемотка</string>
   <string name="pref_player_close_after_eof">Закрывать после окончания воспроизведения</string>
   <string name="pref_player_remember_brightness">Запоминать яркость экрана</string>
-  <string name="pref_player_gestures">Жесты</string>
   <string name="pref_player_gestures_brightness">Жесты яркости</string>
   <string name="pref_player_gestures_volume">Жесты громкости</string>
   <string name="pref_player_gestures_pinch_to_zoom">Масштабирование щипком</string>
@@ -122,11 +96,9 @@
   <string name="pref_player_gestures_horizontal_swipe_sensitivity">Чувствительность горизонтального смахивания</string>
   <string name="pref_player_gestures_horizontal_swipe_sensitivity_summary">Настроить расстояние перемотки за одно смахивание</string>
   <string name="pref_player_gestures_hold_for_multiple_speed">Удерживать для кратной скорости x</string>
-  <string name="pref_player_controls">Элементы управления</string>
   <string name="pref_player_controls_allow_gestures_in_panels">Разрешить жесты на панелях</string>
   <string name="pref_player_controls_show_loading_circle">Показывать индикатор загрузки</string>
   <string name="pref_player_display_show_status_bar">Показывать системную строку состояния вместе с элементами управления</string>
-  <string name="pref_player_display">Экран</string>
   <string name="pref_gesture">Жесты</string>
   <string name="pref_gesture_summary">Двойное касание, управление мультимедиа</string>
   <string name="pref_gesture_double_tap_title">Двойное касание</string>
@@ -156,7 +128,6 @@
 Предыдущий: PREV
 Воспроизведение/Пауза: PLAYPAUSE
 Следующий: NEXT</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_title">Коснуться миниатюры для выбора</string>
   <string name="pref_decoder">Декодер</string>
   <string name="pref_decoder_summary">Аппаратное декодирование, формат пикселей, устранение полос</string>
   <string name="pref_decoder_profile_title">Профиль MPV</string>
@@ -203,20 +174,10 @@
   <string name="toast_subtitles_cleared">Загруженные субтитры удалены</string>
   <string name="pref_audio">Аудио</string>
   <string name="pref_audio_summary">Предпочитаемые языки, аудиоканалы и коррекция высоты тона</string>
-  <string name="pref_audio_orientation_title">Ориентация аудиоплеера</string>
   <string name="pref_audio_pitch_correction_title">Включить коррекцию высоты тона</string>
   <string name="pref_audio_pitch_correction_summary">Не позволяет звуку становиться выше при ускорении и ниже при замедлении</string>
   <string name="pref_audio_volume_normalization_title">Нормализация громкости</string>
   <string name="pref_audio_volume_normalization_summary">Автоматически регулировать громкость для поддержания равномерного уровня</string>
-  <string name="pref_audio_visualizer_style_title">Стиль визуализатора</string>
-  <string name="pref_audio_visualizer_style_blob">Блоб</string>
-  <string name="pref_audio_visualizer_style_galaxy">Галактика</string>
-  <string name="pref_audio_visualizer_style_cuboid">Кубоид</string>
-  <string name="pref_audio_visualizer_galaxy_credit">Вдохновлено работой Zain Raza на CodePen</string>
-  <string name="pref_audio_ambient_mode_title">Эмбиент режим</string>
-  <string name="pref_audio_ambient_mode_summary">Отображать динамические цветовые градиенты на основе обложки альбома в плеере (отключается при включенном визуализаторе)</string>
-  <string name="pref_audio_wavy_seekbar_title">Волнообразная шкала перемотки</string>
-  <string name="pref_audio_wavy_seekbar_summary">Отображать плавную многослойную волновую анимацию визуализатора над шкалой перемотки</string>
   <string name="pref_audio_channels">Аудиоканалы</string>
   <string name="pref_audio_channels_auto">Авто</string>
   <string name="pref_audio_channels_auto_safe">Безопасный авто</string>
@@ -250,8 +211,6 @@
   <string name="pref_advanced_clear_fonts_cache">Очистить кэшированные шрифты</string>
   <string name="pref_advanced_cleared_fonts_cache">Кэшированные шрифты очищены</string>
   <string name="pref_thumbnail_cache_cleared">Кэш миниатюр очищен</string>
-  <string name="pref_thumbnail_cache_clear_failed">Не удалось очистить кэш миниатюр: %1$s</string>
-  <string name="pref_advanced_enable_recently_played_title">Недавно воспроизведённые</string>
   <string name="pref_anime4k_title">Масштабирование Anime4K</string>
   <string name="pref_anime4k_summary">Включить фильтр масштабирования Anime4K</string>
   <string name="pref_anime4k_incompatibility">Несовместимость Anime4K</string>
@@ -367,9 +326,6 @@
   <string name="swap_the_volume_and_brightness_slider">Поменять местами ползунки громкости и яркости</string>
   <string name="pref_player_display_reduce_player_animation">Уменьшить анимацию проигрывателя</string>
   <!-- Animation settings -->
-  <string name="pref_anim_controls_style">Стиль анимации элементов управления</string>
-  <string name="pref_anim_video_open">Анимация открытия видео</string>
-  <string name="pref_anim_speed">Скорость анимации</string>
   <string name="pref_player_display_hide_player_control_time">Скрывать время элементов управления проигрывателем</string>
   <string name="show_splash_ovals_on_double_tap_to_seek">Показывать волну при перемотке двойным касанием</string>
   <string name="show_time_on_double_tap_to_seek">Показывать время перемотки</string>
@@ -408,7 +364,6 @@
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Использовать точную перемотку</string>
   <!-- Folders Preferences -->
-  <string name="pref_folders_title">Папки</string>
   <!-- M3U Playlist Strings -->
   <!-- M3U Playlist Strings -->
   <string name="pref_player_safe_area_window_title">Окно безопасной области</string>
@@ -422,7 +377,6 @@
   <string name="pref_section_appearance">Оформление</string>
   <string name="pref_section_playback">Воспроизведение</string>
   <string name="pref_section_gestures_controls">Жесты и управление</string>
-  <string name="pref_section_storage">Хранилище</string>
   <string name="pref_section_advanced">Расширенные</string>
   <string name="pref_section_about">О приложении</string>
 
@@ -444,9 +398,6 @@
   <!-- Player - General Section                                   -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <string name="pref_section_general">Общие</string>
-  <string name="pref_playlist_mode_title">Включить переход к следующему/предыдущему</string>
-  <string name="pref_playlist_mode_summary">Показывать кнопки следующего/предыдущего для всех видео в папке</string>
-  <string name="pref_playlist_mode_summary_disabled">Воспроизводить видео по отдельности (выберите несколько для плейлиста)</string>
 
   <!-- Player - Seeking Section (additional)                      -->
   <string name="pref_online_skip_markers_title">Использовать сетевые метки пропуска</string>
@@ -686,7 +637,6 @@
   <string name="hdr_mode_linear_short">Линейный</string>
   <string name="hdr_mode_linear_description">Линейный HDR-конвейер через шейдеры Astra и Bottosson от hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR — вывод в режиме %1$s</string>
-  <string name="pref_section_support">Поддержка</string>
   <string name="pref_section_system">Система</string>
   <string name="ui_file_size">Размер файла</string>
   <string name="ui_duration">Длительность</string>
@@ -758,19 +708,15 @@
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">Сеть</string>
   <string name="ui_thumbnail">Миниатюра</string>
-  <string name="ui_play">Воспроизвести</string>
-  <string name="ui_port">Порт</string>
   <string name="ui_save">Сохранить</string>
   <string name="ui_done">Готово</string>
   <string name="ui_select_subtitle">Выбрать субтитры</string>
   <string name="ui_no_storage_devices_found">Устройства хранения не найдены</string>
   <string name="ui_no_folders_or_supported_files">Нет папок или поддерживаемых файлов</string>
-  <string name="ui_select">Выбрать</string>
   <string name="ui_resolution">Разрешение</string>
   <string name="ui_close">Закрыть</string>
   <string name="ui_copy">Копировать</string>
   <string name="ui_drag_to_reorder">Перетащите для изменения порядка</string>
-  <string name="ui_next">Далее</string>
   <string name="ui_mpv_documentation">Документация mpv</string>
   <string name="ui_search_commands_options_properties">Поиск команд, параметров и свойств...</string>
   <string name="ui_no_results_found">Результаты не найдены</string>
@@ -825,14 +771,10 @@
   <string name="ui_pan_zoom">Панорамирование и масштаб</string>
   <string name="ui_decrease_zoom">Уменьшить масштаб</string>
   <string name="ui_increase_zoom">Увеличить масштаб</string>
-  <string name="ui_by_ritesh_pandit">Автор: mpvZero Team</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">Информация об устройстве</string>
-  <string name="ui_support_link">Идентификатор UPI</string>
-  <string name="ui_visit_github">Поддержать</string>
   <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Основные зависимости с открытым исходным кодом, используемые Mpv∞.</string>
   <string name="ui_already_using_latest_version">Уже используется последняя версия</string>
-  <string name="ui_support_link_copied">Идентификатор UPI скопирован!</string>
   <string name="ui_refresh">Обновить</string>
   <string name="ui_unsaved_changes">Несохранённые изменения</string>
   <string name="ui_help">Справка</string>
@@ -862,8 +804,6 @@
   <string name="ui_script_file_not_found">Файл скрипта не найден</string>
   <string name="ui_portrait_playback_buttons">Кнопки воспроизведения в портретном режиме</string>
   <string name="ui_time_network_clock">Часы времени + сети</string>
-  <string name="ui_show_media_info_in_chooser">Показывать информацию о медиа в окне выбора</string>
-  <string name="ui_show_media_info_in_system">Показывать «Информацию о медиа» в системных меню "Открыть с помощью" / «Поделиться» для анализа файлов из других приложений.</string>
   <string name="ui_e_g_intro_opening_op">например: intro, opening, op</string>
   <string name="ui_e_g_outro_ending_ed">например: outro, ending, ed</string>
   <string name="ui_image_format">Формат изображения</string>
@@ -883,7 +823,6 @@
   <string name="ui_paid_sources">Платные источники</string>
   <string name="ui_restricted_requires_paid_api_key">Ограничено (требуется платный ключ API)</string>
   <string name="ui_restricted">Ограничено</string>
-  <string name="ui_yt_dlp_streaming">Потоковое воспроизведение yt-dlp</string>
   <string name="ui_video_title">Название видео</string>
   <string name="ui_1_06_chapter_1">1:06 • Глава 1</string>
   <string name="ui_downloading">Загрузка...</string>
@@ -896,7 +835,6 @@
   <string name="oss_okhttp_description">HTTP-клиент для поиска субтитров и других сетевых запросов.</string>
   <string name="oss_kotlinx_serialization_description">Сериализация JSON для данных API и внутренних моделей.</string>
   <string name="oss_accompanist_permissions_description">Вспомогательные средства Compose для разрешений Android во время выполнения.</string>
-  <string name="oss_mediainfo_android_description">Анализ медиа для кодеков, субтитров и технических метаданных.</string>
   <string name="oss_fsaf_description">Средства Storage Access Framework для операций с файлами и деревьями.</string>
   <string name="oss_truetype_parser_description">Читает метаданные шрифтов для работы со шрифтами субтитров.</string>
   <string name="oss_compose_preference_description">Компоненты интерфейса настроек для экранов параметров.</string>
@@ -915,12 +853,9 @@
   <string name="oss_google_material_description">Компоненты Material Design и библиотека тем.</string>
   <string name="oss_material_symbols_description">Набор значков Material Symbols для Compose.</string>
   <string name="oss_kotlinx_immutable_collections_description">Интерфейсы неизменяемых коллекций для Kotlin.</string>
-  <string name="oss_curl_android_description">Статическая библиотека libcurl для Android NDK.</string>
-  <string name="oss_desugar_jdk_libs_description">Десугаринг API Java 8+ для старых версий Android.</string>
   <string name="oss_androidx_activity_description">Связывает Activity Android и API с учётом жизненного цикла с Compose.</string>
   <string name="oss_mpv_description">Нативный движок воспроизведения аудио, видео и субтитров.</string>
   <string name="oss_mpvlib_android_description">Android-обёртка libmpv для сборок Standard, No-Vulkan и FongMi.</string>
-  <string name="oss_quickjs_ng_description">Встроенный движок JavaScript для решения задач yt-dlp.</string>
   <string name="filter_preset_none">Нет</string>
   <string name="filter_preset_vivid">Яркий</string>
   <string name="filter_preset_warm_tone">Тёплый тон</string>
@@ -998,7 +933,6 @@
   <string name="pref_audio_drc_title">Сжатие динамического диапазона (DRC)</string>
   <string name="pref_audio_drc_summary">Сжимать динамический диапазон звука, чтобы усилить тихие диалоги и приглушить громкие звуки</string>
   <string name="pref_audio_effects">Обработка звука</string>
-  <string name="pref_audio_visualizer_style_particle">Частицы</string>
   <plurals name="ui_torrent_group_file_count">
     <item quantity="one">%1$d воспроизводимый файл</item>
     <item quantity="other">%1$d воспроизводимых файлов</item>
@@ -1007,13 +941,9 @@
     <item quantity="one">%1$d воспроизводимый файл</item>
     <item quantity="other">%1$d воспроизводимых файлов</item>
   </plurals>
-    <string name="pref_autoplay_next_audio_title">Автовоспроизведение следующего аудио</string>
-    <string name="pref_autoplay_next_audio_summary">Автоматически воспроизводить следующий аудиотрек по окончании текущего</string>
-    <string name="pref_autoplay_next_audio_summary_disabled">Оставаться на текущем аудиотреке по его окончании</string>
     <string name="pref_enable_hls_proxy_title">Включить прокси потоковой передачи HLS</string>
     <string name="pref_enable_hls_proxy_summary">Нормализовать адаптивные манифесты HLS и обрабатывать раздельные аудио/видеопотоки</string>
     <string name="ui_buffering">Буферизация…</string>
-    <string name="ui_media">Медиа</string>
   <string name="pref_mpv_conf_overrides_title">Управление параметрами mpv.conf</string>
   <string name="pref_mpv_conf_overrides_summary_app_owned">Приложение управляет всеми поддерживаемыми параметрами воспроизведения (рекомендуется)</string>
   <string name="pref_mpv_conf_overrides_summary_config_owned">Выбрано групп: %1$d, параметров приложения передано mpv.conf: %2$d</string>
@@ -1050,24 +980,8 @@
 
   <!-- Clip -->
   <string name="clip_action">Создать клип</string>
-  <string name="clip_options">Параметры клипа</string>
-  <string name="clip_crop">Кадрировать</string>
-  <string name="clip_save">Сохранить клип</string>
-  <string name="clip_cancel">Отмена</string>
-  <string name="clip_done">Готово</string>
-  <string name="clip_crop_size">Кадрирование: %1$d × %2$d</string>
-  <string name="clip_crop_full_frame">Кадрирование: Весь кадр</string>
-  <string name="clip_select_crop">Измените размер рамки, чтобы оставить нужную область</string>
-  <string name="clip_exporting">Создание клипа… %1$d%%</string>
-  <string name="clip_cancelling">Отмена создания клипа…</string>
-  <string name="clip_saved">%1$s сохранён</string>
-  <string name="clip_invalid_range">Отметьте конечную точку после начальной</string>
-  <string name="clip_video_unavailable">Размеры видео пока недоступны</string>
-  <string name="clip_export_busy">Другой клип уже создаётся</string>
-  <string name="clip_export_failed">Не удалось создать клип: %1$s</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_install_stable">Установить стабильную версию</string>
   <string name="ui_checking_yt_dlp">Проверка yt-dlp</string>
   <string name="ui_yt_dlp_not_installed">yt-dlp не установлен</string>
   <string name="ui_yt_dlp_stable_release">Стабильная версия</string>
@@ -1093,8 +1007,6 @@
   <string name="player_video_quality">Качество видео</string>
   <string name="player_video_quality_summary">Выберите доступное качество для этого потока.</string>
   <string name="player_video_quality_button">Качество видео</string>
-  <string name="pref_player_web_stream_links_title">Открывать ссылки стриминговых сайтов</string>
-  <string name="pref_player_web_stream_links_summary">Предлагать Mpv∞ для ссылок YouTube, Vimeo, Twitch, Odysee и Bilibili. Отключите, чтобы их открывали собственные приложения.</string>
 
   <!-- Downloads -->
 </resources>

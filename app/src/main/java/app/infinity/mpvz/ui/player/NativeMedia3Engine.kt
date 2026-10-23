@@ -754,23 +754,33 @@ class NativeMedia3Engine(
     attachedView?.subtitleView?.visibility = if (visible) View.VISIBLE else View.GONE
   }
 
-  fun addExternalSubtitle(uri: Uri, select: Boolean): Boolean {
-    val current = player.currentMediaItem ?: return false
-    val localConfiguration = current.localConfiguration ?: return false
+  fun createSubtitleConfiguration(
+    uri: Uri,
+    select: Boolean = false,
+    label: String? = null,
+    language: String? = null,
+  ): MediaItem.SubtitleConfiguration {
     val mimeType = when (subtitleExtension(uri)) {
       "srt" -> "application/x-subrip"
       "vtt" -> "text/vtt"
       "ass", "ssa" -> "text/x-ssa"
       else -> "text/plain"
     }
-    val configuration = MediaItem.SubtitleConfiguration.Builder(uri)
+    return MediaItem.SubtitleConfiguration.Builder(uri)
       .setId("external:$uri")
-      // Keep the identity available even when an ASS/SSA parser replaces the Format id.
-      // The snapshot code uses this marker to keep the track in the external section only.
-      .setLabel("external:$uri")
+      .setLabel(label ?: "external:$uri")
       .setMimeType(mimeType)
+      .apply {
+        if (!language.isNullOrBlank()) setLanguage(language)
+      }
       .setSelectionFlags(if (select) C.SELECTION_FLAG_DEFAULT else 0)
       .build()
+  }
+
+  fun addExternalSubtitle(uri: Uri, select: Boolean): Boolean {
+    val current = player.currentMediaItem ?: return false
+    val localConfiguration = current.localConfiguration ?: return false
+    val configuration = createSubtitleConfiguration(uri, select)
     if (localConfiguration.subtitleConfigurations.any { it.id == configuration.id }) {
       if (select) {
         pendingExternalSelectionId = configuration.id
@@ -852,6 +862,7 @@ class NativeMedia3Engine(
       .setOverrideForType(TrackSelectionOverride(match.first.mediaTrackGroup, match.second))
       .build()
     selectedNativeSubtitleKey = player.currentTracks.groups.indexOf(match.first) to match.second
+    hasAutoSelectedSubtitleForCurrentItem = true
     pendingExternalSelectionId = null
     publishSnapshot()
   }
@@ -1014,6 +1025,7 @@ class NativeMedia3Engine(
     mimeType: String? = null,
     sourceUri: Uri? = null,
     sourceHint: String = "",
+    subtitleConfigurations: List<MediaItem.SubtitleConfiguration> = emptyList(),
   ) {
     _hasRenderedFirstFrame.value = false
     endedUri = null
@@ -1037,7 +1049,9 @@ class NativeMedia3Engine(
     // first audio-only item after a video transition.
     player.volume = 1f
     setSubtitlePresentationVisible(true)
-    pendingExternalSelectionId = null
+    pendingExternalSelectionId = subtitleConfigurations.firstOrNull {
+      (it.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0
+    }?.id
     selectedNativeSubtitleSelection = null
     externalAssEnabled.clear()
     // Uri.parse("/storage/...") has no scheme. Make local paths explicit so Media3 selects
@@ -1086,6 +1100,9 @@ class NativeMedia3Engine(
             ?.takeIf { it.isNotBlank() && !it.equals("application/octet-stream", true) && !it.endsWith("/*") }
           (declaredMime ?: nativeContainerMimeType(mediaUri) ?: sourceUri?.let(::nativeContainerMimeType))
             ?.let(::setMimeType)
+          if (subtitleConfigurations.isNotEmpty()) {
+            setSubtitleConfigurations(subtitleConfigurations)
+          }
         }
         .build()
     Log.i(logTag, "ass-media extractor enabled uri=$mediaUri")

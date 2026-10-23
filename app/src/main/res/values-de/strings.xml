@@ -15,32 +15,10 @@
   <string name="pref_appearance_darkmode_dark">Dunkel</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED-Schwarzmodus</string>
   <string name="pref_appearance_amoled_mode_summary">Für dunkle Designs einen vollständig schwarzen Hintergrund verwenden</string>
-  <string name="pref_appearance_system_font_title">Systemschrift verwenden</string>
-  <string name="pref_appearance_system_font_summary">In Mpv∞ die Android-Systemschrift anstelle von Google Sans Flex verwenden</string>
-  <string name="pref_appearance_unlimited_name_lines_title">Vollständige Namen anzeigen</string>
   <string name="pref_appearance_hide_player_buttons_background_title">Hintergrund der Player-Schaltflächen ausblenden</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Immer dunkle Hintergründe für Player-Schaltflächen verwenden</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Hintergründe der Player-Steuerelemente im hellen, dunklen und automatischen Design dunkel halten</string>
   <string name="pref_appearance_hide_player_buttons_background_summary">Den Hintergrund aller Player-Steuerungsschaltflächen ausblenden</string>
-  <string name="pref_appearance_category_thumbnails">Vorschaubilder</string>
-  <string name="pref_appearance_show_unplayed_old_video_label_title">Kennzeichnung für neue, nicht abgespielte Videos anzeigen</string>
-  <string name="pref_appearance_unplayed_old_video_days_title">Tagesgrenze für die Kennzeichnung neuer Videos</string>
-  <string name="pref_appearance_show_video_thumbnails_title">Video-Vorschaubilder anzeigen</string>
-  <string name="pref_appearance_thumbnail_generation_title">Strategie zur Vorschaubilderstellung</string>
-  <string name="pref_appearance_thumbnail_generation_summary">Festlegen, wie Vorschaubilder erstellt werden, einschließlich eingebettetem Cover oder einer bestimmten Bildposition</string>
-  <string name="pref_appearance_thumbnail_generation_change_title">Vorschaubild-Strategie ändern?</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">Dadurch werden zwischengespeicherte Vorschaubilder gelöscht. Beim Durchsuchen werden neue Vorschaubilder mit der ausgewählten Strategie erstellt.</string>
-  <string name="pref_appearance_thumbnail_quality_title">Vorschaubildqualität</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Maximale Vorschaubildauflösung: %1$d px. Eine höhere Qualität benötigt mehr Speicher und kann langsamer erstellt werden.</string>
-  <string name="pref_appearance_thumbnail_position_title">Bildposition des Vorschaubilds</string>
-  <string name="pref_appearance_thumbnail_position_summary">Bild bei %1$d%% des Videos erfassen</string>
-  <string name="pref_appearance_show_network_thumbnails_title">Netzwerk-Vorschaubilder anzeigen (experimentell)</string>
-  <string name="pref_appearance_show_network_thumbnails_summary">Vorschaubilder für Netzwerkstreams erstellen (kann den Datenverbrauch in Mobilfunknetzen erhöhen)</string>
-  <string name="pref_appearance_theme_picker_label">App-Design</string>
-  <string name="pref_appearance_auto_scroll_title">Automatisch zum zuletzt abgespielten Video scrollen</string>
-  <string name="pref_appearance_watched_threshold_title">Gesehen-Schwellenwert</string>
-  <string name="pref_appearance_watched_threshold_summary">Video als gesehen markieren, wenn die Wiedergabe %d%% erreicht</string>
-  <string name="pref_appearance_watched_threshold_summary_infinite">Nie automatisch als gesehen markieren (Unendlich)</string>
   <string name="toast_playback_load_failed">Dieser Link konnte nicht geladen werden</string>
   <!-- Theme names -->
   <string name="theme_default">Standard</string>
@@ -52,9 +30,6 @@
   <string name="settings_search_no_results">Keine Einstellungen gefunden</string>
   <string name="settings_search_title">Suchen</string>
   <!-- Player Preferences Hardcoded -->
-  <string name="pref_autoplay_next_video_title">Nächstes Video automatisch wiedergeben</string>
-  <string name="pref_autoplay_next_video_summary">Nach Ende des aktuellen Videos automatisch das nächste wiedergeben</string>
-  <string name="pref_autoplay_next_video_summary_disabled">Nach dem Ende beim aktuellen Video bleiben</string>
   <string name="pref_auto_pip_title">Automatisches Bild-im-Bild</string>
   <string name="pref_auto_pip_summary">Beim Drücken von Startseite oder Zurück automatisch in den PIP-Modus wechseln</string>
   <string name="pref_auto_pip_home_only_title">PIP nur bei Home-Geste</string>
@@ -109,7 +84,6 @@
   <string name="pref_player_seeking_title">Suchen</string>
   <string name="pref_player_close_after_eof">Nach Wiedergabeende schließen</string>
   <string name="pref_player_remember_brightness">Displayhelligkeit merken</string>
-  <string name="pref_player_gestures">Gesten</string>
   <string name="pref_player_gestures_brightness">Helligkeitsgesten</string>
   <string name="pref_player_gestures_volume">Lautstärkegesten</string>
   <string name="pref_player_gestures_pinch_to_zoom">Zum Zoomen zusammenziehen</string>
@@ -122,11 +96,9 @@
   <string name="pref_player_gestures_horizontal_swipe_sensitivity">Empfindlichkeit für horizontales Wischen</string>
   <string name="pref_player_gestures_horizontal_swipe_sensitivity_summary">Festlegen, welche Strecke pro Wischbewegung zurückgelegt wird</string>
   <string name="pref_player_gestures_hold_for_multiple_speed">Für mehrfache x-Geschwindigkeit gedrückt halten</string>
-  <string name="pref_player_controls">Steuerelemente</string>
   <string name="pref_player_controls_allow_gestures_in_panels">Gesten in Bedienfeldern zulassen</string>
   <string name="pref_player_controls_show_loading_circle">Ladekreis anzeigen</string>
   <string name="pref_player_display_show_status_bar">Systemstatusleiste mit Steuerelementen anzeigen</string>
-  <string name="pref_player_display">Anzeige</string>
   <string name="pref_gesture">Gesten</string>
   <string name="pref_gesture_summary">Doppeltipp, Mediensteuerung</string>
   <string name="pref_gesture_double_tap_title">Doppeltipp</string>
@@ -156,7 +128,6 @@ Rechts: MBTN_RIGHT_DBL</string>
 Zurück: PREV
 Wiedergabe/Pause: PLAYPAUSE
 Weiter: NEXT</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_title">Vorschaubild zum Auswählen antippen</string>
   <string name="pref_decoder">Decoder</string>
   <string name="pref_decoder_summary">Hardware-Decodierung, Pixelformat, Debanding</string>
   <string name="pref_decoder_profile_title">MPV-Profil</string>
@@ -203,20 +174,10 @@ Weiter: NEXT</string>
   <string name="toast_subtitles_cleared">Untertitel-Downloads gelöscht</string>
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Bevorzugte Sprachen, Audiokanäle und Tonhöhenkorrektur</string>
-  <string name="pref_audio_orientation_title">Audioplayer-Ausrichtung</string>
   <string name="pref_audio_pitch_correction_title">Tonhöhenkorrektur aktivieren</string>
   <string name="pref_audio_pitch_correction_summary">Verhindert hohe Tonlagen bei schneller und tiefe Tonlagen bei langsamer Wiedergabe</string>
   <string name="pref_audio_volume_normalization_title">Lautstärkenormalisierung</string>
   <string name="pref_audio_volume_normalization_summary">Lautstärke automatisch anpassen, um eine gleichmäßige Lautheit beizubehalten</string>
-  <string name="pref_audio_visualizer_style_title">Visualisierungsstil</string>
-  <string name="pref_audio_visualizer_style_blob">Blob</string>
-  <string name="pref_audio_visualizer_style_galaxy">Galaxie</string>
-  <string name="pref_audio_visualizer_style_cuboid">Quader</string>
-  <string name="pref_audio_visualizer_galaxy_credit">Inspiriert von Zain Raza auf CodePen</string>
-  <string name="pref_audio_ambient_mode_title">Ambient-Modus</string>
-  <string name="pref_audio_ambient_mode_summary">Dynamische Farbverläufe aus dem Album-Cover im Musikplayer anzeigen (deaktiviert, wenn der Visualizer aktiv ist)</string>
-  <string name="pref_audio_wavy_seekbar_title">Wellenförmige Suchleiste</string>
-  <string name="pref_audio_wavy_seekbar_summary">Flüssige, mehrschichtige wellenförmige Visualizer-Animation über der Suchleiste anzeigen</string>
   <string name="pref_audio_channels">Audiokanäle</string>
   <string name="pref_audio_channels_auto">Automatisch</string>
   <string name="pref_audio_channels_auto_safe">Automatisch sicher</string>
@@ -250,8 +211,6 @@ Weiter: NEXT</string>
   <string name="pref_advanced_clear_fonts_cache">Zwischengespeicherte Schriftarten löschen</string>
   <string name="pref_advanced_cleared_fonts_cache">Zwischengespeicherte Schriftarten gelöscht</string>
   <string name="pref_thumbnail_cache_cleared">Vorschaubild-Cache gelöscht</string>
-  <string name="pref_thumbnail_cache_clear_failed">Vorschaubild-Cache konnte nicht gelöscht werden: %1$s</string>
-  <string name="pref_advanced_enable_recently_played_title">Zuletzt wiedergegeben</string>
   <string name="pref_anime4k_title">Anime4K-Hochskalierung</string>
   <string name="pref_anime4k_summary">Anime4K-Hochskalierungsfilter aktivieren</string>
   <string name="pref_anime4k_incompatibility">Anime4K-Inkompatibilität</string>
@@ -367,9 +326,6 @@ Weiter: NEXT</string>
   <string name="swap_the_volume_and_brightness_slider">Lautstärke- und Helligkeitsregler vertauschen</string>
   <string name="pref_player_display_reduce_player_animation">Player-Animationen reduzieren</string>
   <!-- Animation settings -->
-  <string name="pref_anim_controls_style">Animationsstil der Steuerelemente</string>
-  <string name="pref_anim_video_open">Animation beim Öffnen eines Videos</string>
-  <string name="pref_anim_speed">Animationsgeschwindigkeit</string>
   <string name="pref_player_display_hide_player_control_time">Zeit der Player-Steuerung ausblenden</string>
   <string name="show_splash_ovals_on_double_tap_to_seek">Wellenanimation bei Doppeltipp-Suche anzeigen</string>
   <string name="show_time_on_double_tap_to_seek">Suchzeit anzeigen</string>
@@ -408,7 +364,6 @@ Weiter: NEXT</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Präzise Suche verwenden</string>
   <!-- Folders Preferences -->
-  <string name="pref_folders_title">Ordner</string>
   <!-- M3U Playlist Strings -->
   <!-- M3U Playlist Strings -->
   <string name="pref_player_safe_area_window_title">Sicherheitsbereich</string>
@@ -422,7 +377,6 @@ Weiter: NEXT</string>
   <string name="pref_section_appearance">Darstellung</string>
   <string name="pref_section_playback">Wiedergabe</string>
   <string name="pref_section_gestures_controls">Gesten und Steuerelemente</string>
-  <string name="pref_section_storage">Speicher</string>
   <string name="pref_section_advanced">Erweitert</string>
   <string name="pref_section_about">Über</string>
 
@@ -444,9 +398,6 @@ Weiter: NEXT</string>
   <!-- Player - General Section                                   -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <string name="pref_section_general">Allgemein</string>
-  <string name="pref_playlist_mode_title">Navigation zum nächsten/vorherigen Element aktivieren</string>
-  <string name="pref_playlist_mode_summary">Schaltflächen „Nächstes/Vorheriges“ für alle Videos im Ordner anzeigen</string>
-  <string name="pref_playlist_mode_summary_disabled">Videos einzeln wiedergeben (mehrere für eine Wiedergabeliste auswählen)</string>
 
   <!-- Player - Seeking Section (additional)                      -->
   <string name="pref_online_skip_markers_title">Online-Sprungmarken verwenden</string>
@@ -686,7 +637,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="hdr_mode_linear_short">Linear</string>
   <string name="hdr_mode_linear_description">Lineare HDR-Pipeline über die Astra- und Bottosson-Shader von hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR – Ausgabe im Modus %1$s</string>
-  <string name="pref_section_support">Support</string>
   <string name="pref_section_system">System</string>
   <string name="ui_file_size">Dateigröße</string>
   <string name="ui_duration">Dauer</string>
@@ -758,19 +708,15 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">Netzwerk</string>
   <string name="ui_thumbnail">Miniaturbild</string>
-  <string name="ui_play">Abspielen</string>
-  <string name="ui_port">Port</string>
   <string name="ui_save">Speichern</string>
   <string name="ui_done">Fertig</string>
   <string name="ui_select_subtitle">Untertitel auswählen</string>
   <string name="ui_no_storage_devices_found">Keine Speichergeräte gefunden</string>
   <string name="ui_no_folders_or_supported_files">Keine Ordner oder unterstützten Dateien</string>
-  <string name="ui_select">Auswählen</string>
   <string name="ui_resolution">Auflösung</string>
   <string name="ui_close">Schließen</string>
   <string name="ui_copy">Kopieren</string>
   <string name="ui_drag_to_reorder">Zum Sortieren ziehen</string>
-  <string name="ui_next">Weiter</string>
   <string name="ui_mpv_documentation">mpv-Dokumentation</string>
   <string name="ui_search_commands_options_properties">Befehle, Optionen und Eigenschaften suchen...</string>
   <string name="ui_no_results_found">Keine Ergebnisse gefunden</string>
@@ -825,14 +771,10 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_pan_zoom">Verschieben &amp; Zoomen</string>
   <string name="ui_decrease_zoom">Verkleinern</string>
   <string name="ui_increase_zoom">Vergrößern</string>
-  <string name="ui_by_ritesh_pandit">Von mpvZero Team</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">Geräteinformationen</string>
-  <string name="ui_support_link">UPI-ID</string>
-  <string name="ui_visit_github">Unterstützung senden</string>
   <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Von Mpv∞ verwendete zentrale Open-Source-Abhängigkeiten.</string>
   <string name="ui_already_using_latest_version">Die neueste Version wird bereits verwendet</string>
-  <string name="ui_support_link_copied">UPI-ID kopiert!</string>
   <string name="ui_refresh">Aktualisieren</string>
   <string name="ui_unsaved_changes">Ungespeicherte Änderungen</string>
   <string name="ui_help">Hilfe</string>
@@ -862,8 +804,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_script_file_not_found">Skriptdatei nicht gefunden</string>
   <string name="ui_portrait_playback_buttons">Wiedergabeschaltflächen im Hochformat</string>
   <string name="ui_time_network_clock">Zeit- + Netzwerkuhr</string>
-  <string name="ui_show_media_info_in_chooser">Medieninformationen in der Auswahl anzeigen</string>
-  <string name="ui_show_media_info_in_system">Medieninformationen in den Systemmenüs "Öffnen mit" / Teilen anzeigen, um Dateien aus anderen Apps zu analysieren.</string>
   <string name="ui_e_g_intro_opening_op">z. B. intro, opening, op</string>
   <string name="ui_e_g_outro_ending_ed">z. B. outro, ending, ed</string>
   <string name="ui_image_format">Bildformat</string>
@@ -883,7 +823,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_paid_sources">Kostenpflichtige Quellen</string>
   <string name="ui_restricted_requires_paid_api_key">Eingeschränkt (kostenpflichtiger API-Schlüssel erforderlich)</string>
   <string name="ui_restricted">Eingeschränkt</string>
-  <string name="ui_yt_dlp_streaming">yt-dlp-Streaming</string>
   <string name="ui_video_title">Videotitel</string>
   <string name="ui_1_06_chapter_1">1:06 • Kapitel 1</string>
   <string name="ui_downloading">Wird heruntergeladen...</string>
@@ -896,7 +835,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="oss_okhttp_description">HTTP-Client für Untertitelsuche und andere Netzwerkanfragen.</string>
   <string name="oss_kotlinx_serialization_description">JSON-Serialisierung für API-Nutzdaten und interne Modelle.</string>
   <string name="oss_accompanist_permissions_description">Compose-Hilfen für Android-Laufzeitberechtigungen.</string>
-  <string name="oss_mediainfo_android_description">Medienanalyse für Codecs, Untertitel und technische Metadaten.</string>
   <string name="oss_fsaf_description">Storage-Access-Framework-Hilfen für Datei- und Baumoperationen.</string>
   <string name="oss_truetype_parser_description">Liest Schriftmetadaten für die Verwaltung von Untertitelschriftarten.</string>
   <string name="oss_compose_preference_description">Einstellungs-UI-Komponenten für die Einstellungsbildschirme.</string>
@@ -915,12 +853,9 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="oss_google_material_description">Material-Design-Komponenten und Designbibliothek.</string>
   <string name="oss_material_symbols_description">Material-Symbols-Symbolsatz für Compose.</string>
   <string name="oss_kotlinx_immutable_collections_description">Unveränderliche Sammlungsschnittstellen für Kotlin.</string>
-  <string name="oss_curl_android_description">Statische libcurl-Bibliothek für Android NDK.</string>
-  <string name="oss_desugar_jdk_libs_description">Desugaring von Java-8+-APIs für ältere Android-Versionen.</string>
   <string name="oss_androidx_activity_description">Verbindet Android-Aktivitäten und lebenszyklusbewusste APIs mit Compose.</string>
   <string name="oss_mpv_description">Native Medienwiedergabe-Engine für Audio, Video und Untertitel.</string>
   <string name="oss_mpvlib_android_description">Android-libmpv-Wrapper für die Standard-, No-Vulkan- und FongMi-Builds.</string>
-  <string name="oss_quickjs_ng_description">Eingebettete JavaScript-Engine zum Lösen von yt-dlp-Herausforderungen.</string>
   <string name="filter_preset_none">Keine</string>
   <string name="filter_preset_vivid">Lebendig</string>
   <string name="filter_preset_warm_tone">Warmer Farbton</string>
@@ -998,7 +933,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_audio_drc_title">Dynamikbereich-Kompression (DRC)</string>
   <string name="pref_audio_drc_summary">Dynamikbereich des Tons komprimieren, um leise Dialoge zu verstärken und laute Geräusche zu dämpfen</string>
   <string name="pref_audio_effects">Audioverarbeitung</string>
-  <string name="pref_audio_visualizer_style_particle">Partikel</string>
   <plurals name="ui_torrent_group_file_count">
     <item quantity="one">%1$d abspielbare Datei</item>
     <item quantity="other">%1$d abspielbare Dateien</item>
@@ -1007,13 +941,9 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
     <item quantity="one">%1$d abspielbare Datei</item>
     <item quantity="other">%1$d abspielbare Dateien</item>
   </plurals>
-    <string name="pref_autoplay_next_audio_title">Nächstes Audio automatisch abspielen</string>
-    <string name="pref_autoplay_next_audio_summary">Nächsten Audiotrack automatisch abspielen, wenn der aktuelle endet</string>
-    <string name="pref_autoplay_next_audio_summary_disabled">Beim aktuellen Audiotrack bleiben, wenn er endet</string>
     <string name="pref_enable_hls_proxy_title">HLS-Streaming-Proxy aktivieren</string>
     <string name="pref_enable_hls_proxy_summary">Adaptive HLS-Manifeste normalisieren und getrennte Audio-/Videostreams verarbeiten</string>
     <string name="ui_buffering">Puffern…</string>
-    <string name="ui_media">Medien</string>
   <string name="pref_mpv_conf_overrides_title">Eigentümerschaft von mpv.conf-Optionen</string>
   <string name="pref_mpv_conf_overrides_summary_app_owned">Die App steuert alle unterstützten Wiedergabeoptionen (empfohlen)</string>
   <string name="pref_mpv_conf_overrides_summary_config_owned">%1$d Gruppen ausgewählt, %2$d App-Optionen an mpv.conf übergeben</string>
@@ -1050,24 +980,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
 
   <!-- Clip -->
   <string name="clip_action">Clip erstellen</string>
-  <string name="clip_options">Clip-Optionen</string>
-  <string name="clip_crop">Zuschneiden</string>
-  <string name="clip_save">Clip speichern</string>
-  <string name="clip_cancel">Abbrechen</string>
-  <string name="clip_done">Fertig</string>
-  <string name="clip_crop_size">Zuschnitt: %1$d × %2$d</string>
-  <string name="clip_crop_full_frame">Zuschnitt: Vollbild</string>
-  <string name="clip_select_crop">Rahmen auf den gewünschten Bereich anpassen</string>
-  <string name="clip_exporting">Clip wird erstellt… %1$d%%</string>
-  <string name="clip_cancelling">Clip wird abgebrochen…</string>
-  <string name="clip_saved">%1$s gespeichert</string>
-  <string name="clip_invalid_range">Markiere einen Endpunkt nach dem Startpunkt</string>
-  <string name="clip_video_unavailable">Videoabmessungen sind noch nicht verfügbar</string>
-  <string name="clip_export_busy">Ein anderer Clip wird bereits erstellt</string>
-  <string name="clip_export_failed">Clip fehlgeschlagen: %1$s</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_install_stable">Stabile Version installieren</string>
   <string name="ui_checking_yt_dlp">yt-dlp wird geprüft</string>
   <string name="ui_yt_dlp_not_installed">yt-dlp ist nicht installiert</string>
   <string name="ui_yt_dlp_stable_release">Stabile Version</string>
@@ -1093,8 +1007,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="player_video_quality">Videoqualität</string>
   <string name="player_video_quality_summary">Wähle eine verfügbare Qualität für diesen Stream.</string>
   <string name="player_video_quality_button">Videoqualität</string>
-  <string name="pref_player_web_stream_links_title">Streaming-Website-Links öffnen</string>
-  <string name="pref_player_web_stream_links_summary">Mpv∞ für Links von YouTube, Vimeo, Twitch, Odysee und Bilibili anbieten. Deaktivieren, damit deren eigene Apps sie öffnen.</string>
 
   <!-- Downloads -->
 </resources>

@@ -6,15 +6,6 @@
     android:background="@android:color/black"
     android:fitsSystemWindows="false">
 
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/ambient_background"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <app.infinity.mpvz.ui.player.MPVView
         android:id="@+id/player"
         android:layout_width="match_parent"
@@ -41,15 +32,6 @@
         android:id="@+id/controls"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <FrameLayout
-        android:id="@+id/clip_overlay_host"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

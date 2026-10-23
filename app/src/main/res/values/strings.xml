@@ -15,33 +15,11 @@
   <string name="pref_appearance_darkmode_dark">Dark</string>
   <string name="pref_appearance_amoled_mode_title">AMOLED Black Mode</string>
   <string name="pref_appearance_amoled_mode_summary">Use pure black background for dark themes</string>
-  <string name="pref_appearance_system_font_title">Use system font</string>
-  <string name="pref_appearance_system_font_summary">Use the Android system typeface across Mpv∞ instead of Google Sans Flex</string>
-  <string name="pref_appearance_unlimited_name_lines_title">Show full names</string>
   <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
   <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Always use dark player button backgrounds</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Keep player control button backgrounds dark in light, dark, and automatic themes</string>
-  <string name="pref_appearance_category_thumbnails">Thumbnails</string>
-  <string name="pref_appearance_show_unplayed_old_video_label_title">Show label for new unplayed videos</string>
-  <string name="pref_appearance_unplayed_old_video_days_title">Days threshold for new video label</string>
-  <string name="pref_appearance_show_video_thumbnails_title">Show video thumbnails</string>
-  <string name="pref_appearance_thumbnail_generation_title">Thumbnail generation strategy</string>
-  <string name="pref_appearance_thumbnail_generation_summary">Choose how thumbnails are generated, including embedded artwork or a specific frame position</string>
-  <string name="pref_appearance_thumbnail_generation_change_title">Change thumbnail strategy?</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">This will clear cached thumbnails. New thumbnails will be generated with the selected strategy as you browse.</string>
-  <string name="pref_appearance_thumbnail_quality_title">Thumbnail quality</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Maximum thumbnail resolution: %1$d px. Higher quality uses more storage and may generate more slowly.</string>
-  <string name="pref_appearance_thumbnail_position_title">Thumbnail frame position</string>
-  <string name="pref_appearance_thumbnail_position_summary">Capture the frame at %1$d%% of the video</string>
-  <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails</string>
-  <string name="pref_appearance_show_network_thumbnails_summary">Generate thumbnails for network streams (May increase data usage on mobile networks)</string>
   <string name="pref_section_network">Network</string>
-  <string name="pref_appearance_theme_picker_label">App Theme</string>
-  <string name="pref_appearance_auto_scroll_title">Auto-scroll to last played</string>
-  <string name="pref_appearance_watched_threshold_title">Watched threshold</string>
-  <string name="pref_appearance_watched_threshold_summary">Mark video as watched when playback reaches %d%%</string>
-  <string name="pref_appearance_watched_threshold_summary_infinite">Never auto-mark as watched (Infinitely)</string>
   <string name="player_video_quality">Video Quality</string>
   <string name="player_video_quality_summary">Choose an available quality for this stream.</string>
   <string name="player_video_quality_button">Video quality</string>
@@ -56,12 +34,6 @@
   <string name="settings_search_no_results">No settings found</string>
   <string name="settings_search_title">Search</string>
   <!-- Player Preferences Hardcoded -->
-  <string name="pref_autoplay_next_video_title">Autoplay next video</string>
-  <string name="pref_autoplay_next_video_summary">Automatically play next video when current ends</string>
-  <string name="pref_autoplay_next_video_summary_disabled">Stay on current video when it ends</string>
-  <string name="pref_autoplay_next_audio_title">Autoplay next audio</string>
-  <string name="pref_autoplay_next_audio_summary">Automatically play next audio track when current ends</string>
-  <string name="pref_autoplay_next_audio_summary_disabled">Stay on current audio track when it ends</string>
   <string name="pref_auto_pip_title">Auto Picture-in-Picture</string>
   <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
   <string name="pref_auto_pip_home_only_title">PiP on home gesture only</string>
@@ -120,7 +92,6 @@
   <string name="pref_player_seeking_title">Seeking</string>
   <string name="pref_player_close_after_eof">Close after the end of playback</string>
   <string name="pref_player_remember_brightness">Remember display brightness</string>
-  <string name="pref_player_gestures">Gestures</string>
   <string name="pref_player_gestures_brightness">Brightness gestures</string>
   <string name="pref_player_gestures_volume">Volume gestures</string>
   <string name="pref_player_gestures_pinch_to_zoom">Pinch to zoom</string>
@@ -133,11 +104,9 @@
   <string name="pref_player_gestures_horizontal_swipe_sensitivity">Horizontal swipe sensitivity</string>
   <string name="pref_player_gestures_horizontal_swipe_sensitivity_summary">Adjust how much distance is covered per swipe</string>
   <string name="pref_player_gestures_hold_for_multiple_speed">Hold for multi - x speed</string>
-  <string name="pref_player_controls">Controls</string>
   <string name="pref_player_controls_allow_gestures_in_panels">Allow gestures in panels</string>
   <string name="pref_player_controls_show_loading_circle">Show loading circle</string>
   <string name="pref_player_display_show_status_bar">Show system status bar with controls</string>
-  <string name="pref_player_display">Display</string>
   <string name="pref_gesture">Gestures</string>
   <string name="pref_gesture_summary">Double tap, media controls</string>
   <string name="pref_gesture_double_tap_title">Double tap</string>
@@ -159,7 +128,6 @@
   <string name="pref_gesture_media_play">Play/Pause</string>
   <string name="pref_gesture_media_next">Next</string>
   <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:\n\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_title">Tap thumbnail to select</string>
   <string name="pref_decoder">Decoder</string>
   <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
   <string name="pref_decoder_engine_title">Playback engine</string>
@@ -207,7 +175,6 @@
   <string name="toast_subtitles_cleared">Subtitle downloads cleared</string>
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Ambient mode, visualizer style, audio channels, pitch correction</string>
-  <string name="pref_audio_orientation_title">Audio player orientation</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
   <string name="pref_audio_pitch_correction_summary">Prevents the audio from becoming high-pitched at faster speeds and low-pitched at slower speeds</string>
   <string name="pref_audio_volume_normalization_title">Volume normalization</string>
@@ -215,17 +182,7 @@
   <string name="pref_audio_drc_title">Dynamic range compression (DRC)</string>
   <string name="pref_audio_drc_summary">Compress audio dynamic range to boost quiet dialogue and tame loud sounds</string>
   <string name="pref_audio_effects">Audio processing</string>
-  <string name="pref_audio_visualizer_style_title">Visualizer style</string>
-  <string name="pref_audio_visualizer_style_blob">Blob</string>
-  <string name="pref_audio_visualizer_style_galaxy">Galaxy</string>
-  <string name="pref_audio_visualizer_style_cuboid">Cuboid</string>
-  <string name="pref_audio_visualizer_style_particle">Particles</string>
 
-  <string name="pref_audio_visualizer_galaxy_credit">Inspired by Zain Raza on CodePen</string>
-  <string name="pref_audio_ambient_mode_title">Ambient Mode</string>
-  <string name="pref_audio_ambient_mode_summary">Display dynamic color gradients derived from album cover art in music player (disabled when visualizer is active)</string>
-  <string name="pref_audio_wavy_seekbar_title">Wavy seekbar</string>
-  <string name="pref_audio_wavy_seekbar_summary">Display multi-layer fluid wavy visualizer animation above the seekbar</string>
   <string name="pref_audio_channels">Audio channels</string>
   <string name="pref_audio_channels_auto">Auto</string>
   <string name="pref_audio_channels_auto_safe">Auto Safe</string>
@@ -239,7 +196,6 @@
   <string name="pref_audio_preferred_language">Audio language(s) to be selected by default on a video with multiple audio streams, Two- or three-letter languages codes work. Multiple values can be delimited by comma.</string>
   <string name="pref_audio_volume_boost_cap">Volume boost cap</string>
   <string name="pref_audio_dialogue_boost_title">Dialogue Boost</string>
-  <string name="pref_audio_dialogue_boost_summary">Boost center channel dialogue clarity when downmixing multichannel audio</string>
   <string name="pref_dialogue_boost_off">Off (1.0x)</string>
   <string name="pref_dialogue_boost_light">Light (1.41x / +3 dB)</string>
   <string name="pref_dialogue_boost_medium">Medium (1.78x / +5 dB)</string>
@@ -303,8 +259,6 @@
   <string name="pref_advanced_clear_fonts_cache">Clear cached fonts</string>
   <string name="pref_advanced_cleared_fonts_cache">Cleared cached fonts</string>
   <string name="pref_thumbnail_cache_cleared">Thumbnail cache cleared</string>
-  <string name="pref_thumbnail_cache_clear_failed">Failed to clear thumbnail cache: %1$s</string>
-  <string name="pref_advanced_enable_recently_played_title">Recently Played</string>
   <string name="pref_anime4k_title">Anime4K Upscaling</string>
   <string name="pref_anime4k_summary">Enable Anime4K upscaling filter</string>
   <string name="pref_anime4k_incompatibility">Anime4K Incompatibility</string>
@@ -427,9 +381,6 @@
   <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
   <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
   <!-- Animation settings -->
-  <string name="pref_anim_controls_style">Controls animation style</string>
-  <string name="pref_anim_video_open">Video opening animation</string>
-  <string name="pref_anim_speed">Animation speed</string>
   <string name="pref_player_display_hide_player_control_time">Hide player control time</string>
   <string name="show_splash_ovals_on_double_tap_to_seek">Show ripple when double tap seeking</string>
   <string name="show_time_on_double_tap_to_seek">Show seek time</string>
@@ -472,18 +423,6 @@
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Use precise seeking</string>
   <!-- Folders Preferences -->
-  <string name="pref_folders_title">Folders</string>
-  <string name="pref_folders_include_hidden_title">Include hidden media folders</string>
-  <string name="pref_folders_include_hidden_summary">Scan videos in dot-prefixed folders and folders containing selected marker files.</string>
-  <string name="pref_folders_hidden_markers_title">Marker files</string>
-  <string name="pref_folders_hidden_markers_summary">Folders containing these files and their subfolders are included. Dot-prefixed folders are always included.</string>
-  <string name="pref_folders_hidden_markers_empty">No marker files configured. Dot-prefixed folders are still included.</string>
-  <string name="pref_folders_add_marker">Add marker file</string>
-  <string name="pref_folders_add_marker_title">Add hidden-folder marker</string>
-  <string name="pref_folders_marker_name">File name</string>
-  <string name="pref_folders_marker_invalid">Enter a file name without path separators.</string>
-  <string name="pref_folders_marker_duplicate">This marker is already included.</string>
-  <string name="pref_folders_remove_marker">Remove %1$s</string>
   <!-- M3U Playlist Strings -->
   <!-- M3U Playlist Strings -->
   <string name="pref_player_safe_area_window_title">Safe Area Window</string>
@@ -497,7 +436,6 @@
   <string name="pref_section_appearance">Appearance</string>
   <string name="pref_section_playback">Playback</string>
   <string name="pref_section_gestures_controls">Gestures &amp; Controls</string>
-  <string name="pref_section_storage">Storage</string>
   <string name="pref_section_advanced">Advanced</string>
   <string name="pref_section_about">About</string>
 
@@ -519,9 +457,6 @@
   <!-- Player - General Section                                   -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <string name="pref_section_general">General</string>
-  <string name="pref_playlist_mode_title">Enable next/previous navigation</string>
-  <string name="pref_playlist_mode_summary">Show next/previous buttons for all videos in folder</string>
-  <string name="pref_playlist_mode_summary_disabled">Play videos individually (select multiple for playlist)</string>
 
   <!-- Player - Seeking Section (additional)                      -->
   <string name="pref_online_skip_markers_title">Use online skip markers</string>
@@ -771,7 +706,6 @@
   <string name="hdr_mode_linear_short">Linear</string>
   <string name="hdr_mode_linear_description">Linear light HDR pipeline with hdr-toys Astra and Bottosson shaders</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s Mode Output</string>
-  <string name="pref_section_support">Support</string>
   <string name="pref_section_system">System</string>
   <string name="ui_file_size">File Size</string>
   <string name="ui_duration">Duration</string>
@@ -841,33 +775,26 @@
   <string name="media_info_stat_bit_depth">Bit depth</string>
   <string name="media_info_stat_channels">Channels</string>
   <string name="media_info_stat_sample_rate">Sample rate</string>
-  <string name="pref_player_web_stream_links_title">Open streaming site links</string>
-  <string name="pref_player_web_stream_links_summary">Offer Mpv∞ for YouTube, Vimeo, Twitch, Odysee, and Bilibili links. Turn off to let their own apps handle them.</string>
   <string name="player_unknown_video">Unknown Video</string>
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">Network</string>
   <string name="ui_thumbnail">Thumbnail</string>
-  <string name="ui_play">Play</string>
-  <string name="ui_port">Port</string>
   <string name="ui_save">Save</string>
   <string name="ui_done">Done</string>
   <string name="ui_select_subtitle">Select Subtitle</string>
   <string name="ui_select_audio">Select Audio Track</string>
   <string name="ui_no_storage_devices_found">No storage devices found</string>
   <string name="ui_no_folders_or_supported_files">No folders or supported files</string>
-  <string name="ui_select">Select</string>
   <string name="ui_resolution">Resolution</string>
   <string name="ui_close">Close</string>
   <string name="ui_copy">Copy</string>
   <string name="ui_drag_to_reorder">Drag to reorder</string>
-  <string name="ui_next">Next</string>
   <string name="ui_mpv_documentation">mpv Documentation</string>
   <string name="ui_search_commands_options_properties">Search commands, options, properties...</string>
   <string name="ui_no_results_found">No results found</string>
   <string name="ui_no_android">No Android</string>
   <string name="ui_script_runtime">Script runtime</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Newly enabled scripts can load during playback. Scripts you turn off may need the video to be reopened before they fully stop running.</string>
-  <string name="ui_media">Media</string>
   <string name="ui_media_info">Media Info</string>
   <string name="ui_analyzing_media_file">Analyzing media file...</string>
   <string name="ui_media_tracks_summary">Media Tracks Summary</string>
@@ -916,12 +843,9 @@
   <string name="ui_pan_zoom">Pan &amp; Zoom</string>
   <string name="ui_decrease_zoom">Decrease zoom</string>
   <string name="ui_increase_zoom">Increase zoom</string>
-  <string name="ui_by_ritesh_pandit">mpvZero Team</string>
   <string name="ui_dedicated_stream_player">Dedicated Stream Player</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">Device Info</string>
-  <string name="ui_support_link">UPI ID</string>
-  <string name="ui_visit_github">Send Love</string>
   <string name="update_whats_new">What’s New</string>
   <string name="update_no_release_notes">No release notes provided.</string>
   <string name="update_ready_to_install">Ready to Install</string>
@@ -933,7 +857,6 @@
   <string name="update_beta_build_format">Beta r%1$d</string>
   <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Core open source dependencies used by mpvZero.</string>
   <string name="ui_already_using_latest_version">Already using latest version</string>
-  <string name="ui_support_link_copied">UPI ID copied!</string>
   <string name="ui_refresh">Refresh</string>
   <string name="ui_unsaved_changes">Unsaved changes</string>
   <string name="ui_help">Help</string>
@@ -963,8 +886,6 @@
   <string name="ui_script_file_not_found">Script file not found</string>
   <string name="ui_portrait_playback_buttons">Portrait playback buttons</string>
   <string name="ui_time_network_clock">Time + Network clock</string>
-  <string name="ui_show_media_info_in_chooser">Show Media Info in chooser</string>
-  <string name="ui_show_media_info_in_system">Show Media Info in system \"Open with\" / sharing menus to analyze files from other apps.</string>
   <string name="ui_e_g_intro_opening_op">e.g. intro, opening, op</string>
   <string name="ui_e_g_outro_ending_ed">e.g. outro, ending, ed</string>
   <string name="ui_image_format">Image format</string>
@@ -983,8 +904,6 @@
   <string name="ui_paid_sources">Paid Sources</string>
   <string name="ui_restricted_requires_paid_api_key">Restricted (Requires Paid API Key)</string>
   <string name="ui_restricted">Restricted</string>
-  <string name="ui_yt_dlp_streaming">yt-dlp Streaming</string>
-  <string name="ui_install_stable">Install Stable</string>
   <string name="ui_checking_yt_dlp">Checking yt-dlp</string>
   <string name="ui_yt_dlp_not_installed">yt-dlp Not Installed</string>
   <string name="ui_yt_dlp_stable_release">Stable Release</string>
@@ -1010,7 +929,6 @@
   <string name="oss_okhttp_description">HTTP client for subtitle search and other network requests.</string>
   <string name="oss_kotlinx_serialization_description">JSON serialization for API payloads and internal models.</string>
   <string name="oss_accompanist_permissions_description">Compose helpers for Android runtime permission flows.</string>
-  <string name="oss_mediainfo_android_description">Media inspection for codecs, subtitles, and technical metadata.</string>
   <string name="oss_fsaf_description">Storage Access Framework helpers for file and tree operations.</string>
   <string name="oss_truetype_parser_description">Reads font metadata for subtitle font handling.</string>
   <string name="oss_compose_preference_description">Preference UI components used across settings screens.</string>
@@ -1029,12 +947,9 @@
   <string name="oss_google_material_description">Material Design components and theming library.</string>
   <string name="oss_material_symbols_description">Material Symbols icon set for Compose.</string>
   <string name="oss_kotlinx_immutable_collections_description">Immutable collection interfaces for Kotlin.</string>
-  <string name="oss_curl_android_description">libcurl static library for Android NDK.</string>
-  <string name="oss_desugar_jdk_libs_description">Java 8+ API desugaring for older Android versions.</string>
   <string name="oss_androidx_activity_description">Connects Android activities and lifecycle-aware APIs with Compose.</string>
   <string name="oss_mpv_description">Native media playback engine for audio, video, and subtitles.</string>
   <string name="oss_mpvlib_android_description">Android libmpv wrapper used by the Standard, No-Vulkan, and FongMi builds.</string>
-  <string name="oss_quickjs_ng_description">Embedded JavaScript engine used by yt-dlp challenge solving.</string>
   <string name="filter_preset_none">None</string>
   <string name="filter_preset_vivid">Vivid</string>
   <string name="filter_preset_warm_tone">Warm Tone</string>
@@ -1106,24 +1021,7 @@
   <string name="player_up_next_title">Playlist</string>
 
   <!-- Clip -->
-  <string name="clip_end_short">End</string>
-  <string name="clip_start_short">Start</string>
   <string name="clip_action">Create clip</string>
-  <string name="clip_options">Clip options</string>
-  <string name="clip_crop">Crop</string>
-  <string name="clip_save">Save clip</string>
-  <string name="clip_cancel">Cancel</string>
-  <string name="clip_done">Done</string>
-  <string name="clip_crop_size">Crop: %1$d × %2$d</string>
-  <string name="clip_crop_full_frame">Crop: Full frame</string>
-  <string name="clip_select_crop">Resize the frame to keep</string>
-  <string name="clip_exporting">Creating clip… %1$d%%</string>
-  <string name="clip_cancelling">Cancelling clip…</string>
-  <string name="clip_saved">Saved %1$s</string>
-  <string name="clip_invalid_range">Mark an end point after the start point</string>
-  <string name="clip_video_unavailable">Video dimensions are not available yet</string>
-  <string name="clip_export_busy">Another clip is already being created</string>
-  <string name="clip_export_failed">Clip failed: %1$s</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
 

@@ -29,7 +29,6 @@ import app.infinity.mpvz.preferences.MpvConfigControlledFeatures
 import app.infinity.mpvz.preferences.MpvConfigOverridePolicy
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.SubtitlesPreferences
-import app.infinity.mpvz.preferences.YtdlPreferences
 import app.infinity.mpvz.ui.player.PlayerActivity.Companion.TAG
 import app.infinity.mpvz.ui.player.anime4k.applyAnime4KShaderChain
 import app.infinity.mpvz.ui.player.anime4k.applyAnime4KStabilityOptions
@@ -55,7 +54,6 @@ class MPVView(
   private val decoderPreferences: DecoderPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
-  private val ytdlPreferences: YtdlPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
   private val hdrToysManager: HdrToysManager by inject()
 
@@ -329,7 +327,6 @@ class MPVView(
 
     setupSubtitlesOptions()
     setupAudioOptions()
-    YtdlpManager.setupMpvOptions(context, ytdlPreferences, subtitlesPreferences)
   }
 
   override fun observeProperties() {
