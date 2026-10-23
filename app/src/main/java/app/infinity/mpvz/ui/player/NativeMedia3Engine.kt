@@ -238,7 +238,7 @@ class NativeMedia3Engine(
   private var subtitleBackgroundColor = android.graphics.Color.TRANSPARENT
   private var subtitleBorderSize = 3
   private var subtitlePresentationVisible = true
-  private val subtitleStyleRunnable = Runnable { applyAssStyle() }
+  private val subtitleStyleRunnable = Runnable { configureSubtitleView() }
   private val subtitleViewRunnable = Runnable { configureSubtitleView() }
   private var loopASeconds: Double? = null
   private var loopBSeconds: Double? = null
@@ -365,7 +365,6 @@ class NativeMedia3Engine(
       Log.d(logTag, "first frame rendered uri=$uri prepareElapsedMs=$elapsed")
       _hasRenderedFirstFrame.value = true
       attachedView?.post {
-        ensureLibassRenderer()
         configureSubtitleView()
       }
     }
@@ -973,7 +972,6 @@ class NativeMedia3Engine(
       android.graphics.Typeface.create(fontFamily?.takeIf { it.isNotBlank() }, typefaceStyle),
     )
     loopHandler.removeCallbacks(subtitleStyleRunnable)
-    applyAssStyle()
     loopHandler.removeCallbacks(subtitleViewRunnable)
     configureSubtitleView()
   }

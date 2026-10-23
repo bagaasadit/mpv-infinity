@@ -754,10 +754,11 @@ fun ButtonSlotCard(
               }
             },
             actions = {
+              val context = androidx.compose.ui.platform.LocalContext.current
               IconButton(
                 onClick = {
                   runCatching {
-                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, androidx.core.net.toUri("https://mpv.io/manual/master/")))
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://mpv.io/manual/master/")))
                   }
                 },
                 modifier = Modifier.padding(end = 4.dp).size(40.dp),

@@ -287,6 +287,7 @@ dependencies {
   implementation(libs.androidx.compose.constraintlayout)
   implementation(libs.androidx.constraintlayout)
   implementation(libs.composables.material.symbols.rounded.filled.android)
+  implementation(libs.composables.material.symbols.rounded.filled.cmp)
   implementation(libs.mediasession)
   implementation(libs.androidx.documentfile)
   implementation(libs.androidx.palette)

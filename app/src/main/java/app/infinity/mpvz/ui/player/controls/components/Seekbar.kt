@@ -587,7 +587,7 @@ private fun SeekbarContent(
             isPaused = paused,
             controlsShown = controlsShown,
             isScrubbing = isVisuallyInteracting,
-            useWavySeekbar = useWavySeekbar && !waveSeekbarActive,
+            useWavySeekbar = useWavySeekbar,
             seekbarStyle = SeekbarStyle.Wavy,
             onSeek = { }, // Touch handled by parent
             onSeekFinished = { }, // Touch handled by parent
