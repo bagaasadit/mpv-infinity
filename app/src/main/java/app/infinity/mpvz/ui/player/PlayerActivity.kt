@@ -1652,7 +1652,6 @@ class PlayerActivity :
     }
     binding.media3Player.alpha = if (visible) 1f else 0f
     binding.media3Player.visibility = state
-    binding.media3SubtitleOverlay.visibility = state
   }
 
   private fun updateVideoAmbientPlayerBounds() {
