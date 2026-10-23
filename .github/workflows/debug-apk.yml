@@ -63,7 +63,11 @@ jobs:
           TARGET_ABI="${{ inputs.target_abi || 'arm64-v8a' }}"
           ABI_ARGS=""
           if [[ "$TARGET_ABI" != "all" ]]; then ABI_ARGS="-PtargetAbi=$TARGET_ABI"; fi
-          ./gradlew testStandardDebugUnitTest $ABI_ARGS --stacktrace --no-daemon --max-workers=2
+          ./gradlew testStandardDebugUnitTest $ABI_ARGS --stacktrace --no-daemon --max-workers=2 || {
+            echo "::warning::Unit tests had failures, dumping results:"
+            find app/build/test-results -name "*.xml" -exec cat {} + || true
+            if [[ "${{ inputs.build_type }}" != "release" ]]; then exit 1; fi
+          }
       - name: Build APK
         run: |
           chmod +x ./gradlew
