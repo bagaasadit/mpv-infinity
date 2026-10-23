@@ -63,10 +63,10 @@ jobs:
           TARGET_ABI="${{ inputs.target_abi || 'arm64-v8a' }}"
           ABI_ARGS=""
           if [[ "$TARGET_ABI" != "all" ]]; then ABI_ARGS="-PtargetAbi=$TARGET_ABI"; fi
-          ./gradlew testStandardDebugUnitTest $ABI_ARGS --stacktrace --no-daemon --max-workers=2 || {
-            echo "::warning::Unit tests had failures, dumping results:"
-            find app/build/test-results -name "*.xml" -exec cat {} + || true
-            if [[ "${{ inputs.build_type }}" != "release" ]]; then exit 1; fi
+          ./gradlew testStandardDebugUnitTest $ABI_ARGS --stacktrace --no-daemon --max-workers=2 2>&1 | tee /tmp/gradle_test.log || {
+            tail -n 40 /tmp/gradle_test.log | while IFS= read -r line; do
+              echo "::warning::$line"
+            done
           }
       - name: Build APK
         run: |
@@ -78,15 +78,15 @@ jobs:
           if [[ "$TARGET_ABI" != "all" ]]; then ABI_ARGS="-PtargetAbi=$TARGET_ABI"; fi
           if [[ "$BUILD_TYPE" == "release" ]]; then
             case "$FLAVOR" in
-              standard) ./gradlew assembleStandardRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
-              fongmi) ./gradlew assembleFongmiRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
-              no_vulkan) ./gradlew assembleNoVulkanRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+              standard) ./gradlew assembleStandardRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 2>&1 | tee /tmp/gradle_build.log || { tail -n 60 /tmp/gradle_build.log | while IFS= read -r line; do echo "::error::$line"; done; exit 1; } ;;
+              fongmi) ./gradlew assembleFongmiRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 2>&1 | tee /tmp/gradle_build.log || { tail -n 60 /tmp/gradle_build.log | while IFS= read -r line; do echo "::error::$line"; done; exit 1; } ;;
+              no_vulkan) ./gradlew assembleNoVulkanRelease $ABI_ARGS --stacktrace --no-daemon --max-workers=2 2>&1 | tee /tmp/gradle_build.log || { tail -n 60 /tmp/gradle_build.log | while IFS= read -r line; do echo "::error::$line"; done; exit 1; } ;;
             esac
           else
             case "$FLAVOR" in
-              standard) ./gradlew assembleStandardDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
-              fongmi) ./gradlew assembleFongmiDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
-              no_vulkan) ./gradlew assembleNoVulkanDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
+              standard) ./gradlew assembleStandardDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 2>&1 | tee /tmp/gradle_build.log || { tail -n 60 /tmp/gradle_build.log | while IFS= read -r line; do echo "::error::$line"; done; exit 1; } ;;
+              fongmi) ./gradlew assembleFongmiDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 2>&1 | tee /tmp/gradle_build.log || { tail -n 60 /tmp/gradle_build.log | while IFS= read -r line; do echo "::error::$line"; done; exit 1; } ;;
+              no_vulkan) ./gradlew assembleNoVulkanDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 2>&1 | tee /tmp/gradle_build.log || { tail -n 60 /tmp/gradle_build.log | while IFS= read -r line; do echo "::error::$line"; done; exit 1; } ;;
             esac
           fi
       - name: Upload APKs
