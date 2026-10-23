@@ -70,6 +70,7 @@ jobs:
           }
       - name: Build APK
         run: |
+          set -o pipefail
           chmod +x ./gradlew
           BUILD_TYPE="${{ inputs.build_type || 'debug' }}"
           FLAVOR="${{ inputs.flavor || 'standard' }}"
