@@ -11,199 +11,20 @@ package app.infinity.mpvz.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import app.infinity.mpvz.R
 import java.util.Locale
 
-// Roboto Flex font family (variable font supporting weights 100-900)
-val RobotoFlex =
-  FontFamily(
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.Thin,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.ExtraLight,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.Light,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.Normal,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.Medium,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.SemiBold,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.Bold,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.ExtraBold,
-      style = FontStyle.Normal,
-    ),
-    Font(
-      resId = R.font.roboto_flex,
-      weight = FontWeight.Black,
-      style = FontStyle.Normal,
-    ),
-  )
+// Use system native typography (pure, lightweight, zero overhead)
+val RobotoFlex = FontFamily.SansSerif
+val GoogleSansRounded = FontFamily.SansSerif
 
 val SystemTypography = Typography()
+val AppTypography = SystemTypography
 
-private const val GoogleSansRoundedAxis = 100f
-
-@OptIn(ExperimentalTextApi::class)
-val GoogleSansRounded =
-  FontFamily(
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.Thin,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.Thin.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.ExtraLight,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.ExtraLight.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.Light,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.Light.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.Normal,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.Normal.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.Medium,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.Medium.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.SemiBold,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.SemiBold.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.Bold,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.Bold.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.ExtraBold,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.ExtraBold.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-    Font(
-      resId = R.font.gflex_variable,
-      weight = FontWeight.Black,
-      variationSettings =
-        FontVariation.Settings(
-          FontVariation.weight(FontWeight.Black.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
-        ),
-    ),
-  )
-
-// Use PixelPlayer's rounded Google Sans Flex typography app-wide by default.
-val AppTypography =
-  SystemTypography.run {
-    copy(
-      displayLarge = displayLarge.copy(fontFamily = GoogleSansRounded),
-      displayMedium = displayMedium.copy(fontFamily = GoogleSansRounded),
-      displaySmall = displaySmall.copy(fontFamily = GoogleSansRounded),
-      headlineLarge = headlineLarge.copy(fontFamily = GoogleSansRounded),
-      headlineMedium = headlineMedium.copy(fontFamily = GoogleSansRounded),
-      headlineSmall = headlineSmall.copy(fontFamily = GoogleSansRounded),
-      titleLarge = titleLarge.copy(fontFamily = GoogleSansRounded),
-      titleMedium = titleMedium.copy(fontFamily = GoogleSansRounded),
-      titleSmall = titleSmall.copy(fontFamily = GoogleSansRounded),
-      bodyLarge = bodyLarge.copy(fontFamily = GoogleSansRounded),
-      bodyMedium = bodyMedium.copy(fontFamily = GoogleSansRounded),
-      bodySmall = bodySmall.copy(fontFamily = GoogleSansRounded),
-      labelLarge = labelLarge.copy(fontFamily = GoogleSansRounded),
-      labelMedium = labelMedium.copy(fontFamily = GoogleSansRounded),
-      labelSmall = labelSmall.copy(fontFamily = GoogleSansRounded),
-    )
-  }
-
-fun fontFamilyForText(text: String): FontFamily =
-  if (text.requiresSystemFontFallback()) FontFamily.SansSerif else GoogleSansRounded
-
-fun localeRequiresSystemFont(locale: Locale): Boolean =
-  locale.getDisplayName(locale).requiresSystemFontFallback()
-
-private fun String.requiresSystemFontFallback(): Boolean {
-  var index = 0
-  while (index < length) {
-    val codePoint = Character.codePointAt(this, index)
-    when (Character.UnicodeScript.of(codePoint)) {
-      Character.UnicodeScript.LATIN,
-      Character.UnicodeScript.COMMON,
-      Character.UnicodeScript.INHERITED,
-      -> Unit
-      else -> return true
-    }
-    index += Character.charCount(codePoint)
-  }
-  return false
-}
+fun fontFamilyForText(text: String): FontFamily = FontFamily.SansSerif
+fun localeRequiresSystemFont(locale: Locale): Boolean = true
 
 // ═══════════════════════════════════════════════════════════
 // Material 3 Expressive Typography Extensions
