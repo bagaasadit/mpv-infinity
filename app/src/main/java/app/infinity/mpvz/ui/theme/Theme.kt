@@ -22,6 +22,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
+import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -388,9 +389,22 @@ enum class DarkMode(
   System(R.string.pref_appearance_darkmode_system),
 }
 
+private const val RIPPLE_DRAGGED_ALPHA = .5f
+private const val RIPPLE_FOCUSED_ALPHA = .6f
+private const val RIPPLE_HOVERED_ALPHA = .4f
+private const val RIPPLE_PRESSED_ALPHA = .6f
+
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("DEPRECATION")
 val playerRippleConfiguration
   @Composable get() =
     RippleConfiguration(
       color = MaterialTheme.colorScheme.primaryContainer,
+      rippleAlpha =
+        RippleAlpha(
+          draggedAlpha = RIPPLE_DRAGGED_ALPHA,
+          focusedAlpha = RIPPLE_FOCUSED_ALPHA,
+          hoveredAlpha = RIPPLE_HOVERED_ALPHA,
+          pressedAlpha = RIPPLE_PRESSED_ALPHA,
+        ),
     )
