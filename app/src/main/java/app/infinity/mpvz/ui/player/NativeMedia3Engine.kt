@@ -255,6 +255,10 @@ class NativeMedia3Engine(
   val lastKnownDuration: Long
     get() = player.duration.takeIf { it != C.TIME_UNSET && it > 0L } ?: lastKnownDurationMs
   private var pendingExternalSelectionId: String? = null
+  private var pendingExternalSelectionLabel: String? = null
+  var hasIntentExplicitSubtitleSelection: Boolean = false
+  private val activeSubtitleUris = mutableMapOf<String, String>()
+  private val activeSubtitleLabels = mutableMapOf<String, String>()
   private val seekRunnable = Runnable {
     val positionMs = pendingSeekPositionMs ?: return@Runnable
     pendingSeekPositionMs = null
@@ -655,9 +659,15 @@ class NativeMedia3Engine(
   }
 
   private fun autoSelectBestSubtitleTrack(tracks: Tracks) {
-    if (hasUserManuallySelectedSubtitle || hasAutoSelectedSubtitleForCurrentItem) return
+    if (hasUserManuallySelectedSubtitle || hasAutoSelectedSubtitleForCurrentItem ||
+        pendingExternalSelectionId != null || hasIntentExplicitSubtitleSelection) return
     val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
     if (textGroups.isEmpty()) return
+    // If any text track is already selected, respect it and avoid overriding
+    if (textGroups.any { group -> (0 until group.length).any { group.isTrackSelected(it) } }) {
+      hasAutoSelectedSubtitleForCurrentItem = true
+      return
+    }
     hasAutoSelectedSubtitleForCurrentItem = true
 
     var bestGroup: Tracks.Group? = null
@@ -679,11 +689,14 @@ class NativeMedia3Engine(
     if (bestGroup != null && bestTrackIndex >= 0 && highestScore > -10000) {
       if (!bestGroup.isTrackSelected(bestTrackIndex)) {
         Log.i(logTag, "Auto-selected optimal English subtitle track: ${bestGroup.getTrackFormat(bestTrackIndex).label} (score=$highestScore)")
+        selectedNativeSubtitleKey = tracks.groups.indexOf(bestGroup) to bestTrackIndex
         player.trackSelectionParameters = player.trackSelectionParameters
           .buildUpon()
           .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+          .clearOverridesOfType(C.TRACK_TYPE_TEXT)
           .setOverrideForType(TrackSelectionOverride(bestGroup.mediaTrackGroup, bestTrackIndex))
           .build()
+        publishSnapshot()
       }
     }
   }
@@ -766,9 +779,15 @@ class NativeMedia3Engine(
       "ass", "ssa" -> "text/x-ssa"
       else -> "text/plain"
     }
+    val configId = "external:$uri"
+    activeSubtitleUris[configId] = uri.toString()
+    activeSubtitleUris[uri.toString()] = uri.toString()
+    if (!label.isNullOrBlank()) {
+      activeSubtitleLabels[label] = uri.toString()
+    }
     return MediaItem.SubtitleConfiguration.Builder(uri)
-      .setId("external:$uri")
-      .setLabel(label ?: "external:$uri")
+      .setId(configId)
+      .setLabel(label ?: configId)
       .setMimeType(mimeType)
       .apply {
         if (!language.isNullOrBlank()) setLanguage(language)
@@ -784,6 +803,7 @@ class NativeMedia3Engine(
     if (localConfiguration.subtitleConfigurations.any { it.id == configuration.id }) {
       if (select) {
         pendingExternalSelectionId = configuration.id
+        pendingExternalSelectionLabel = configuration.label
         loopHandler.post { applyPendingExternalSelection() }
       }
       return true
@@ -800,6 +820,7 @@ class NativeMedia3Engine(
     player.playWhenReady = wasPlaying
     if (select) {
       pendingExternalSelectionId = configuration.id
+      pendingExternalSelectionLabel = configuration.label
       loopHandler.post { applyPendingExternalSelection() }
     }
     return true
@@ -807,15 +828,28 @@ class NativeMedia3Engine(
 
   fun toggleExternalSubtitle(uri: Uri): Boolean? {
     val id = "external:$uri"
+    val uriStr = uri.toString()
     val match = player.currentTracks.groups
       .asSequence()
       .filter { it.type == C.TRACK_TYPE_TEXT }
       .flatMap { group ->
-        (0 until group.length).asSequence().map { index -> group to index }
+        (0 until group.length).asSequence().map { group to it }
       }
       .firstOrNull { (group, index) ->
         val format = group.getTrackFormat(index)
-        format.id == id || format.label == id
+        val groupId = group.mediaTrackGroup.id
+        val formatId = format.id
+        val formatLabel = format.label
+        groupId == id ||
+          groupId == uriStr ||
+          groupId.startsWith(id) ||
+          formatId == id ||
+          formatId == uriStr ||
+          formatLabel == id ||
+          formatLabel == uriStr ||
+          activeSubtitleUris[groupId] == uriStr ||
+          activeSubtitleUris[formatId] == uriStr ||
+          activeSubtitleLabels[formatLabel] == uriStr
       }
       ?: return null
     val group = match.first
@@ -825,34 +859,56 @@ class NativeMedia3Engine(
       .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
       .clearOverridesOfType(C.TRACK_TYPE_TEXT)
     if (enabled) {
-      builder.addOverride(TrackSelectionOverride(group.mediaTrackGroup, trackIndex))
+      builder.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, trackIndex))
+      selectedNativeSubtitleKey = player.currentTracks.groups.indexOf(group) to trackIndex
     } else {
+      selectedNativeSubtitleKey = null
       val fallback = player.currentTracks.groups
         .asSequence()
         .filter { it.type == C.TRACK_TYPE_TEXT }
         .flatMap { candidate -> (0 until candidate.length).asSequence().map { candidate to it } }
         .firstOrNull { (candidate, index) ->
-          candidate !== group && !candidate.getTrackFormat(index).id.orEmpty().startsWith("external:")
+          candidate !== group &&
+            !candidate.mediaTrackGroup.id.startsWith("external:") &&
+            !activeSubtitleUris.containsKey(candidate.mediaTrackGroup.id) &&
+            !candidate.getTrackFormat(index).id.orEmpty().startsWith("external:")
         }
       if (fallback != null) {
-        builder.addOverride(TrackSelectionOverride(fallback.first.mediaTrackGroup, fallback.second))
+        builder.setOverrideForType(TrackSelectionOverride(fallback.first.mediaTrackGroup, fallback.second))
+        selectedNativeSubtitleKey = player.currentTracks.groups.indexOf(fallback.first) to fallback.second
       } else {
         builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
       }
     }
     player.trackSelectionParameters = builder.build()
+    publishSnapshot()
     return enabled
   }
 
   private fun applyPendingExternalSelection() {
     val id = pendingExternalSelectionId ?: return
+    val wantedLabel = pendingExternalSelectionLabel
+    val idWithoutPrefix = id.removePrefix("external:")
     val match = player.currentTracks.groups
       .asSequence()
       .filter { it.type == C.TRACK_TYPE_TEXT }
       .flatMap { group -> (0 until group.length).asSequence().map { group to it } }
       .firstOrNull { (group, index) ->
         val format = group.getTrackFormat(index)
-        format.id == id || format.label == id
+        val groupId = group.mediaTrackGroup.id
+        val formatId = format.id
+        val formatLabel = format.label
+        groupId == id ||
+          groupId == idWithoutPrefix ||
+          groupId.startsWith(id) ||
+          formatId == id ||
+          formatId == idWithoutPrefix ||
+          formatLabel == id ||
+          formatLabel == idWithoutPrefix ||
+          (wantedLabel != null && formatLabel == wantedLabel) ||
+          activeSubtitleUris[groupId] == idWithoutPrefix ||
+          activeSubtitleUris[formatId] == idWithoutPrefix ||
+          (wantedLabel != null && activeSubtitleLabels[formatLabel] == idWithoutPrefix)
       }
       ?: return
     player.trackSelectionParameters = player.trackSelectionParameters
@@ -864,6 +920,7 @@ class NativeMedia3Engine(
     selectedNativeSubtitleKey = player.currentTracks.groups.indexOf(match.first) to match.second
     hasAutoSelectedSubtitleForCurrentItem = true
     pendingExternalSelectionId = null
+    pendingExternalSelectionLabel = null
     publishSnapshot()
   }
 
@@ -1026,6 +1083,7 @@ class NativeMedia3Engine(
     sourceUri: Uri? = null,
     sourceHint: String = "",
     subtitleConfigurations: List<MediaItem.SubtitleConfiguration> = emptyList(),
+    hasExplicitSubtitleSelection: Boolean = false,
   ) {
     _hasRenderedFirstFrame.value = false
     endedUri = null
@@ -1033,6 +1091,7 @@ class NativeMedia3Engine(
     hasAutoSelectedSubtitleForCurrentItem = false
     hasUserManuallySelectedAudio = false
     hasUserManuallySelectedSubtitle = false
+    this.hasIntentExplicitSubtitleSelection = hasExplicitSubtitleSelection
     lastKnownDurationMs = 0L
     if (startPositionMs > 0L) {
       lastKnownPositionMs = startPositionMs
@@ -1049,9 +1108,20 @@ class NativeMedia3Engine(
     // first audio-only item after a video transition.
     player.volume = 1f
     setSubtitlePresentationVisible(true)
-    pendingExternalSelectionId = subtitleConfigurations.firstOrNull {
+    activeSubtitleUris.clear()
+    activeSubtitleLabels.clear()
+    subtitleConfigurations.forEach { config ->
+      activeSubtitleUris[config.id] = config.uri.toString()
+      activeSubtitleUris[config.uri.toString()] = config.uri.toString()
+      if (!config.label.isNullOrBlank()) {
+        activeSubtitleLabels[config.label!!] = config.uri.toString()
+      }
+    }
+    val defaultSub = subtitleConfigurations.firstOrNull {
       (it.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0
-    }?.id
+    }
+    pendingExternalSelectionId = defaultSub?.id
+    pendingExternalSelectionLabel = defaultSub?.label
     selectedNativeSubtitleSelection = null
     externalAssEnabled.clear()
     // Uri.parse("/storage/...") has no scheme. Make local paths explicit so Media3 selects
@@ -1522,22 +1592,27 @@ class NativeMedia3Engine(
         if (group.type != type) return@mapIndexedNotNull null
         (0 until group.length).mapNotNull { trackIndex ->
           val format = group.getTrackFormat(trackIndex)
-          val externalUri = format.id
-            ?.takeIf { it.startsWith("external:") }
-            ?.removePrefix("external:")
-            ?: format.label
-              ?.takeIf { it.startsWith("external:") }
-              ?.removePrefix("external:")
+          val groupId = group.mediaTrackGroup.id
+          val formatId = format.id
+          val formatLabel = format.label
+          val externalUri = when {
+            groupId.startsWith("external:") -> groupId.removePrefix("external:")
+            formatId?.startsWith("external:") == true -> formatId.removePrefix("external:")
+            formatLabel?.startsWith("external:") == true -> formatLabel.removePrefix("external:")
+            activeSubtitleUris.containsKey(groupId) -> activeSubtitleUris[groupId]
+            activeSubtitleUris.containsKey(formatId) -> activeSubtitleUris[formatId]
+            activeSubtitleLabels.containsKey(formatLabel) -> activeSubtitleLabels[formatLabel]
+            else -> null
+          }
           val isExternal = externalUri != null
           NativeTrack(
             groupIndex = groupIndex,
             trackIndex = trackIndex,
             type = group.type,
-            label = if (isExternal) {
-              externalUri.orEmpty().substringAfterLast('/').ifBlank { externalUri.orEmpty() }
-            } else {
-              format.label ?: format.language ?: "$fallback ${trackIndex + 1}"
-            },
+            label = format.label?.takeIf { it.isNotBlank() && !it.startsWith("external:") }
+              ?: externalUri?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+              ?: format.language
+              ?: "$fallback ${trackIndex + 1}",
             language = format.language,
             formatId = externalUri?.let { "external:$it" } ?: format.id,
             external = isExternal,

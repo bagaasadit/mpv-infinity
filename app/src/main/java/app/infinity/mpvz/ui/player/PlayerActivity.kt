@@ -6305,6 +6305,7 @@ class PlayerActivity :
           sourceUri = nativeItem.originalUri.toUri(),
           sourceHint = fileName.ifBlank { nativeItem.title.orEmpty() },
           subtitleConfigurations = subtitleConfigs,
+          hasExplicitSubtitleSelection = hasIntentExplicitSubtitleSelection,
         )
         viewModel.onVideoLoadCompleted()
       }

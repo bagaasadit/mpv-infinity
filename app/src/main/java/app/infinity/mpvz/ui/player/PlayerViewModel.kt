@@ -624,6 +624,9 @@ class PlayerViewModel : ViewModel(),
 
   fun registerNativeExternalSubtitle(uri: Uri, fileName: String, selected: Boolean) {
     val uriString = uri.toString()
+    if (!_externalSubtitles.contains(uriString)) {
+      _externalSubtitles.add(uriString)
+    }
     if (nativeExternalSubtitleTracks.value.any { it.externalFilename == uriString }) {
       setNativeExternalSubtitleSelected(
         nativeExternalSubtitleTracks.value.first { it.externalFilename == uriString }.id,
