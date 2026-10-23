@@ -1244,6 +1244,7 @@ class PlayerViewModel : ViewModel(),
 
   // Mapping from mpv internal path/URI to the original source URI (resolves deletion issues)
   private val mpvPathToUriMap = mutableMapOf<String, String>()
+  @Volatile var pendingIntentSelectedSubtitleUri: String? = null
 
   fun calculateVideoHash(uri: Uri) {
     _videoHash.value = null
@@ -1425,6 +1426,23 @@ class PlayerViewModel : ViewModel(),
   )
 
   init {
+    viewModelScope.launch {
+      subtitleTracks.collect { tracks ->
+        val target = pendingIntentSelectedSubtitleUri ?: return@collect
+        val match = tracks.firstOrNull { track ->
+          track.externalFilename == target || mpvPathToUriMap[track.externalFilename] == target
+        }
+        if (match != null) {
+          withContext(Dispatchers.Main) {
+            runCatching {
+              PlaybackSession.setPropertyInt("sid", match.id)
+              PlaybackSession.setPropertyString("secondary-sid", "no")
+            }
+          }
+          pendingIntentSelectedSubtitleUri = null
+        }
+      }
+    }
     viewModelScope.launch {
       decoderPreferences.gpuNext.changes().collect { enabled ->
         _isGpuNextEnabled.value = enabled
@@ -2335,6 +2353,10 @@ class PlayerViewModel : ViewModel(),
     select: Boolean = true,
     silent: Boolean = false,
   ) {
+    if (select) {
+      val resolvedTarget = uri.resolveUri(appContext) ?: uri.toString()
+      pendingIntentSelectedSubtitleUri = resolvedTarget
+    }
     subtitleAddMutex.withLock {
       // This method runs on Dispatchers.IO. Use the ViewModel state flow instead of asking the
       // Media3 host, whose ExoPlayer instance is main-thread confined.
@@ -3372,11 +3394,14 @@ class PlayerViewModel : ViewModel(),
     val wasOff = primarySid <= 0 && secondarySid <= 0
 
     when {
-      id == primarySid -> setTrackSelectionId("sid", null)
-      id == secondarySid -> setTrackSelectionId("secondary-sid", null)
-      primarySid <= 0 -> setTrackSelectionId("sid", id)
-      secondarySid <= 0 -> setTrackSelectionId("secondary-sid", id)
-      else -> setTrackSelectionId("sid", id)
+      id == primarySid -> {
+        setTrackSelectionId("sid", null)
+        setTrackSelectionId("secondary-sid", null)
+      }
+      else -> {
+        setTrackSelectionId("sid", id)
+        setTrackSelectionId("secondary-sid", null)
+      }
     }
 
     if (wasOff && !subtitlesPreferences.autoEnableSubtitles.get()) {

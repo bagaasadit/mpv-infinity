@@ -5551,15 +5551,17 @@ class PlayerActivity :
     }
 
     // Always restore subtitle and audio tracks from saved state
-    // User's manual selection has highest priority
-    if (state.sid > 0) {
+    // User's manual selection has highest priority, EXCEPT when an intent explicitly selected a subtitle
+    if (state.sid > 0 && !hasIntentExplicitSubtitleSelection) {
       player.sid = state.sid
       Log.d(TAG, "Restored primary subtitle track: ${state.sid} (user selection)")
     }
 
-    if (state.secondarySid > 0) {
+    if (state.secondarySid > 0 && !hasIntentExplicitSubtitleSelection) {
       player.secondarySid = state.secondarySid
       Log.d(TAG, "Restored secondary subtitle track: ${state.secondarySid} (user selection)")
+    } else if (hasIntentExplicitSubtitleSelection) {
+      player.secondarySid = 0
     }
 
     applySubtitleLayout(
