@@ -43,12 +43,12 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
 
   companion object {
     private const val TAG = "DownmixLimiter"
-    private const val TARGET_CEILING_PCM16 = 0.944f // -0.5 dBFS safe ceiling for mobile DSP / Xiaomi Atmos EQ
-    private const val TARGET_CEILING_FLOAT = 0.944f // -0.5 dBFS
+    private const val TARGET_CEILING_PCM16 = 0.8414f // -1.5 dBFS safe ceiling for mobile DSP / Xiaomi Atmos EQ
+    private const val TARGET_CEILING_FLOAT = 0.8414f // -1.5 dBFS
     private const val ATTACK_TIME_SEC = 0.0010f // 1.0 ms fast lookahead attack
-    private const val RELEASE_TIME_SEC = 0.060f // 60 ms anti-pumping release
-    private const val LOOKAHEAD_TIME_SEC = 0.0050f // 5.0 ms lookahead delay window (5x attack tau)
-    private const val HOLD_TIME_SEC = 0.0050f // 5.0 ms peak hold to preserve transient envelope
+    private const val RELEASE_TIME_SEC = 0.050f // 50 ms anti-pumping release
+    private const val LOOKAHEAD_TIME_SEC = 0.0025f // 2.5 ms lookahead delay window
+    private const val HOLD_TIME_SEC = 0.0025f // 2.5 ms peak hold to preserve transient envelope
 
     // BS2B Filter Constants (Default 700Hz, -3.7dB feed)
     private const val BS2B_FC = 700.0
@@ -68,13 +68,13 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   private var releaseCoeff = 0.9995f
 
   // Ring buffer for lookahead delay line
-  private var lookaheadFrames = 240
-  private var delayBufferL = FloatArray(240)
-  private var delayBufferR = FloatArray(240)
+  private var lookaheadFrames = 120
+  private var delayBufferL = FloatArray(120)
+  private var delayBufferR = FloatArray(120)
   private var delayIndex = 0
 
   // Peak hold state
-  private var holdFrames = 240
+  private var holdFrames = 120
   private var holdCounter = 0
   private var currentPeakHoldValue = 0.0f
 
