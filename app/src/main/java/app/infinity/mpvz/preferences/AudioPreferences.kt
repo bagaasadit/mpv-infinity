@@ -81,6 +81,6 @@ enum class DialogueBoost(
   @StringRes val titleRes: Int,
 ) {
   Off(1.0f, R.string.pref_dialogue_boost_off),
-  Light(1.25f, R.string.pref_dialogue_boost_light),
-  Medium(1.41f, R.string.pref_dialogue_boost_medium),
+  Light(1.41f, R.string.pref_dialogue_boost_light),
+  Medium(1.78f, R.string.pref_dialogue_boost_medium),
 }

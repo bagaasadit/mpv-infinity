@@ -342,7 +342,7 @@ class DownmixLimiterAudioProcessorTest {
     val baseSampleL = baseOutput.get().toInt()
 
     val lightProcessor = DownmixLimiterAudioProcessor().apply {
-      dialogueBoostGain = 1.25f
+      dialogueBoostGain = 1.41f
     }
     lightProcessor.configure(format51)
     lightProcessor.flush()
@@ -362,6 +362,6 @@ class DownmixLimiterAudioProcessorTest {
 
     assertTrue("Light dialogue boost sample ($lightSampleL) must be greater than baseline ($baseSampleL)", lightSampleL > baseSampleL)
     val ratio = lightSampleL.toFloat() / baseSampleL.toFloat()
-    assertEquals("Ratio must be approximately 1.25", 1.25f, ratio, 0.05f)
+    assertEquals("Ratio must be approximately 1.41", 1.41f, ratio, 0.05f)
   }
 }

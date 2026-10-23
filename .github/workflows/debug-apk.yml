@@ -85,9 +85,18 @@ jobs:
               no_vulkan) ./gradlew assembleNoVulkanDebug $ABI_ARGS --stacktrace --no-daemon --max-workers=2 ;;
             esac
           fi
+      - name: Rename APK for identification
+        run: |
+          for f in app/build/outputs/apk/**/*.apk; do
+            if [[ -f "$f" ]]; then
+              dir=$(dirname "$f")
+              base=$(basename "$f" .apk)
+              mv "$f" "${dir}/${base}-media3-audio.apk"
+            fi
+          done
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: mpv-infinity-${{ inputs.flavor || 'standard' }}-${{ inputs.build_type || 'debug' }}
+          name: mpv-infinity-${{ inputs.flavor || 'standard' }}-${{ inputs.build_type || 'debug' }}-media3-audio
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error

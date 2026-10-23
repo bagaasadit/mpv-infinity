@@ -59,7 +59,7 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   var enableBinauralCrossfeed: Boolean = false
   var enableStereoCrossfeed: Boolean = false
 
-  var dialogueBoostGain: Float = 1.0f
+  @Volatile var dialogueBoostGain: Float = 1.0f
   var outputFloatingPoint: Boolean = false
 
   private var currentGain = 1.0f

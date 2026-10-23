@@ -237,8 +237,8 @@
   <string name="pref_audio_dialogue_boost_title">Dialogue Boost</string>
   <string name="pref_audio_dialogue_boost_summary">Boost center channel dialogue clarity when downmixing multichannel audio</string>
   <string name="pref_dialogue_boost_off">Off (1.0x)</string>
-  <string name="pref_dialogue_boost_light">Light (1.25x)</string>
-  <string name="pref_dialogue_boost_medium">Medium (1.41x)</string>
+  <string name="pref_dialogue_boost_light">Light (1.41x / +3 dB)</string>
+  <string name="pref_dialogue_boost_medium">Medium (1.78x / +5 dB)</string>
   <string name="pref_advanced">Advanced</string>
   <string name="pref_advanced_summary">Configuration location, mpv.conf</string>
   <string name="pref_codecs_title">Supported Codecs</string>
