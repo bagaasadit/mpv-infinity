@@ -232,6 +232,10 @@
   <string name="pref_audio_channels_mono">Mono</string>
   <string name="pref_audio_channels_stereo">Stereo</string>
   <string name="pref_audio_channels_stereo_reversed">Reversed Stereo</string>
+  <string name="pref_audio_channels_5_1">5.1 Surround</string>
+  <string name="pref_audio_channels_7_1">7.1 Surround</string>
+  <string name="pref_audio_delay_title">Audio delay offset</string>
+  <string name="pref_audio_delay_summary">Default audio sync delay in milliseconds</string>
   <string name="pref_audio_preferred_language">Audio language(s) to be selected by default on a video with multiple audio streams, Two- or three-letter languages codes work. Multiple values can be delimited by comma.</string>
   <string name="pref_audio_volume_boost_cap">Volume boost cap</string>
   <string name="pref_audio_dialogue_boost_title">Dialogue Boost</string>
@@ -913,6 +917,7 @@
   <string name="ui_decrease_zoom">Decrease zoom</string>
   <string name="ui_increase_zoom">Increase zoom</string>
   <string name="ui_by_ritesh_pandit">By ZHINFINITY</string>
+  <string name="ui_dedicated_stream_player">Dedicated Stream Player</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">Device Info</string>
   <string name="ui_support_link">UPI ID</string>

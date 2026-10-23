@@ -89,53 +89,6 @@ object SearchablePreferences {
           screen = AppearancePreferencesScreen,
         ),
       )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_system_font_title,
-          summaryRes = R.string.pref_appearance_system_font_summary,
-          keywords = listOf("font", "system", "typeface", "google sans", "ui", "appearance"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_thumbnail_generation_title,
-          summaryRes = R.string.pref_appearance_thumbnail_generation_summary,
-          keywords =
-            listOf(
-              "thumbnail",
-              "generation",
-              "frame",
-              "hybrid",
-              "first frame",
-              "embedded",
-              "slider",
-              "percentage",
-              "preview",
-            ),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_thumbnail_quality_title,
-          summaryRes = R.string.pref_appearance_thumbnail_quality_summary,
-          keywords = listOf("thumbnail", "quality", "resolution", "720p", "1080p", "1440p", "storage"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_appearance_show_network_thumbnails_title,
-          summaryRes = R.string.pref_appearance_show_network_thumbnails_summary,
-          keywords = listOf("network", "thumbnail", "stream", "preview", "images"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
       // Layout preferences
       add(
         SearchablePreference(
@@ -251,15 +204,6 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_player_remember_brightness,
           keywords = listOf("brightness", "remember", "display", "screen"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_autoplay_next_video_title,
-          summaryRes = R.string.pref_autoplay_next_video_summary,
-          keywords = listOf("autoplay", "next", "video", "auto", "advance", "continuous"),
           category = "Player",
           screen = PlayerPreferencesScreen,
         ),
@@ -604,17 +548,6 @@ object SearchablePreferences {
           screen = GesturePreferencesScreen,
         ),
       )
-      // Media scanning preferences
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_folders_include_hidden_title,
-          summaryRes = R.string.pref_folders_include_hidden_summary,
-          keywords =
-            listOf("hidden", "dot folder", "dot file", "marker", "custom", "no media", "nomedia", "include", "scan"),
-          category = "Advanced",
-          screen = AdvancedPreferencesScreen,
-        ),
-      )
       // Decoder preferences
       add(
         SearchablePreference(
@@ -812,46 +745,9 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_audio_visualizer_style_title,
-          keywords =
-            listOf(
-              "music",
-              "audio",
-              "visualizer",
-              "visualiser",
-              "reactive",
-              "blob",
-              "galaxy",
-              "spectrum",
-              "codepen",
-              "zain raza",
-            ),
-          category = "Audio",
-          screen = AudioPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_audio_orientation_title,
-          keywords = listOf("audio", "music", "orientation", "portrait", "landscape", "auto", "rotate"),
-          category = "Audio",
-          screen = AudioPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_audio_ambient_mode_title,
-          summaryRes = R.string.pref_audio_ambient_mode_summary,
-          keywords = listOf("audio", "music", "ambient", "colors", "album", "art", "gradient", "youtube"),
-          category = "Audio",
-          screen = AudioPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_audio_wavy_seekbar_title,
-          summaryRes = R.string.pref_audio_wavy_seekbar_summary,
-          keywords = listOf("audio", "music", "wavy", "seekbar", "visualizer", "wave"),
+          titleRes = R.string.pref_audio_delay_title,
+          summaryRes = R.string.pref_audio_delay_summary,
+          keywords = listOf("audio", "delay", "sync", "latency", "offset", "lipsync"),
           category = "Audio",
           screen = AudioPreferencesScreen,
         ),
@@ -1082,17 +978,6 @@ object SearchablePreferences {
         category = "Appearance",
         screen = AppearancePreferencesScreen,
         anchorItemIndex = 3,
-        SearchEntrySpec(
-          R.string.pref_appearance_thumbnail_position_title,
-          listOf("thumbnail", "frame", "position", "percent", "preview"),
-          R.string.pref_appearance_thumbnail_generation_title,
-        ),
-      )
-
-      addSearchEntries(
-        category = "Appearance",
-        screen = AppearancePreferencesScreen,
-        anchorItemIndex = 5,
         SearchEntrySpec(R.string.pref_anim_controls_style_title, listOf("animation", "controls", "fade", "slide")),
         SearchEntrySpec(R.string.pref_anim_video_open_title, listOf("animation", "video", "opening", "launch")),
         SearchEntrySpec(R.string.pref_anim_screen_nav_style_title, listOf("animation", "screen", "navigation", "transition")),
@@ -1113,15 +998,6 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.ui_time_network_clock, listOf("clock", "time", "network", "format", "12 hour", "24 hour")),
       )
 
-      addSearchEntries(
-        category = "Player",
-        screen = PlayerPreferencesScreen,
-        anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_autoplay_next_audio_title, listOf("autoplay", "next", "audio", "music")),
-        SearchEntrySpec(R.string.pref_playlist_mode_title, listOf("playlist", "next", "previous", "navigation", "queue")),
-        SearchEntrySpec(R.string.pref_appearance_watched_threshold_title, listOf("watched", "progress", "threshold", "percent")),
-        SearchEntrySpec(R.string.ui_show_media_info_in_chooser, listOf("media info", "chooser", "open with", "system")),
-      )
       addSearchEntries(
         category = "Player",
         screen = PlayerPreferencesScreen,
@@ -1212,14 +1088,8 @@ object SearchablePreferences {
         category = "Audio",
         screen = AudioPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_audio_ambient_mode_title, listOf("audio", "ambient", "background", "visualizer")),
-        SearchEntrySpec(R.string.pref_audio_wavy_seekbar_title, listOf("audio", "wavy", "seekbar", "visualizer", "animation", "wave")),
-      )
-      addSearchEntries(
-        category = "Audio",
-        screen = AudioPreferencesScreen,
-        anchorItemIndex = 3,
         SearchEntrySpec(R.string.pref_audio_drc_title, listOf("audio", "dynamic range", "compression", "drc", "loudness")),
+        SearchEntrySpec(R.string.pref_audio_dialogue_boost_title, listOf("audio", "dialogue", "boost", "voice", "speech", "clarity")),
       )
 
       addSearchEntries(

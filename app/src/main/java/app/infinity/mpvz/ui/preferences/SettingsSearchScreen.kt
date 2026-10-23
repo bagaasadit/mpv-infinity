@@ -281,11 +281,9 @@ object SettingsSearchScreen : Screen {
                   stringResource(R.string.pref_gesture),
                   stringResource(R.string.pref_decoder_try_hw_dec_title),
                   stringResource(R.string.pref_subtitles),
-                  stringResource(R.string.pref_folders_title),
                   stringResource(R.string.pref_audio),
                   stringResource(R.string.pref_video_background_playback_title),
                   stringResource(R.string.pref_advanced_notification_style),
-                  stringResource(R.string.ui_yt_dlp_streaming),
                   stringResource(R.string.pref_advanced),
                 )
               @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)

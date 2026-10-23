@@ -74,6 +74,8 @@ enum class AudioChannels(
   Mono(R.string.pref_audio_channels_mono, "audio-channels", "mono"),
   Stereo(R.string.pref_audio_channels_stereo, "audio-channels", "stereo"),
   ReverseStereo(R.string.pref_audio_channels_stereo_reversed, "af", "pan=[stereo|c0=c1|c1=c0]"),
+  Surround51(R.string.pref_audio_channels_5_1, "audio-channels", "5.1"),
+  Surround71(R.string.pref_audio_channels_7_1, "audio-channels", "7.1"),
 }
 
 enum class DialogueBoost(

@@ -227,7 +227,7 @@ object AboutScreen : Screen {
                     Text(
                       text =
                         androidx.compose.ui.res
-                          .stringResource(app.infinity.mpvz.R.string.ui_by_ritesh_pandit),
+                          .stringResource(app.infinity.mpvz.R.string.ui_dedicated_stream_player),
                       modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                       style = MaterialTheme.typography.titleSmall,
                       fontWeight = FontWeight.SemiBold,
@@ -315,7 +315,7 @@ object AboutScreen : Screen {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .clickable {
-                      SafeClipboard.copyPlainText(context, "Mpv∞_device_info", collectDeviceInfo())
+                      SafeClipboard.copyPlainText(context, "mpvzero_device_info", collectDeviceInfo())
                     },
               ) {
                 Row(
@@ -347,144 +347,6 @@ object AboutScreen : Screen {
                   color = cs.onPrimaryContainer.copy(alpha = 0.85f),
                 )
               }
-            }
-          }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Support / Donation Section
-        PreferenceSectionHeader(title = stringResource(R.string.pref_section_support))
-        PreferenceCard {
-          Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(
-                imageVector = Icons.RoundedFilled.MonetizationOn,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = cs.error,
-              )
-              Spacer(Modifier.width(10.dp))
-              Text(
-                text =
-                      "Support ZHINFINITY",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = cs.onSurface,
-              )
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(
-              text =
-                "Support the work of ZHINFINITY on Mpv∞.",
-              style = MaterialTheme.typography.bodyMedium,
-              color = cs.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(14.dp))
-            Surface(
-              shape = RoundedCornerShape(12.dp),
-              color = cs.primaryContainer.copy(alpha = 0.4f),
-              modifier = Modifier.fillMaxWidth(),
-            ) {
-              Row(
-                modifier =
-                  Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                      SafeClipboard.copyPlainText(
-                        context = context,
-                        label = "Mpv∞_support_link",
-                        text = "zhjjk001-1@oksbi",
-                        showToast = false,
-                      )
-                      Toast
-                        .makeText(
-                          context,
-                          context.getString(app.infinity.mpvz.R.string.ui_support_link_copied),
-                          Toast.LENGTH_SHORT,
-                        ).show()
-                    }.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-              ) {
-                Column(modifier = Modifier.weight(1f)) {
-                  Text(
-                    text =
-                      androidx.compose.ui.res
-                        .stringResource(app.infinity.mpvz.R.string.ui_support_link),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = cs.outline,
-                  )
-                  Spacer(Modifier.height(12.dp))
-                  Text(
-                      text = "zhjjk001-1@oksbi",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = cs.onSurface,
-                  )
-                }
-                Icon(
-                  imageVector = Icons.RoundedFilled.ContentCopy,
-                  contentDescription =
-                    "Copy UPI ID",
-                  modifier = Modifier.size(20.dp),
-                  tint = cs.primary,
-                )
-              }
-            }
-            Spacer(Modifier.height(12.dp))
-            Button(
-              onClick = {
-                try {
-                  val supportIntent =
-                    Intent(
-                      Intent.ACTION_VIEW,
-                      "https://ko-fi.com/ZHINFINITY".toUri(),
-                    )
-                  context.startActivity(supportIntent)
-                } catch (_: Exception) {
-                  Toast
-                    .makeText(
-                      context,
-                      "Unable to open support link",
-                      Toast.LENGTH_SHORT,
-                    ).show()
-                }
-              },
-              modifier = Modifier.fillMaxWidth().height(50.dp),
-              shape = RoundedCornerShape(12.dp),
-              colors =
-                ButtonDefaults.buttonColors(
-                  containerColor = cs.error,
-                  contentColor = cs.onError,
-                ),
-              elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-            ) {
-              Icon(Icons.RoundedFilled.MonetizationOn, null, modifier = Modifier.size(18.dp))
-              Spacer(Modifier.width(8.dp))
-              Text(
-                androidx.compose.ui.res
-                  .stringResource(app.infinity.mpvz.R.string.ui_visit_github),
-                fontWeight = FontWeight.SemiBold,
-              )
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-              Button(
-                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://ko-fi.com/zhinfinity".toUri())) },
-                modifier = Modifier.weight(1f).height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = cs.surfaceVariant, contentColor = cs.onSurfaceVariant),
-              ) { Text("Ko-fi") }
-              Button(
-                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://paypal.me/InfinityxEternity".toUri())) },
-                modifier = Modifier.weight(1f).height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = cs.surfaceVariant, contentColor = cs.onSurfaceVariant),
-              ) { Text("PayPal") }
             }
           }
         }
@@ -948,13 +810,6 @@ private val OPEN_SOURCE_LIBRARIES =
       url = "https://github.com/Kotlin/kotlinx.collections.immutable",
     ),
     OpenSourceLibrary(
-      name = "Curl Android",
-      artifact = "io.github.vvb2060.ndk:curl",
-      descriptionRes = R.string.oss_curl_android_description,
-      license = "curl",
-      url = "https://github.com/vvb2060/curl-android",
-    ),
-    OpenSourceLibrary(
       name = "Desugar JDK Libs",
       artifact = "com.android.tools:desugar_jdk_libs",
       descriptionRes = R.string.oss_desugar_jdk_libs_description,
@@ -973,13 +828,6 @@ private val OPEN_SOURCE_LIBRARIES =
       artifact = "mpvlib.aar / mpvlib-no-vulkun.aar / mpvlib-fongmi.aar",
       descriptionRes = R.string.oss_mpvlib_android_description,
       license = "MIT",
-      url = "https://github.com/ZHINFINITY/Mpv-infinity",
-    ),
-    OpenSourceLibrary(
-      name = "QuickJS-NG",
-      artifact = "app/src/main/cpp/third_party/quickjs",
-      descriptionRes = R.string.oss_quickjs_ng_description,
-      license = "MIT",
-      url = "https://github.com/quickjs-ng/quickjs",
+      url = "https://github.com/bagaasadit/mpv-infinity",
     ),
   ).sortedBy { library -> library.name.lowercase(Locale.ROOT) }

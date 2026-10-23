@@ -50,7 +50,6 @@ import androidx.core.content.ContextCompat
 import app.infinity.mpvz.R
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import app.infinity.mpvz.preferences.AudioPreferences
-import app.infinity.mpvz.preferences.BrowserPreferences
 import app.infinity.mpvz.preferences.IntroSegmentProvider
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
@@ -90,7 +89,6 @@ object PlayerPreferencesScreen : Screen {
     val configOwnedOptions = currentMpvConfigOverrideOptions()
     val audioPreferences = koinInject<AudioPreferences>()
     val advancedPreferences = koinInject<AdvancedPreferences>()
-    val browserPreferences = koinInject<BrowserPreferences>()
     val notificationPermissionLauncher =
       rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -265,100 +263,6 @@ object PlayerPreferencesScreen : Screen {
 
               PreferenceDivider()
 
-              val autoplayNextVideo by preferences.autoplayNextVideo.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_autoplay_next_video_title),
-                value = autoplayNextVideo,
-                onValueChange = preferences.autoplayNextVideo::set,
-                title = { Text(stringResource(R.string.pref_autoplay_next_video_title)) },
-                summary = {
-                  Text(
-                    if (autoplayNextVideo) {
-                      stringResource(R.string.pref_autoplay_next_video_summary)
-                    } else {
-                      stringResource(R.string.pref_autoplay_next_video_summary_disabled)
-                    },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val autoplayNextAudio by preferences.autoplayNextAudio.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_autoplay_next_audio_title),
-                value = autoplayNextAudio,
-                onValueChange = preferences.autoplayNextAudio::set,
-                title = { Text(stringResource(R.string.pref_autoplay_next_audio_title)) },
-                summary = {
-                  Text(
-                    if (autoplayNextAudio) {
-                      stringResource(R.string.pref_autoplay_next_audio_summary)
-                    } else {
-                      stringResource(R.string.pref_autoplay_next_audio_summary_disabled)
-                    },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val playlistMode by preferences.playlistMode.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_playlist_mode_title),
-                value = playlistMode,
-                onValueChange = preferences.playlistMode::set,
-                title = { Text(stringResource(R.string.pref_playlist_mode_title)) },
-                summary = {
-                  Text(
-                    if (playlistMode) {
-                      stringResource(R.string.pref_playlist_mode_summary)
-                    } else {
-                      stringResource(R.string.pref_playlist_mode_summary_disabled)
-                    },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val watchedThreshold by browserPreferences.watchedThreshold.collectAsState()
-              val effectiveThreshold = watchedThreshold.coerceAtLeast(0)
-              val thresholdDisplayValue = if (effectiveThreshold == 0) 0f else effectiveThreshold.toFloat()
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_watched_threshold_title),
-                value = thresholdDisplayValue,
-                onValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
-                sliderValue = thresholdDisplayValue,
-                onSliderValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt()) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_watched_threshold_title),
-                  )
-                },
-                valueRange = 0f..100f,
-                valueSteps = 20,
-                summary = {
-                  Text(
-                    text =
-                      if (effectiveThreshold == 0) {
-                        stringResource(R.string.pref_appearance_watched_threshold_summary_infinite)
-                      } else {
-                        stringResource(
-                          id = R.string.pref_appearance_watched_threshold_summary,
-                          effectiveThreshold,
-                        )
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
               val rememberBrightness by preferences.rememberBrightness.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_player_remember_brightness),
@@ -435,46 +339,6 @@ object PlayerPreferencesScreen : Screen {
                     } else {
                       stringResource(R.string.pref_player_autoplay_after_screen_unlock_summary_disabled)
                     },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              val enableMediaInfoIntent by preferences.enableMediaInfoIntent.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_show_media_info_in_chooser),
-                value = enableMediaInfoIntent,
-                onValueChange = { enabled ->
-                  preferences.enableMediaInfoIntent.set(enabled)
-                  val componentName = ComponentName(context, "app.infinity.mpvz.ui.mediainfo.MediaInfoActivityAlias")
-                  val newState =
-                    if (enabled) {
-                      PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                    } else {
-                      PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-                    }
-                  try {
-                    context.packageManager.setComponentEnabledSetting(
-                      componentName,
-                      newState,
-                      PackageManager.DONT_KILL_APP,
-                    )
-                  } catch (e: Exception) {
-                    android.util.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
-                  }
-                },
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.infinity.mpvz.R.string.ui_show_media_info_in_chooser),
-                  )
-                },
-                summary = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.infinity.mpvz.R.string.ui_show_media_info_in_system),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

@@ -30,10 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,14 +63,12 @@ import app.infinity.mpvz.R
 import app.infinity.mpvz.domain.playbackstate.repository.PlaybackStateRepository
 import app.infinity.mpvz.domain.thumbnail.ThumbnailRepository
 import app.infinity.mpvz.preferences.AdvancedPreferences
-import app.infinity.mpvz.preferences.FoldersPreferences
 import app.infinity.mpvz.preferences.SettingsManager
 import app.infinity.mpvz.preferences.SubtitlesPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
 import app.infinity.mpvz.presentation.components.ConfirmDialog
 import app.infinity.mpvz.presentation.crash.CrashActivity
-import app.infinity.mpvz.ui.components.IconSwitch
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
 import app.infinity.mpvz.ui.preferences.components.SwitchPreference
@@ -82,9 +77,7 @@ import app.infinity.mpvz.ui.utils.LocalShowSettingsBackArrow
 import app.infinity.mpvz.ui.utils.popSafely
 import app.infinity.mpvz.utils.clipboard.SafeClipboard
 import app.infinity.mpvz.utils.history.RecentlyPlayedOps
-import app.infinity.mpvz.utils.history.clearWatchHistory
 import app.infinity.mpvz.utils.media.PlaybackStateEvents
-import app.infinity.mpvz.utils.storage.normalizeHiddenMarkerName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -144,10 +137,7 @@ object AdvancedPreferencesScreen : Screen {
     val preferences = koinInject<AdvancedPreferences>()
     val playbackStateRepository = koinInject<PlaybackStateRepository>()
     val settingsManager = koinInject<SettingsManager>()
-    val foldersPreferences = koinInject<FoldersPreferences>()
     val subtitlesPreferences = koinInject<SubtitlesPreferences>()
-    val includeNoMediaFolders by foldersPreferences.includeNoMediaFolders.collectAsState()
-    val hiddenFolderMarkerNames by foldersPreferences.hiddenFolderMarkerNames.collectAsState()
     val scope = rememberCoroutineScope()
     var showImportDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
@@ -227,7 +217,7 @@ object AdvancedPreferencesScreen : Screen {
         }
       }
 
-    val baseStorageFolder by foldersPreferences.baseStorageFolder.collectAsState()
+    val baseStorageFolder by preferences.mpvConfStorageUri.collectAsState()
 
     val storageRootPicker =
       rememberLauncherForActivityResult(
@@ -239,11 +229,10 @@ object AdvancedPreferencesScreen : Screen {
           Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
         )
         val uriString = uri.toString()
-        val previousBaseStorageFolder = foldersPreferences.baseStorageFolder.get()
-        if (subtitlesPreferences.fontsFolder.get() == previousBaseStorageFolder) {
+        val previousStorageFolder = preferences.mpvConfStorageUri.get()
+        if (subtitlesPreferences.fontsFolder.get() == previousStorageFolder) {
           subtitlesPreferences.fontsFolder.set("")
         }
-        foldersPreferences.baseStorageFolder.set(uriString)
         preferences.mpvConfStorageUri.set(uriString)
         subtitlesPreferences.subtitleSaveFolder.set(uriString)
         val root = DocumentFile.fromTreeUri(context, uri) ?: return@rememberLauncherForActivityResult
@@ -496,7 +485,6 @@ object AdvancedPreferencesScreen : Screen {
                     if (subtitlesPreferences.fontsFolder.get() == baseStorageFolder) {
                       subtitlesPreferences.fontsFolder.set("")
                     }
-                    foldersPreferences.baseStorageFolder.set("")
                     preferences.mpvConfStorageUri.set("")
                     subtitlesPreferences.subtitleSaveFolder.set("")
                   },
@@ -693,27 +681,6 @@ object AdvancedPreferencesScreen : Screen {
                 },
               )
             }
-          }
-
-          // Media Scanning Section
-          item {
-            PreferenceSectionHeader(
-              title = stringResource(R.string.pref_folders_title),
-            )
-          }
-
-          item {
-            NoMediaPreferenceCard(
-              modifier = Modifier.settingsSearchTarget(R.string.pref_folders_include_hidden_title),
-              includeNoMediaFolders = includeNoMediaFolders,
-              markerNames = hiddenFolderMarkerNames,
-              onIncludeNoMediaFoldersChanged = { enabled ->
-                foldersPreferences.includeNoMediaFolders.set(enabled)
-              },
-              onMarkerNamesChanged = { markerNames ->
-                foldersPreferences.hiddenFolderMarkerNames.set(markerNames)
-              },
-            )
           }
 
           // Data & Cache Section
@@ -1069,152 +1036,4 @@ private fun formatFileSize(bytes: Long): String =
     else -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
   }
 
-@Composable
-private fun NoMediaPreferenceCard(
-  includeNoMediaFolders: Boolean,
-  markerNames: Set<String>,
-  onIncludeNoMediaFoldersChanged: (Boolean) -> Unit,
-  onMarkerNamesChanged: (Set<String>) -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  var showAddMarkerDialog by remember { mutableStateOf(false) }
-  var markerInput by remember { mutableStateOf("") }
 
-  Card(
-    modifier = modifier.fillMaxWidth(),
-    colors =
-      CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-      ),
-  ) {
-    Column {
-      Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .clickable { onIncludeNoMediaFoldersChanged(!includeNoMediaFolders) }
-            .padding(16.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-      ) {
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = stringResource(R.string.pref_folders_include_hidden_title),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-          )
-          Spacer(modifier = Modifier.height(4.dp))
-          Text(
-            text = stringResource(R.string.pref_folders_include_hidden_summary),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        IconSwitch(
-          checked = includeNoMediaFolders,
-          onCheckedChange = onIncludeNoMediaFoldersChanged,
-        )
-      }
-
-      if (includeNoMediaFolders) {
-        HorizontalDivider()
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-          Text(
-            text = stringResource(R.string.pref_folders_hidden_markers_title),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-          )
-          Text(
-            text = stringResource(R.string.pref_folders_hidden_markers_summary),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-
-          if (markerNames.isEmpty()) {
-            Text(
-              text = stringResource(R.string.pref_folders_hidden_markers_empty),
-              modifier = Modifier.padding(top = 8.dp),
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          } else {
-            markerNames.sorted().forEach { markerName ->
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-              ) {
-                Text(text = markerName, modifier = Modifier.weight(1f))
-                IconButton(onClick = { onMarkerNamesChanged(markerNames - markerName) }) {
-                  Icon(
-                    Icons.RoundedFilled.Close,
-                    contentDescription =
-                      stringResource(R.string.pref_folders_remove_marker, markerName),
-                  )
-                }
-              }
-            }
-          }
-
-          TextButton(
-            onClick = {
-              markerInput = ""
-              showAddMarkerDialog = true
-            },
-          ) {
-            Icon(Icons.RoundedFilled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.size(8.dp))
-            Text(stringResource(R.string.pref_folders_add_marker))
-          }
-        }
-      }
-    }
-  }
-
-  if (showAddMarkerDialog) {
-    val normalizedMarker = normalizeHiddenMarkerName(markerInput)
-    val errorMessage =
-      when {
-        markerInput.isBlank() -> null
-        normalizedMarker == null -> R.string.pref_folders_marker_invalid
-        normalizedMarker in markerNames -> R.string.pref_folders_marker_duplicate
-        else -> null
-      }
-
-    AlertDialog(
-      onDismissRequest = { showAddMarkerDialog = false },
-      title = { Text(stringResource(R.string.pref_folders_add_marker_title)) },
-      text = {
-        OutlinedTextField(
-          value = markerInput,
-          onValueChange = { markerInput = it },
-          label = { Text(stringResource(R.string.pref_folders_marker_name)) },
-          placeholder = { Text(".nomedia") },
-          singleLine = true,
-          isError = errorMessage != null,
-          supportingText =
-            if (errorMessage == null) {
-              null
-            } else {
-              { Text(stringResource(errorMessage)) }
-            },
-        )
-      },
-      confirmButton = {
-        TextButton(
-          enabled = normalizedMarker != null && normalizedMarker !in markerNames,
-          onClick = {
-            onMarkerNamesChanged(markerNames + requireNotNull(normalizedMarker))
-            showAddMarkerDialog = false
-          },
-        ) {
-          Text(stringResource(R.string.pref_folders_add_marker))
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = { showAddMarkerDialog = false }) {
-          Text(stringResource(R.string.generic_cancel))
-        }
-      },
-    )
-  }
-}

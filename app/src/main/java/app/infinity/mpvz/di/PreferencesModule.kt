@@ -14,7 +14,6 @@ import app.infinity.mpvz.preferences.AppearancePreferences
 import app.infinity.mpvz.preferences.AudioPreferences
 import app.infinity.mpvz.preferences.BrowserPreferences
 import app.infinity.mpvz.preferences.DecoderPreferences
-import app.infinity.mpvz.preferences.FoldersPreferences
 import app.infinity.mpvz.preferences.GesturePreferences
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.SettingsManager
@@ -39,7 +38,6 @@ val PreferencesModule =
     singleOf(::AudioPreferences)
     singleOf(::AdvancedPreferences)
     single { BrowserPreferences(get(), androidContext()) }
-    singleOf(::FoldersPreferences)
     singleOf(::YtdlPreferences)
     singleOf(::SettingsManager)
   }
