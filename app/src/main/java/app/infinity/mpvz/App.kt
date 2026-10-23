@@ -74,45 +74,6 @@ class App :
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
     startIdleMpvCoreReaper()
 
-    applicationScope.launch {
-      runCatching {
-        val preferences: PlayerPreferences = getKoin().get()
-        val enableMediaInfo = preferences.enableMediaInfoIntent.get()
-        val componentName = ComponentName(this@App, "app.infinity.mpvz.ui.mediainfo.MediaInfoActivityAlias")
-        val newState =
-          if (enableMediaInfo) {
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-          } else {
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-          }
-        packageManager.setComponentEnabledSetting(
-          componentName,
-          newState,
-          PackageManager.DONT_KILL_APP,
-        )
-      }.onFailure { error ->
-        Log.e(TAG, "Failed to initialize MediaInfoActivityAlias setting on launch", error)
-      }
-      runCatching {
-        val preferences: PlayerPreferences = getKoin().get()
-        val enableWebLinks = preferences.enableWebStreamLinkIntents.get()
-        val componentName = ComponentName(this@App, "app.infinity.mpvz.ui.player.WebStreamLinksActivityAlias")
-        val newState =
-          if (enableWebLinks) {
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-          } else {
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-          }
-        packageManager.setComponentEnabledSetting(
-          componentName,
-          newState,
-          PackageManager.DONT_KILL_APP,
-        )
-      }.onFailure { error ->
-        Log.e(TAG, "Failed to initialize WebStreamLinksActivityAlias setting on launch", error)
-      }
-    }
-
     // TextMate grammar/theme assets for the script editor are initialized lazily on first use.
     // Metadata cache maintenance and native thumbnail startup are intentionally kept out of the
     // Application cold-start path so they cannot compete with first composition / first frame.

@@ -104,7 +104,6 @@ import app.infinity.mpvz.ui.theme.MpvInfinityTheme
 import app.infinity.mpvz.utils.device.VulkanCapabilities
 import app.infinity.mpvz.utils.history.RecentlyPlayedOps
 import app.infinity.mpvz.utils.media.HttpUtils
-import app.infinity.mpvz.utils.media.MediaUtils
 import app.infinity.mpvz.utils.media.fileExtension
 import app.infinity.mpvz.utils.media.resolveSeekMode
 import app.infinity.mpvz.utils.media.M3UParseResult
@@ -8136,7 +8135,7 @@ class PlayerActivity :
   private fun publishPlaylistToSession() {
     if (!ownsPlaybackSession()) return
     val existingQueueItems = PlaybackSession.queue.value.items
-    val launchPosterUrl = intent.getStringExtra(MediaUtils.EXTRA_MEDIA_POSTER_URL)
+    val launchPosterUrl = intent.getStringExtra(EXTRA_MEDIA_POSTER_URL)
     val launchMimeType = intent.type ?: "audio/*".takeIf { isKnownAudioLaunch(intent) }
     val items =
       playlist.mapIndexed { index, uri ->
@@ -8449,6 +8448,8 @@ class PlayerActivity :
   }
 
   companion object {
+    const val EXTRA_MEDIA_POSTER_URL = "app.infinity.mpvz.extra.POSTER_URL"
+
     /**
      * Intent action used to return playback result data to the calling activity.
      */

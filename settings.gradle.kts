@@ -33,6 +33,5 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Mpv∞"
+rootProject.name = "mpvZero"
 include(":app")
-include(":subtitle-libass")

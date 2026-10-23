@@ -157,7 +157,6 @@ import app.infinity.mpvz.domain.thumbnail.EmbeddedArtworkResolver
 import app.infinity.mpvz.presentation.components.RemoteImage
 import app.infinity.mpvz.preferences.AppearancePreferences
 import app.infinity.mpvz.preferences.AudioPreferences
-import app.infinity.mpvz.preferences.AudioVisualizerStyle
 import app.infinity.mpvz.preferences.GesturePreferences
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
@@ -171,14 +170,6 @@ import app.infinity.mpvz.ui.player.RepeatMode
 import app.infinity.mpvz.ui.player.Sheets
 import app.infinity.mpvz.ui.player.controls.components.AbLoopIcon
 import app.infinity.mpvz.ui.player.controls.components.SeekbarWithTimers
-import app.infinity.mpvz.ui.player.visualizer.AudioFeatures
-import app.infinity.mpvz.ui.player.visualizer.AudioSpectrumAnalyzer
-import app.infinity.mpvz.ui.player.visualizer.BlobOverlay
-import app.infinity.mpvz.ui.player.visualizer.CuboidOverlay
-import app.infinity.mpvz.ui.player.visualizer.GalaxyOverlay
-import app.infinity.mpvz.ui.player.visualizer.ParticleOverlay
-import app.infinity.mpvz.ui.player.visualizer.VisualizerPalette
-import app.infinity.mpvz.ui.player.visualizer.rememberAudioVisualizerFeatures
 import app.infinity.mpvz.ui.theme.fontFamilyForText
 import app.infinity.mpvz.ui.utils.isMpvOptionOwnedByConfig
 
@@ -329,197 +320,6 @@ private fun rememberAudioAlbumArt(
   pathOrUri: String?,
   artworkUri: String? = null,
 ): Bitmap? = rememberAudioPresentationMetadata(pathOrUri, artworkUri)?.artwork
-
-private fun ribbonPaletteFromAccent(
-  materialPalette: VisualizerPalette,
-  accentArgb: Int,
-): VisualizerPalette {
-  val hsv = FloatArray(3)
-  AndroidColor.colorToHSV(accentArgb, hsv)
-  val saturation = hsv[1].coerceAtLeast(0.24f)
-
-  fun shade(
-    saturationScale: Float,
-    value: Float,
-  ): Int =
-    AndroidColor.HSVToColor(
-      floatArrayOf(
-        hsv[0],
-        (saturation * saturationScale).coerceIn(0f, 1f),
-        value.coerceIn(0f, 1f),
-      ),
-    )
-
-  return materialPalette.copy(
-    secondary =
-      shade(
-        saturationScale = 1.05f,
-        value = (hsv[2] * 0.72f).coerceIn(0.24f, 0.68f),
-      ),
-    tertiary =
-      shade(
-        saturationScale = 0.88f,
-        value = (hsv[2] + (1f - hsv[2]) * 0.18f).coerceIn(0.48f, 0.88f),
-      ),
-  )
-}
-
-private fun artworkVisualizerPalette(
-  bitmap: Bitmap,
-  materialPalette: VisualizerPalette,
-): VisualizerPalette {
-  val extracted = Palette.from(bitmap).maximumColorCount(20).generate()
-  val maximumPopulation = extracted.swatches.maxOfOrNull { it.population }?.coerceAtLeast(1) ?: 1
-  val accent =
-    extracted.swatches
-      .asSequence()
-      .filter { swatch -> swatch.hsl[1] >= 0.18f && swatch.hsl[2] in 0.12f..0.88f }
-      .maxByOrNull { swatch ->
-        val population = swatch.population.toFloat() / maximumPopulation
-        val centeredLightness = 1f - abs(swatch.hsl[2] - 0.52f)
-        swatch.hsl[1] * 0.58f + population * 0.27f + centeredLightness * 0.15f
-      }?.rgb
-      ?: materialPalette.primary
-  val artworkTones = ribbonPaletteFromAccent(materialPalette, accent)
-  return VisualizerPalette(
-    // Keep a restrained album-art tint behind the renderer so the visualizer blends with the
-    // player instead of falling back to a black or flat grey surface.
-    background = ColorUtils.blendARGB(materialPalette.background, accent, 0.20f),
-    primary = ColorUtils.blendARGB(materialPalette.primary, accent, 0.48f),
-    secondary = ColorUtils.blendARGB(materialPalette.secondary, artworkTones.secondary, 0.62f),
-    tertiary = ColorUtils.blendARGB(materialPalette.tertiary, artworkTones.tertiary, 0.58f),
-  )
-}
-
-@Composable
-private fun AudioVisualizerViewport(
-  style: AudioVisualizerStyle,
-  palette: VisualizerPalette,
-  isPlaying: Boolean,
-  isSheetOpen: Boolean,
-  volumeScale: Float,
-  features: AudioFeatures,
-  onClick: () -> Unit,
-  onLongClick: () -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  BoxWithConstraints(
-    modifier =
-      modifier
-        .combinedClickable(
-          interactionSource = remember { MutableInteractionSource() },
-          indication = null,
-          onClick = onClick,
-          onLongClick = onLongClick,
-        ),
-    contentAlignment = Alignment.Center,
-  ) {
-    val rendererModifier =
-      Modifier
-        .fillMaxSize()
-        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithCache {
-          val bottomFade =
-            Brush.verticalGradient(
-              0f to Color.White,
-              0.78f to Color.White,
-              1f to Color.Transparent,
-              startY = 0f,
-              endY = size.height,
-            )
-          onDrawWithContent {
-            drawContent()
-            drawRect(brush = bottomFade, blendMode = BlendMode.DstIn)
-          }
-        }
-        .graphicsLayer {
-          scaleX = 1.03f
-          scaleY = 1.03f
-        }
-
-    when (style) {
-      AudioVisualizerStyle.Galaxy ->
-        GalaxyOverlay(
-          palette = palette,
-          isSheetOpen = isSheetOpen,
-          volumeScale = volumeScale,
-          features = features,
-          modifier = rendererModifier,
-        )
-      AudioVisualizerStyle.Blob ->
-        BlobOverlay(
-          palette = palette,
-          isSheetOpen = isSheetOpen,
-          volumeScale = volumeScale,
-          features = features,
-          modifier = rendererModifier,
-        )
-      AudioVisualizerStyle.Cuboid ->
-        CuboidOverlay(
-          isPlaying = isPlaying,
-          palette = palette,
-          isSheetOpen = isSheetOpen,
-          volumeScale = volumeScale,
-          features = features,
-          modifier = rendererModifier,
-        )
-      AudioVisualizerStyle.Particle ->
-        ParticleOverlay(
-          palette = palette,
-          isSheetOpen = isSheetOpen,
-          volumeScale = volumeScale,
-          features = features,
-          modifier = rendererModifier,
-        )
-    }
-  }
-}
-
-/** Compose Canvas visualizers need scoped spectrum capture outside VisualizerOverlay. */
-@Composable
-private fun CanvasSpectrumCaptureEffect(
-  enabled: Boolean,
-  features: AudioFeatures,
-) {
-  val context = LocalContext.current
-  val scope = rememberCoroutineScope()
-  val analyzerActive = remember(features) { AtomicBoolean(false) }
-  var hasRecordPermission by remember {
-    mutableStateOf(
-      ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-        PackageManager.PERMISSION_GRANTED,
-    )
-  }
-  val recordPermissionLauncher =
-    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      hasRecordPermission = granted
-    }
-
-  LaunchedEffect(enabled, hasRecordPermission) {
-    if (enabled && !hasRecordPermission) {
-      recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-    }
-  }
-
-  DisposableEffect(enabled, hasRecordPermission, features) {
-    val analyzer = if (enabled && hasRecordPermission) AudioSpectrumAnalyzer(features) else null
-    val job =
-      scope.launch(Dispatchers.Default) {
-        while (isActive && analyzer != null) {
-          val captureFresh = features.active && features.hasRecentCapture(1_500_000_000L)
-          if (!analyzerActive.get() || !captureFresh) {
-            analyzerActive.set(analyzer.start(0).isSuccess)
-          }
-          kotlinx.coroutines.delay(if (analyzerActive.get()) 1_500L else 400L)
-        }
-      }
-    onDispose {
-      job.cancel()
-      analyzerActive.set(false)
-      analyzer?.stop(resetFeatures = false)
-    }
-  }
-}
 
 @Composable
 private fun CoverArtCardImage(
@@ -797,9 +597,6 @@ fun AudioPlayerControls(
 
   val audioPreferences = koinInject<AudioPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
-  val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
-  val audioWavySeekbar by audioPreferences.audioWavySeekbar.collectAsState()
-
   val backgroundPlaybackEnabled by audioPreferences.audioBackgroundPlayback.collectAsState()
   val playerControlsTheme by appearancePreferences.playerControlsTheme.collectAsState()
   val showSeekbarOuterContainer by appearancePreferences.showSeekbarOuterContainer.collectAsState()
@@ -807,30 +604,6 @@ fun AudioPlayerControls(
   val typography = MaterialTheme.typography
   val shapes = MaterialTheme.shapes
   val musicPlayerColorScheme = colorScheme
-  val palette =
-    remember(colorScheme) {
-      VisualizerPalette(
-        background = colorScheme.surface.toArgb(),
-        primary = colorScheme.primary.toArgb(),
-        secondary = colorScheme.secondary.toArgb(),
-        tertiary = colorScheme.tertiary.toArgb(),
-      )
-    }
-  val visualizerPalette by produceState(
-    initialValue = palette,
-    key1 = albumArtBitmap,
-    key2 = palette,
-  ) {
-    val artwork = albumArtBitmap
-    value =
-      if (artwork == null) {
-        palette
-      } else {
-        withContext(Dispatchers.Default) {
-          runCatching { artworkVisualizerPalette(artwork, palette) }.getOrDefault(palette)
-        }
-      }
-  }
 
    // MPV's pause property is not authoritative after a native Media3 handoff. Use the native
    // snapshot while that engine owns the item, otherwise fall back to MPV's transport state.
@@ -838,7 +611,6 @@ fun AudioPlayerControls(
     val currentDurSec = if (preciseDuration > 0f) preciseDuration else duration?.toFloat() ?: 0f
    val currentVolumePercent by viewModel.currentVolumePercent.collectAsState()
    val volumeScale = currentVolumePercent / 100f
-   val visualizerFeatures = rememberAudioVisualizerFeatures(isPlaying, volumeScale)
 
   // Hardware buttons, Bluetooth devices and system panels can change STREAM_MUSIC without
   // going through the player's volume callbacks. Keep the visualizer's gain synchronized.
@@ -853,17 +625,9 @@ fun AudioPlayerControls(
   val repeatMode by viewModel.repeatMode.collectAsState()
   val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
-  val showVisualizer by viewModel.showVisualizerInAudioPlayer.collectAsState()
+  val showVisualizer = false
   val sheetShown by viewModel.sheetShown.collectAsState()
   val isSheetOpen = sheetShown != Sheets.None
-
-  CanvasSpectrumCaptureEffect(
-    enabled =
-      showVisualizer &&
-        !isSheetOpen &&
-        audioVisualizerStyle == AudioVisualizerStyle.Cuboid,
-    features = visualizerFeatures,
-  )
 
   val abLoop by viewModel.abLoopState.collectAsState()
   val abLoopA = abLoop.a
@@ -1112,73 +876,23 @@ fun AudioPlayerControls(
       )
 
     @OptIn(ExperimentalFoundationApi::class)
-    val centerVisualizerView: @Composable (Modifier, Boolean) -> Unit = { visualizerModifier, forceArtwork ->
+    val centerVisualizerView: @Composable (Modifier, Boolean) -> Unit = { visualizerModifier, _ ->
       BoxWithConstraints(
-        modifier =
-          visualizerModifier
-            .then(if (visualizerUsesFullTopAndSides) Modifier else Modifier.clipToBounds())
-            .then(
-              if (showVisualizer) {
-                Modifier
-              } else {
-                Modifier.combinedClickable(
-                  interactionSource = remember { MutableInteractionSource() },
-                  indication = null,
-                  onClick = { viewModel.toggleAudioVisualizer() },
-                  onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-                )
-              },
-            ),
+        modifier = visualizerModifier.clipToBounds(),
         contentAlignment = Alignment.Center,
       ) {
         val containerWidthPx = constraints.maxWidth.toFloat()
         val currentOffset = animatableOffsetX.value
+        val coverShape = RoundedCornerShape(32.dp)
+        val density = LocalDensity.current
+        val gap = with(density) { 24.dp.toPx() }
+        val stride = containerWidthPx + gap
 
-        AnimatedContent(
-            targetState = showVisualizer && !forceArtwork,
-            transitionSpec = {
-              if (targetState) {
-                (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                  scaleIn(animationSpec = tween(350, easing = FastOutSlowInEasing), initialScale = 0.90f))
-                  .togetherWith(
-                    fadeOut(animationSpec = tween(280)) +
-                      scaleOut(animationSpec = tween(280), targetScale = 1.06f),
-                  )
-              } else {
-                (fadeIn(animationSpec = tween(350, easing = FastOutSlowInEasing)) +
-                  scaleIn(animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f), initialScale = 0.88f))
-                  .togetherWith(
-                    fadeOut(animationSpec = tween(280)) +
-                      scaleOut(animationSpec = tween(280), targetScale = 1.06f),
-                  )
-              }
-            },
-            label = "visualizer_toggle",
-            modifier = Modifier.fillMaxHeight().fillMaxWidth(if (isTabletPortrait) 0.65f else 1.0f),
-          ) { isVisualizerActive ->
-          if (isVisualizerActive) {
-            AudioVisualizerViewport(
-              style = audioVisualizerStyle,
-              palette = visualizerPalette,
-              isPlaying = isPlaying,
-              isSheetOpen = isSheetOpen,
-              volumeScale = volumeScale,
-              features = visualizerFeatures,
-              onClick = viewModel::toggleAudioVisualizer,
-              onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-              modifier = Modifier.fillMaxSize(),
-            )
-          } else {
-            val coverShape = RoundedCornerShape(32.dp)
-            val density = LocalDensity.current
-            val gap = with(density) { 24.dp.toPx() }
-            val stride = containerWidthPx + gap
-
-            Box(
-              modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(showVisualizer, containerWidthPx) {
-                  if (showVisualizer || containerWidthPx <= 0f) return@pointerInput
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(containerWidthPx) {
+              if (containerWidthPx <= 0f) return@pointerInput
                   detectHorizontalDragGestures(
                     onDragStart = {
                       coroutineScope.launch { animatableOffsetX.snapTo(0f) }
@@ -1276,8 +990,6 @@ fun AudioPlayerControls(
                 CoverArtCardImage(bitmap = activeCoverOverride ?: albumArtBitmap, artworkUrl = currentArtworkUri)
               }
             }
-          }
-        }
       }
     }
 
@@ -1537,11 +1249,6 @@ fun AudioPlayerControls(
         skipSegments = persistentListOf(),
         paused = isPaused,
         seekbarStyle = seekbarStyle,
-        showWavyVisualizer = audioWavySeekbar,
-        waveFeatures = if (audioWavySeekbar) visualizerFeatures else null,
-        wavePalette = visualizerPalette,
-        waveVolumeScale = volumeScale,
-        waveSheetOpen = isSheetOpen,
         loopStart = abLoopA?.toFloat(),
         loopEnd = abLoopB?.toFloat(),
         isPortrait = isPortrait,
@@ -1700,17 +1407,6 @@ fun AudioPlayerControls(
                 )
               }
               ReactiveIconButton(
-                onClick = { viewModel.toggleAudioVisualizer() },
-                onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-                modifier = Modifier.size(40.dp),
-              ) {
-                Icon(
-                  imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
-                  contentDescription = null,
-                  tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
-              ReactiveIconButton(
                 onClick = {
                   val act = context as? PlayerActivity
                   if (act != null) {
@@ -1770,17 +1466,6 @@ fun AudioPlayerControls(
                   },
                   contentDescription = null,
                   tint = if (repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
-              ReactiveIconButton(
-                onClick = { viewModel.toggleAudioVisualizer() },
-                onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-                modifier = Modifier.size(40.dp),
-              ) {
-                Icon(
-                  imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
-                  contentDescription = null,
-                  tint = if (showVisualizer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
               }
               ReactiveIconButton(

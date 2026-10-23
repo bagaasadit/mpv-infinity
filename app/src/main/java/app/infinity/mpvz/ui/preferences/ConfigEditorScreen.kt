@@ -40,7 +40,6 @@ import app.infinity.mpvz.R
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.Screen
-import app.infinity.mpvz.ui.editor.MpvHelpScreen
 import app.infinity.mpvz.ui.editor.MpvScriptEditor
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
@@ -213,7 +212,9 @@ data class ConfigEditorScreen(
         actions = {
           IconButton(
             onClick = {
-              backStack.add(MpvHelpScreen())
+              runCatching {
+                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, "https://mpv.io/manual/master/".toUri()))
+              }
             },
             modifier = Modifier.padding(end = 4.dp).size(40.dp),
             colors =

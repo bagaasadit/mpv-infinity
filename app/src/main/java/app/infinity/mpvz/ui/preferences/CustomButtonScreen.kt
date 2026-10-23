@@ -87,7 +87,6 @@ import androidx.compose.ui.window.DialogProperties
 import app.infinity.mpvz.R
 import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.presentation.Screen
-import app.infinity.mpvz.ui.editor.MpvHelpScreen
 import app.infinity.mpvz.ui.editor.MpvScriptEditor
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
@@ -756,7 +755,11 @@ fun ButtonSlotCard(
             },
             actions = {
               IconButton(
-                onClick = { dialogBackstack.add(MpvHelpScreen()) },
+                onClick = {
+                  runCatching {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, androidx.core.net.toUri("https://mpv.io/manual/master/")))
+                  }
+                },
                 modifier = Modifier.padding(end = 4.dp).size(40.dp),
                 colors =
                   IconButtonDefaults.iconButtonColors(

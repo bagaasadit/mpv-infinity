@@ -1,88 +1,47 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# =====================================================================
+# R8 / ProGuard Optimization & Minification Configuration - mpvZero
+# =====================================================================
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Aggressive optimization settings
+-repackageclasses ''
+-allowaccessmodification
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Compact stack trace preservation (preserves line numbers, hides raw file paths)
+-keepattributes LineNumberTable,SourceFile
+-renamesourcefileattribute SourceFile
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
--dontobfuscate
--keep,allowoptimization class is.xyz.mpv.** { public protected *; }
--keep,allowoptimization class net.mediaarea.mediainfo.lib.** { public protected *; }
+# Attributes required by Kotlinx Serialization, Koin, Compose, and Room
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# Suppress harmless third-party warnings
 -dontwarn org.xmlpull.v1.**
 -dontnote org.xmlpull.v1.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder
 
-
-# Keep all classes that use reflection or are loaded dynamically
--keepattributes Signature
--keepattributes *Annotation*
--keepattributes InnerClasses
--keepattributes EnclosingMethod
-
-# Keep serializable classes
--keepclassmembers class * implements java.io.Serializable {
-    static final long serialVersionUID;
-    private static final java.io.ObjectStreamField[] serialPersistentFields;
-    private void writeObject(java.io.ObjectOutputStream);
-    private void readObject(java.io.ObjectInputStream);
-    java.lang.Object writeReplace();
-    java.lang.Object readResolve();
-}
-
 # =====================================================================
 # 1. LIBMPV JNI BRIDGE & CALLBACKS (SACRED)
 # =====================================================================
--keep class is.xyz.mpv.** { *; }
--keepclassmembers class is.xyz.mpv.** { *; }
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
 
-# =====================================================================
-# 2. LIBASS & MATROSKA SUBTITLE SUBSYSTEM (SACRED)
-# =====================================================================
--keep class * extends androidx.media3.exoplayer.BaseRenderer { *; }
--keep class **.Media3LibassRenderer { *; }
--keep class **.LibassSubtitleSurfaceView { *; }
--keep class **.AssMatroskaExtractor* { *; }
--keep class **.MatroskaFontScanner* { *; }
+# MPVLib and MPVNode are invoked via JNI reflection from libplayer.so
+-keep class is.xyz.mpv.MPVLib { *; }
+-keep class is.xyz.mpv.MPVNode* { *; }
+-keep class is.xyz.mpv.BaseMPVView { public protected *; }
 
 # =====================================================================
-# 3. MEDIA3 / EXOPLAYER RENDERERS & DECODERS
+# 2. MEDIA3 / EXOPLAYER RENDERERS & DECODERS
 # =====================================================================
--dontwarn androidx.media3.**
--keepclassmembers class androidx.media3.** { *; }
-
-# libass JNI bridge and native callbacks
--keep class androidx.media3.subtitle.libass.** { *; }
-
-# Jellyfin FFmpeg Audio Decoder (instantiated via reflection by DefaultRenderersFactory)
--dontwarn org.jellyfin.media3.ffmpeg.**
--keep class org.jellyfin.media3.ffmpeg.** { *; }
+# Media3 AARs supply their own consumer rules. Only reflective extensions need keep:
+# Jellyfin FFmpeg Audio Decoder is instantiated reflectively by DefaultRenderersFactory
+-dontwarn androidx.media3.decoder.ffmpeg.**
+-keep class androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer {
+    public <init>(...);
+}
 
 # =====================================================================
-# 4. SEEKER & UI CONTROLS
+# 4. ROOM DATABASE ENTITIES
 # =====================================================================
--keep class com.github.abdallahmehiz.seeker.** { *; }
-
-# =====================================================================
-# 5. ROOM DATABASE ENTITIES
-# =====================================================================
--keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class * { *; }
--keep class * implements androidx.room.migration.Migration { *; }
-

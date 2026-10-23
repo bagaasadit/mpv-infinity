@@ -30,7 +30,6 @@ import app.infinity.mpvz.preferences.MpvConfigControlledFeatures
 import app.infinity.mpvz.ui.player.Panels
 import app.infinity.mpvz.ui.player.PlayerActivity
 import app.infinity.mpvz.ui.player.PlayerViewModel
-import app.infinity.mpvz.ui.player.clip.ClipOverlayView
 import app.infinity.mpvz.ui.player.controls.components.MpvConfigOwnedPanel
 import app.infinity.mpvz.ui.player.controls.components.panels.AudioDelayPanel
 import app.infinity.mpvz.ui.player.controls.components.panels.HdrScreenOutputPanel
@@ -71,13 +70,6 @@ fun PlayerPanels(
     when (currentPanel) {
       Panels.None -> {
         Box(Modifier.fillMaxHeight())
-      }
-      Panels.Clip -> {
-        val activity = LocalActivity.current as? PlayerActivity
-        if (activity != null) {
-          val clipOverlay = remember(activity) { ClipOverlayView.ensureAttached(activity) }
-          clipOverlay.EditorPanel(onDismissRequest)
-        }
       }
       Panels.SubtitleSettings -> {
         SubtitleSettingsPanel(

@@ -11,7 +11,6 @@ package app.infinity.mpvz.preferences.preference
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.preference.PreferenceManager
 import app.infinity.mpvz.preferences.preference.AndroidPreference.BooleanPrimitive
 import app.infinity.mpvz.preferences.preference.AndroidPreference.FloatPrimitive
 import app.infinity.mpvz.preferences.preference.AndroidPreference.IntPrimitive
@@ -29,7 +28,8 @@ import kotlinx.coroutines.flow.shareIn
 
 class AndroidPreferenceStore(
   context: Context,
-  private val sharedPreferences: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context),
+  private val sharedPreferences: SharedPreferences =
+    context.getSharedPreferences("${context.packageName}_preferences", Context.MODE_PRIVATE),
 ) : PreferenceStore {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

@@ -186,7 +186,6 @@ object RecentlyPlayedOps {
     kotlin
       .runCatching {
         repository.updateFilePath(oldPath, newPath, newFileName)
-        withContext(Dispatchers.IO) { WatchStatisticsStore.rename(context, oldPath, newPath) }
         android.util.Log.d("RecentlyPlayedOps", "Updated history: $oldPath -> $newPath")
       }.onFailure { e ->
         android.util.Log.w("RecentlyPlayedOps", "Failed to update history path: ${e.message}")

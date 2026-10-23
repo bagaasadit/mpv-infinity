@@ -56,6 +56,8 @@ android {
     versionCode = 1
     versionName = "1.0.0"
 
+    resourceConfigurations += listOf("en", "ar", "de", "es", "fr", "hi", "ja", "pt-rBR", "ru", "zh-rCN")
+
     vectorDrawables {
       useSupportLibrary = true
     }
@@ -190,7 +192,10 @@ android {
       excludes += "META-INF/LICENSE*"
       excludes += "META-INF/NOTICE*"
       excludes += "META-INF/*.kotlin_module"
+      excludes += "META-INF/*.version"
       excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+      excludes += "kotlin/**"
+      excludes += "**/*.proto"
     }
     jniLibs {
       useLegacyPackaging = true
@@ -250,7 +255,6 @@ androidComponents {
 kotlin {
   compilerOptions {
     freeCompilerArgs.addAll(
-      "-opt-in=com.google.accompanist.permissions.ExperimentalPermissionsApi",
       "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
       "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
     )
@@ -272,7 +276,6 @@ dependencies {
   implementation(libs.androidx.ui)
   implementation(libs.androidx.ui.graphics)
   implementation(libs.androidx.material3.android)
-  implementation(libs.google.material)
   implementation(libs.androidx.compose.material)
   implementation(libs.androidx.ui.tooling.preview)
   debugImplementation(libs.androidx.ui.tooling)
@@ -281,10 +284,8 @@ dependencies {
   implementation(libs.androidx.appcompat)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.compose.constraintlayout)
-  implementation(libs.androidx.preference.ktx)
   implementation(libs.androidx.constraintlayout)
   implementation(libs.composables.material.symbols.rounded.filled.android)
-  implementation(libs.composables.material.symbols.rounded.filled.cmp)
   implementation(libs.mediasession)
   implementation(libs.androidx.documentfile)
   implementation(libs.androidx.palette)
@@ -294,8 +295,6 @@ dependencies {
 
   implementation(libs.seeker)
   implementation(libs.compose.prefs)
-
-  implementation(libs.accompanist.permissions)
 
   implementation(libs.room.runtime)
   ksp(libs.room.compiler)
@@ -310,12 +309,9 @@ dependencies {
   implementation(libs.androidx.media3.exoplayer.hls)
   implementation(libs.androidx.media3.exoplayer.dash)
   implementation(libs.androidx.media3.ui)
-  implementation(libs.androidx.media3.effect)
-  implementation(libs.androidx.media3.transformer)
   implementation("io.github.peerless2012:ass-kt:0.5.1")
   implementation("io.github.peerless2012:ass-media:0.5.1")
   implementation(libs.jellyfin.media3.ffmpeg.decoder)
-  implementation(project(":subtitle-libass"))
 
   coreLibraryDesugaring(libs.desugar.jdk.libs)
 

@@ -215,7 +215,7 @@ class SettingsManager(
 
     // Get the SharedPreferences editor from the Android context
     val sharedPrefs =
-      androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+      context.getSharedPreferences("${context.packageName}_preferences", android.content.Context.MODE_PRIVATE)
     val editor = sharedPrefs.edit()
 
     when (type) {

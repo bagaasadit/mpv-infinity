@@ -42,8 +42,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
-import app.infinity.mpvz.ui.player.LibassSubtitleSurfaceView
-import androidx.media3.subtitle.libass.LibassSubtitleRenderer
 import io.github.peerless2012.ass.media.AssHandler
 import io.github.peerless2012.ass.media.kt.withAssMkvSupport
 import io.github.peerless2012.ass.media.kt.withAssSupport
@@ -223,8 +221,6 @@ class NativeMedia3Engine(
     )
     .build()
   private var attachedView: PlayerView? = null
-  private var subtitleOverlay: LibassSubtitleSurfaceView? = null
-  private var libassRenderer: LibassSubtitleRenderer? = null
   private val externalAssEnabled = mutableMapOf<String, Boolean>()
   private var subtitleScale = 1f
   // Aspect Map (JSON) Controller for Shifting IMAX Films
@@ -277,7 +273,6 @@ class NativeMedia3Engine(
       publishPlaybackSnapshot()
       val currentPosMs = player.currentPosition.coerceAtLeast(0L)
       if (currentPosMs > 0L) lastKnownPositionMs = currentPosMs
-      subtitleOverlay?.setPositionUs(currentPosMs * 1000L)
       if (activeAspectSegments.isNotEmpty()) {
         val segmentIndex = activeAspectSegments.indexOfFirst { currentPosMs in it.startMs..it.endMs }
         if (segmentIndex != -1 && segmentIndex != lastAppliedSegmentIndex) {
@@ -485,9 +480,7 @@ class NativeMedia3Engine(
   fun attach(view: PlayerView) {
     attachedView?.player = null
     attachedView = view
-    subtitleOverlay = view.rootView.findViewById(R.id.media3_subtitle_overlay)
     view.subtitleView?.withAssSupport(assHandler)
-    ensureLibassRenderer()
     // SurfaceView is composed in a separate layer and can cover normal sibling Views. Mark it as
     // a media layer so the standalone libass bitmap remains visible above the video surface.
     (view.videoSurfaceView as? SurfaceView)?.setZOrderMediaOverlay(true)
@@ -760,7 +753,6 @@ class NativeMedia3Engine(
   fun setSubtitlePresentationVisible(visible: Boolean) {
     subtitlePresentationVisible = visible
     attachedView?.subtitleView?.visibility = if (visible) View.VISIBLE else View.GONE
-    subtitleOverlay?.visibility = if (visible) View.VISIBLE else View.GONE
   }
 
   fun addExternalSubtitle(uri: Uri, select: Boolean): Boolean {
@@ -986,46 +978,9 @@ class NativeMedia3Engine(
     configureSubtitleView()
   }
 
-  private fun applyAssStyle() {
-    libassRenderer?.setStyle(
-      subtitleFontFamily,
-      subtitleFontSize,
-      subtitleTextColor,
-      subtitleBorderColor,
-      subtitleBackgroundColor,
-      subtitleBorderSize,
-      subtitleBold,
-      subtitleItalic,
-    )
-  }
-
   private fun scheduleSubtitleViewConfiguration() {
     loopHandler.removeCallbacks(subtitleViewRunnable)
     loopHandler.postDelayed(subtitleViewRunnable, 40L)
-  }
-
-
-  private fun ensureLibassRenderer(): LibassSubtitleRenderer? {
-    val view = subtitleOverlay ?: return null
-    val sourceWidth = snapshot.value.videoWidth.takeIf { it > 0 } ?: view.width.takeIf { it > 0 } ?: 1280
-    val sourceHeight = snapshot.value.videoHeight.takeIf { it > 0 } ?: view.height.takeIf { it > 0 } ?: 720
-    // libass uses the video's storage dimensions; the in-layout TextureView is transparent and
-    // follows the same FIT container as Media3 so ASS coordinates remain in video space.
-    val width = sourceWidth.coerceAtLeast(1)
-    val height = sourceHeight.coerceAtLeast(1)
-    if (width <= 0 || height <= 0) return null
-    libassRenderer?.let {
-      if (it.getWidth() != width || it.getHeight() != height) it.setSize(width, height)
-      return it
-    }
-    return runCatching {
-      LibassSubtitleRenderer(width, height, null).also {
-        libassRenderer = it
-        view.setRenderer(it)
-        applyAssStyle()
-        Log.i(logTag, "libass initialized size=${width}x${height} tracks=0")
-      }
-    }.onFailure { Log.e(logTag, "libass initialization failed", it) }.getOrNull()
   }
 
   private fun configureSubtitleView() {
@@ -1044,17 +999,6 @@ class NativeMedia3Engine(
       translationY = ((subtitlePosition - 100) / 100f * height * 0.5f)
         .coerceIn(-height * 0.5f, height * 0.5f)
       setBottomPaddingFraction(0f)
-    }
-    subtitleOverlay?.apply {
-      // Hide the overlay TextureView when not in use to eliminate GPU compositing overhead
-      val isOverlayNeeded = subtitlePresentationVisible && libassRenderer != null && (attachedView?.subtitleView == null)
-      visibility = if (isOverlayNeeded) View.VISIBLE else View.GONE
-      pivotX = width / 2f
-      pivotY = height.toFloat()
-      scaleX = subtitleScale
-      scaleY = subtitleScale
-      translationY = ((subtitlePosition - 100) / 100f * height * 0.5f)
-        .coerceIn(-height * 0.5f, height * 0.5f)
     }
   }
 
@@ -1098,9 +1042,6 @@ class NativeMedia3Engine(
     pendingExternalSelectionId = null
     selectedNativeSubtitleSelection = null
     externalAssEnabled.clear()
-    libassRenderer?.getTrackIds()?.keys?.toList()?.forEach { id ->
-      libassRenderer?.removeTrack(id)
-    }
     // Uri.parse("/storage/...") has no scheme. Make local paths explicit so Media3 selects
     // FileDataSource instead of treating the original MediaStore URI as the playable source.
     val mediaUri =
@@ -1457,7 +1398,6 @@ class NativeMedia3Engine(
 
   fun disableSubtitles() {
     hasUserManuallySelectedSubtitle = true
-    disableAssTracks()
     selectedNativeSubtitleKey = null
     selectedNativeSubtitleSelection = null
     player.trackSelectionParameters = player.trackSelectionParameters
@@ -1471,10 +1411,6 @@ class NativeMedia3Engine(
   private fun isAssFormat(mime: String?, codecs: String?): Boolean {
     val value = "${mime.orEmpty()} ${codecs.orEmpty()}".lowercase()
     return value.contains("ass") || value.contains("ssa")
-  }
-
-  private fun disableAssTracks() {
-    libassRenderer?.getTrackIds()?.keys?.forEach { id -> libassRenderer?.setTrackEnabled(id, false) }
   }
 
   fun addListener(listener: Player.Listener) = player.addListener(listener)
@@ -1497,9 +1433,6 @@ class NativeMedia3Engine(
     selectedNativeSubtitleKey = null
     selectedNativeSubtitleSelection = null
     externalAssEnabled.clear()
-    libassRenderer?.let { renderer ->
-      renderer.getTrackIds().keys.toList().forEach { renderer.removeTrack(it) }
-    }
     _hasRenderedFirstFrame.value = false
     autoCropScale = 1f
     autoCropActive = false
@@ -1554,10 +1487,6 @@ class NativeMedia3Engine(
     pendingSeekPositionMs = null
     player.removeListener(listener)
     attachedView?.player = null
-    libassRenderer?.close()
-    libassRenderer = null
-    subtitleOverlay?.setRenderer(null)
-    subtitleOverlay = null
     attachedView = null
     assHandler.release()
     player.release()

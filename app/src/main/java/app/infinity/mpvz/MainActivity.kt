@@ -100,7 +100,6 @@ import app.infinity.mpvz.ui.utils.LocalBackStack
 import app.infinity.mpvz.ui.utils.popSafely
 import app.infinity.mpvz.utils.device.VulkanCapabilities
 import app.infinity.mpvz.utils.media.fileExtension
-import app.infinity.mpvz.utils.permission.PermissionUtils
 import app.infinity.mpvz.utils.storage.FileTypeUtils
 import app.infinity.mpvz.ui.update.UpdateSheet
 import app.infinity.mpvz.ui.update.UpdateViewModel
@@ -184,14 +183,6 @@ class MainActivity : AppCompatActivity() {
   private var pendingPipExitResolution = false
   private var isExpandingFromPip by mutableStateOf(false)
 
-  // Register the ActivityResultLauncher at class level
-  private val mediaAccessLauncher =
-    registerForActivityResult(
-      ActivityResultContracts.StartIntentSenderForResult(),
-    ) { result ->
-      PermissionUtils.handleMediaAccessResult(result.resultCode)
-    }
-
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
@@ -200,8 +191,6 @@ class MainActivity : AppCompatActivity() {
       isAudioPlayer = { isCurrentMediaAudioOnly() },
       isVideoLoaded = { isCurrentMediaVideoLoaded() },
     )
-
-    PermissionUtils.setMediaAccessLauncher(mediaAccessLauncher)
 
     applyEdgeToEdge(
       isDarkMode =
@@ -494,7 +483,6 @@ class MainActivity : AppCompatActivity() {
     pendingPipExitResolution = false
     wasInPipMode = false
     isExpandingFromPip = false
-    PermissionUtils.clearMediaAccessLauncher(mediaAccessLauncher)
     try {
       super.onDestroy()
     } catch (e: Exception) {

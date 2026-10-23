@@ -1233,7 +1233,7 @@ object SearchablePreferences {
         keywords =
           listOf(
             "preferred language delay pitch correction channels volume boost normalization drc",
-            "audio player background playback visualizer style blob galaxy cuboid orientation ambient music tabs order minimum duration",
+            "audio player background playback orientation ambient music tabs order minimum duration",
           ),
         category = "Audio",
         screen = AudioPreferencesScreen,

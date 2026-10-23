@@ -282,11 +282,13 @@ class MPVView(
     PlaybackSession.setOptionString("http-allow-redirect", "yes")
     PlaybackSession.setOptionString("cookies", "yes")
     PlaybackSession.setOptionString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
+    PlaybackSession.setOptionString("network-timeout", "10")
+    PlaybackSession.setOptionString("ytdl", "no")
     PlaybackSession.setOptionString("cache", "auto")
     PlaybackSession.setOptionString("cache-pause", "yes")
-    PlaybackSession.setOptionString("cache-pause-wait", "3")
-    PlaybackSession.setOptionString("demuxer-max-bytes", "256MiB")
-    PlaybackSession.setOptionString("demuxer-max-back-bytes", "64MiB")
+    PlaybackSession.setOptionString("cache-pause-wait", "1")
+    PlaybackSession.setOptionString("demuxer-max-bytes", "128MiB")
+    PlaybackSession.setOptionString("demuxer-max-back-bytes", "32MiB")
     PlaybackSession.setOptionString("demuxer-readahead-secs", "60")
     PlaybackSession.setOptionString("demuxer-lavf-buffersize", "1048576")
     // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
@@ -302,7 +304,7 @@ class MPVView(
     PlaybackSession.setOptionString(
       "stream-lavf-o",
       "reconnect=1,reconnect_on_network_error=1,reconnect_on_http_error=5xx,reconnect_streamed=1," +
-        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20,buffer_size=1048576",
+        "reconnect_delay_max=5,reconnect_max_retries=5,reconnect_delay_total_max=20,buffer_size=1048576,tcp_nodelay=1",
     )
     // Drop only video-output-bound late frames when rendering cannot keep up.
     // This prevents long-term jitter buildup without aggressively sacrificing smoothness.

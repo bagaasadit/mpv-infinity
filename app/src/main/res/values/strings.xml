@@ -916,7 +916,7 @@
   <string name="ui_pan_zoom">Pan &amp; Zoom</string>
   <string name="ui_decrease_zoom">Decrease zoom</string>
   <string name="ui_increase_zoom">Increase zoom</string>
-  <string name="ui_by_ritesh_pandit">By ZHINFINITY</string>
+  <string name="ui_by_ritesh_pandit">mpvZero Team</string>
   <string name="ui_dedicated_stream_player">Dedicated Stream Player</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">Device Info</string>
@@ -931,7 +931,7 @@
   <string name="update_size">Size</string>
   <string name="update_unknown_size">Unknown size</string>
   <string name="update_beta_build_format">Beta r%1$d</string>
-  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Core open source dependencies used by Mpv∞.</string>
+  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Core open source dependencies used by mpvZero.</string>
   <string name="ui_already_using_latest_version">Already using latest version</string>
   <string name="ui_support_link_copied">UPI ID copied!</string>
   <string name="ui_refresh">Refresh</string>

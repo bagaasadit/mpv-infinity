@@ -884,8 +884,7 @@ class PlayerViewModel : ViewModel(),
 
   // Audio player UI state
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
-  // The style and artwork/visualizer display choice are persisted via audioPreferences.
-  val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.showAudioVisualizer.get())
+  val showVisualizerInAudioPlayer = MutableStateFlow(false)
   val equalizerState = MutableStateFlow(EqualizerState())
   private val audioEqualizerManager = AudioEqualizerManager()
   private var equalizerMpvDebounceJob: Job? = null
@@ -1030,17 +1029,7 @@ class PlayerViewModel : ViewModel(),
     albumArtBounds.value = rect
   }
 
-  private val audioVisualizerToggleDebouncer =
-    app.infinity.mpvz.ui.player
-      .ToggleDebouncer()
-
-  fun toggleAudioVisualizer(): Boolean {
-    if (!audioVisualizerToggleDebouncer.tryConsume()) return false
-    val newValue = !showVisualizerInAudioPlayer.value
-    showVisualizerInAudioPlayer.value = newValue
-    audioPreferences.showAudioVisualizer.set(newValue)
-    return true
-  }
+  fun toggleAudioVisualizer(): Boolean = false
 
   fun getAudioPropertiesData(): List<app.infinity.mpvz.ui.player.controls.components.sheets.AudioPropertyItem> {
     val title =

@@ -84,11 +84,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.infinity.mpvz.preferences.SeekbarStyle
 import app.infinity.mpvz.ui.player.SkipSegment
-import app.infinity.mpvz.ui.player.clip.ClipEditorUiState
 import app.infinity.mpvz.ui.player.controls.LocalPlayerButtonsClickEvent
-import app.infinity.mpvz.ui.player.visualizer.AudioFeatures
-import app.infinity.mpvz.ui.player.visualizer.VisualizerPalette
-import app.infinity.mpvz.ui.player.visualizer.WaveVisualizerOverlay
 import app.infinity.mpvz.ui.theme.AppMotion
 import app.infinity.mpvz.ui.theme.spacing
 import dev.vivvvek.seeker.Seeker
@@ -294,11 +290,6 @@ internal fun SeekbarWithTimers(
   controlsShown: Boolean = true,
   seekbarStyle: SeekbarStyle = SeekbarStyle.Wavy,
   useWavySeekbar: Boolean = true,
-  showWavyVisualizer: Boolean = false,
-  waveFeatures: AudioFeatures? = null,
-  wavePalette: VisualizerPalette? = null,
-  waveVolumeScale: Float = 1f,
-  waveSheetOpen: Boolean = false,
   loopStart: Float? = null,
   loopEnd: Float? = null,
   bufferDuration: Float? = null,
@@ -352,11 +343,6 @@ internal fun SeekbarWithTimers(
         isUserInteracting = isUserInteracting,
         seekbarStyle = seekbarStyle,
         useWavySeekbar = useWavySeekbar,
-        showWavyVisualizer = showWavyVisualizer,
-        waveFeatures = waveFeatures,
-        wavePalette = wavePalette,
-        waveVolumeScale = waveVolumeScale,
-        waveSheetOpen = waveSheetOpen,
         loopStart = loopStart,
         loopEnd = loopEnd,
         bufferDuration = bufferDuration,
@@ -366,7 +352,7 @@ internal fun SeekbarWithTimers(
         onValueChangeFinished = onValueChangeFinished,
         scope = scope,
         animatedPosition = animatedPosition,
-        modifier = Modifier.fillMaxWidth().height(if (showWavyVisualizer) 64.dp else 44.dp),
+        modifier = Modifier.fillMaxWidth().height(44.dp),
       )
 
       Row(
@@ -399,7 +385,7 @@ internal fun SeekbarWithTimers(
     }
   } else {
     Row(
-      modifier = modifier.height(if (showWavyVisualizer) 64.dp else 48.dp),
+      modifier = modifier.height(48.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -428,11 +414,6 @@ internal fun SeekbarWithTimers(
         isUserInteracting = isUserInteracting,
         seekbarStyle = seekbarStyle,
         useWavySeekbar = useWavySeekbar,
-        showWavyVisualizer = showWavyVisualizer,
-        waveFeatures = waveFeatures,
-        wavePalette = wavePalette,
-        waveVolumeScale = waveVolumeScale,
-        waveSheetOpen = waveSheetOpen,
         loopStart = loopStart,
         loopEnd = loopEnd,
         bufferDuration = bufferDuration,
@@ -442,7 +423,7 @@ internal fun SeekbarWithTimers(
         onValueChangeFinished = onValueChangeFinished,
         scope = scope,
         animatedPosition = animatedPosition,
-        modifier = Modifier.weight(1f).height(if (showWavyVisualizer) 64.dp else 48.dp),
+        modifier = Modifier.weight(1f).height(48.dp),
       )
 
       VideoTimer(
@@ -472,11 +453,6 @@ private fun SeekbarContent(
   isUserInteracting: Boolean,
   seekbarStyle: SeekbarStyle,
   useWavySeekbar: Boolean,
-  showWavyVisualizer: Boolean = false,
-  waveFeatures: AudioFeatures? = null,
-  wavePalette: VisualizerPalette? = null,
-  waveVolumeScale: Float = 1f,
-  waveSheetOpen: Boolean = false,
   loopStart: Float?,
   loopEnd: Float?,
   bufferDuration: Float?,
@@ -494,7 +470,6 @@ private fun SeekbarContent(
   val isSeekerPressed by seekerInteractionSource.collectIsPressedAsState()
   val isSeekerDragged by seekerInteractionSource.collectIsDraggedAsState()
   val isVisuallyInteracting = isUserInteracting || isSeekerPressed || isSeekerDragged
-  val clipRange by ClipEditorUiState.state.collectAsState()
   val safeDuration = duration.takeIf { it.isFinite() && it > 0f } ?: 0f
   val seekerRange = 0f..safeDuration.coerceAtLeast(0.1f)
   val safeCommittedPosition =
@@ -569,23 +544,7 @@ private fun SeekbarContent(
     modifier = modifier,
     contentAlignment = Alignment.Center,
   ) {
-    val waveSeekbarActive = showWavyVisualizer && waveFeatures != null && wavePalette != null
-    if (waveSeekbarActive) {
-      val waveTrackHeight = if (seekbarStyle == SeekbarStyle.Wavy) 5.dp else overlayTrackHeight
-      WaveVisualizerOverlay(
-        palette = wavePalette!!,
-        isSheetOpen = waveSheetOpen,
-        volumeScale = waveVolumeScale,
-        features = waveFeatures!!,
-        isPlaying = !paused && !isVisuallyInteracting,
-        progressProvider = {
-          if (safeDuration > 0f) (positionProvider() / safeDuration).coerceIn(0f, 1f) else 0f
-        },
-        trackHeight = waveTrackHeight,
-        modifier = Modifier.fillMaxWidth().matchParentSize(),
-      )
-    }
-    // Visual seekbar (smaller, centered) - always drawn on top of the wave
+    // Visual seekbar (smaller, centered)
     Box(
       modifier =
         Modifier
@@ -706,23 +665,6 @@ private fun SeekbarContent(
 
     }
 
-    val activeClip = clipRange
-    val clipEnd = activeClip?.endSeconds
-    if (activeClip != null && clipEnd != null && safeDuration > 0f && clipEnd > activeClip.startSeconds) {
-      ClipRangeSelection(
-        startSeconds = activeClip.startSeconds,
-        endSeconds = clipEnd,
-        duration = safeDuration,
-        color = MaterialTheme.colorScheme.tertiary,
-        trackHeight = overlayTrackHeight,
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .height(touchAreaHeight)
-            .align(Alignment.Center),
-      )
-    }
-
     Seeker(
       state = seekerState,
       value = safeCommittedPosition,
@@ -777,75 +719,6 @@ private fun SeekbarContent(
           .height(touchAreaHeight)
           .graphicsLayer(alpha = 0f),
     )
-  }
-}
-
-@Composable
-private fun ClipRangeSelection(
-  startSeconds: Float,
-  endSeconds: Float,
-  duration: Float,
-  color: Color,
-  trackHeight: Dp,
-  modifier: Modifier = Modifier,
-) {
-  val targetStart = (startSeconds / duration).coerceIn(0f, 1f)
-  val targetEnd = (endSeconds / duration).coerceIn(targetStart, 1f)
-  val boundaryMotion = AppMotion.noBounce<Float>(Spring.StiffnessMedium)
-  val animatedStart by animateFloatAsState(
-    targetValue = targetStart,
-    animationSpec = boundaryMotion,
-    label = "ClipRangeStart",
-  )
-  val animatedEnd by animateFloatAsState(
-    targetValue = targetEnd,
-    animationSpec = boundaryMotion,
-    label = "ClipRangeEnd",
-  )
-
-  Canvas(
-    modifier = modifier,
-  ) {
-    val startX = animatedStart.coerceIn(0f, 1f) * size.width
-    val endX = animatedEnd.coerceIn(animatedStart.coerceIn(0f, 1f), 1f) * size.width
-    val selectionWidth = endX - startX
-    if (selectionWidth <= 0f || size.height <= 0f) return@Canvas
-
-    val trackHeightPx = trackHeight.toPx().coerceAtMost(size.height)
-    val trackTop = (size.height - trackHeightPx) / 2f
-    val cornerRadius = CornerRadius(trackHeightPx / 2f)
-    val outlineWidth = 1.dp.toPx().coerceAtMost(trackHeightPx / 3f)
-    drawRoundRect(
-      color = color.copy(alpha = 0.32f),
-      topLeft = Offset(startX, trackTop),
-      size = Size(selectionWidth, trackHeightPx),
-      cornerRadius = cornerRadius,
-    )
-    drawRoundRect(
-      color = color.copy(alpha = 0.86f),
-      topLeft = Offset(startX, trackTop),
-      size = Size(selectionWidth, trackHeightPx),
-      cornerRadius = cornerRadius,
-      style = Stroke(width = outlineWidth),
-    )
-
-    val guideInset = 2.dp.toPx().coerceAtMost(size.height / 4f)
-    val dashLength = 4.dp.toPx()
-    val dashGap = 3.dp.toPx()
-    val guideStroke = 2.dp.toPx()
-    val guideEffect = PathEffect.dashPathEffect(floatArrayOf(dashLength, dashGap))
-    fun drawBoundary(markerX: Float) {
-      drawLine(
-        color = color.copy(alpha = 0.96f),
-        start = Offset(markerX, guideInset),
-        end = Offset(markerX, size.height - guideInset),
-        strokeWidth = guideStroke,
-        pathEffect = guideEffect,
-        cap = StrokeCap.Round,
-      )
-    }
-    drawBoundary(startX)
-    drawBoundary(endX)
   }
 }
 

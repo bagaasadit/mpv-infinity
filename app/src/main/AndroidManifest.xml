@@ -9,13 +9,6 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="29"
-        tools:ignore="ScopedStorage" />
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -117,6 +110,7 @@
                 <data android:mimeType="application/x-mpegurl" />
                 <data android:mimeType="application/x-ogg" />
                 <data android:mimeType="application/x-quicktimeplayer" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -157,254 +151,37 @@
                 <data android:host="*"
                     tools:ignore="AppLinkUrlError" />
 
-                <!-- basically copied from mpv-android -->
-                <!-- the duplicate patterns below work around an Android bug: -->
-                <!-- http://stackoverflow.com/questions/3400072/#answer-8599921 -->
+                <!-- Common video extensions (case-tolerant & includes .ts/.m2ts/.m3u/.mpd) -->
                 <data android:pathPattern=".*\\.mkv" />
-                <data android:pathPattern=".*\\..*\\.mkv" />
-                <data android:pathPattern=".*\\..*\\..*\\.mkv" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.mkv" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.mkv" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.mkv" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.mkv" />
-
+                <data android:pathPattern=".*\\.MKV" />
                 <data android:pathPattern=".*\\.mp4" />
-                <data android:pathPattern=".*\\..*\\.mp4" />
-                <data android:pathPattern=".*\\..*\\..*\\.mp4" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.mp4" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.mp4" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.mp4" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.mp4" />
-
+                <data android:pathPattern=".*\\.MP4" />
+                <data android:pathPattern=".*\\.ts" />
+                <data android:pathPattern=".*\\.TS" />
+                <data android:pathPattern=".*\\.m2ts" />
+                <data android:pathPattern=".*\\.M2TS" />
                 <data android:pathPattern=".*\\.webm" />
-                <data android:pathPattern=".*\\..*\\.webm" />
-                <data android:pathPattern=".*\\..*\\..*\\.webm" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.webm" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.webm" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.webm" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.webm" />
-
+                <data android:pathPattern=".*\\.WEBM" />
                 <data android:pathPattern=".*\\.avi" />
-                <data android:pathPattern=".*\\..*\\.avi" />
-                <data android:pathPattern=".*\\..*\\..*\\.avi" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.avi" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.avi" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.avi" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.avi" />
-
+                <data android:pathPattern=".*\\.AVI" />
                 <data android:pathPattern=".*\\.mov" />
-                <data android:pathPattern=".*\\..*\\.mov" />
-                <data android:pathPattern=".*\\..*\\..*\\.mov" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.mov" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.mov" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.mov" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.mov" />
-
+                <data android:pathPattern=".*\\.MOV" />
                 <data android:pathPattern=".*\\.m4v" />
-                <data android:pathPattern=".*\\..*\\.m4v" />
-                <data android:pathPattern=".*\\..*\\..*\\.m4v" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.m4v" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.m4v" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.m4v" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.m4v" />
-
-                <data android:pathPattern=".*\\.flac" />
-                <data android:pathPattern=".*\\..*\\.flac" />
-                <data android:pathPattern=".*\\..*\\..*\\.flac" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.flac" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.flac" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.flac" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.flac" />
-
-                <data android:pathPattern=".*\\.mp3" />
-                <data android:pathPattern=".*\\..*\\.mp3" />
-                <data android:pathPattern=".*\\..*\\..*\\.mp3" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.mp3" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.mp3" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.mp3" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.mp3" />
-
-                <data android:pathPattern=".*\\.ogg" />
-                <data android:pathPattern=".*\\..*\\.ogg" />
-                <data android:pathPattern=".*\\..*\\..*\\.ogg" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.ogg" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.ogg" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.ogg" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.ogg" />
-
+                <data android:pathPattern=".*\\.M4V" />
                 <data android:pathPattern=".*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.m3u8*" />
+                <data android:pathPattern=".*\\.m3u" />
+                <data android:pathPattern=".*\\.mpd" />
+                <!-- Common audio extensions -->
+                <data android:pathPattern=".*\\.flac" />
+                <data android:pathPattern=".*\\.mp3" />
+                <data android:pathPattern=".*\\.ogg" />
+                <data android:pathPattern=".*\\.opus" />
+                <data android:pathPattern=".*\\.m4a" />
+                <data android:pathPattern=".*\\.aac" />
             </intent-filter>
-
-            <!-- Streaming-site link filters live on WebStreamLinksActivityAlias so they can be
-                 toggled off without touching direct media URL/MIME handling (issue #525). -->
         </activity>
 
-        <activity-alias
-            android:name=".ui.player.WebStreamLinksActivityAlias"
-            android:targetActivity=".ui.player.PlayerActivity"
-            android:exported="true"
-            android:enabled="true">
-            <!-- various URL intent filters for popular youtube-dl extractors -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="youtu.be" />
-                <data android:host="m.youtube.com" />
-                <data android:host="youtube.com" />
-                <data android:host="www.youtube.com" />
-                <data android:host="studio.youtube.com" />
-            </intent-filter>
-
-            <intent-filter> <!-- FIXME: all following patterns are suboptimal because they also match the homepages -->
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="www.vimeo.com" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="vimeo.com" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="twitch.tv" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="m.twitch.tv" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="clips.twitch.tv" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="odysee.com" />
-                <data android:pathPattern="/@.*" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="bilibili.com" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="*.bilibili.com" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="b23.tv" />
-                <data android:pathPattern=".*" />
-            </intent-filter>
-        </activity-alias>
-
         <activity android:name=".presentation.crash.CrashActivity" />
-
-        <activity
-            android:name=".ui.mediainfo.MediaInfoActivity"
-            android:exported="true"
-            android:theme="@style/Theme.mpvinfinity"
-            android:label="@string/ui_media_info" />
-
-        <activity-alias
-            android:name=".ui.mediainfo.MediaInfoActivityAlias"
-            android:targetActivity=".ui.mediainfo.MediaInfoActivity"
-            android:exported="true"
-            android:enabled="true"
-            android:label="@string/ui_media_info">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-
-                <data android:mimeType="video/*" />
-                <data android:mimeType="audio/*" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="text/*" />
-                <data android:mimeType="application/x-subrip" />
-                <data android:mimeType="application/x-subtitle" />
-                <data android:mimeType="application/x-subtitle-srt" />
-                <data android:mimeType="application/x-subtitle-ssa" />
-                <data android:mimeType="application/x-subtitle-ass" />
-                <data android:mimeType="application/x-subtitle-vtt" />
-                <data android:mimeType="application/ogg" />
-                <data android:mimeType="application/x-matroska" />
-                <data android:mimeType="application/x-flac" />
-                <data android:mimeType="application/mp4" />
-                <data android:mimeType="application/vnd.apple.mpegurl" />
-                <data android:mimeType="application/*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="video/*" />
-                <data android:mimeType="audio/*" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="text/*" />
-                <data android:mimeType="application/x-subrip" />
-                <data android:mimeType="application/x-subtitle" />
-                <data android:mimeType="application/x-matroska" />
-                <data android:mimeType="application/x-flac" />
-                <data android:mimeType="application/mp4" />
-            </intent-filter>
-        </activity-alias>
 
         <service
             android:name=".ui.player.MediaPlaybackService"

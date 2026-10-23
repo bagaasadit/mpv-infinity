@@ -619,8 +619,17 @@ class ThumbnailRepository(
   ): Bitmap {
     val rotation =
       try {
-        app.infinity.mpvz.utils.media.MediaInfoOps
-          .getRotation(context, video.uri, video.displayName)
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+          kotlin.runCatching {
+            val retriever = android.media.MediaMetadataRetriever()
+            try {
+              retriever.setDataSource(context, video.uri)
+              retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            } finally {
+              retriever.release()
+            }
+          }.getOrDefault(0)
+        }
       } catch (cancellation: CancellationException) {
         bitmap.takeUnless { it.isRecycled }?.recycle()
         throw cancellation

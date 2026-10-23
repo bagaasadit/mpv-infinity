@@ -43,7 +43,6 @@ import app.infinity.mpvz.ui.player.controls.components.sheets.PlaylistSheet
 import app.infinity.mpvz.ui.player.controls.components.sheets.SubtitlesSheet
 import app.infinity.mpvz.ui.player.controls.components.sheets.VideoZoomSheet
 import app.infinity.mpvz.ui.player.controls.components.sheets.VideoQualitySheet
-import app.infinity.mpvz.ui.player.controls.components.sheets.VisualizerStyleSheet
 import app.infinity.mpvz.ui.player.setTrackSelectionId
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
@@ -543,16 +542,6 @@ fun PlayerSheets(
       app.infinity.mpvz.ui.player.controls.components.sheets.AudioPropertiesSheet(
         properties = properties,
         engineLabel = if (activeEngine == PlaybackEngineMode.NATIVE) "Native (Media3)" else "MPV",
-        onDismissRequest = onDismissRequest,
-      )
-    }
-
-    Sheets.VisualizerStyle -> {
-      val audioPreferences = koinInject<app.infinity.mpvz.preferences.AudioPreferences>()
-      val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
-      VisualizerStyleSheet(
-        selectedStyle = audioVisualizerStyle,
-        onSelectStyle = { audioPreferences.audioVisualizerStyle.set(it) },
         onDismissRequest = onDismissRequest,
       )
     }

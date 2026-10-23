@@ -73,7 +73,6 @@ import app.infinity.mpvz.ui.player.Panels
 import app.infinity.mpvz.ui.player.AmbientStyle
 import app.infinity.mpvz.ui.player.PlayerActivity
 import app.infinity.mpvz.ui.player.PlayerViewModel
-import app.infinity.mpvz.ui.player.clip.ClipOverlayView
 import app.infinity.mpvz.ui.player.Sheets
 import app.infinity.mpvz.ui.player.VideoAspect
 import app.infinity.mpvz.ui.player.controls.components.AbLoopIcon
@@ -724,16 +723,7 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.CLIP -> {
-      val clipOverlay = remember(activity) { ClipOverlayView.ensureAttached(activity) }
-      ControlsButton(
-        icon = button.icon,
-        onClick = {
-          if (clipOverlay.openClip()) onOpenPanel(Panels.Clip)
-        },
-        title = androidx.compose.ui.res.stringResource(app.infinity.mpvz.R.string.clip_action),
-        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(buttonSize),
-      )
+      // Clip feature pruned
     }
 
     PlayerButton.EQUALIZER -> {
