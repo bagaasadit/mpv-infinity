@@ -328,18 +328,27 @@ class DownmixLimiterAudioProcessorTest {
     baselineProcessor.configure(format51)
     baselineProcessor.flush()
 
-    val inputBaseline = ByteBuffer.allocate(6 * 2).order(ByteOrder.LITTLE_ENDIAN)
-    inputBaseline.putShort(0)
-    inputBaseline.putShort(0)
-    inputBaseline.putShort(10000.toShort())
-    inputBaseline.putShort(0)
-    inputBaseline.putShort(0)
-    inputBaseline.putShort(0)
+    // 150 frames to pass through the 120-frame lookahead delay line
+    val frameCount = 150
+    val inputBaseline = ByteBuffer.allocate(frameCount * 6 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    repeat(frameCount) {
+      inputBaseline.putShort(0)
+      inputBaseline.putShort(0)
+      inputBaseline.putShort(10000.toShort())
+      inputBaseline.putShort(0)
+      inputBaseline.putShort(0)
+      inputBaseline.putShort(0)
+    }
     inputBaseline.flip()
 
     baselineProcessor.queueInput(inputBaseline)
     val baseOutput = baselineProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
-    val baseSampleL = baseOutput.get().toInt()
+    var baseSampleL = 0
+    while (baseOutput.hasRemaining()) {
+      val sample = baseOutput.get().toInt()
+      baseOutput.get() // right
+      if (sample > baseSampleL) baseSampleL = sample
+    }
 
     val lightProcessor = DownmixLimiterAudioProcessor().apply {
       dialogueBoostGain = 1.41f
@@ -347,18 +356,25 @@ class DownmixLimiterAudioProcessorTest {
     lightProcessor.configure(format51)
     lightProcessor.flush()
 
-    val inputLight = ByteBuffer.allocate(6 * 2).order(ByteOrder.LITTLE_ENDIAN)
-    inputLight.putShort(0)
-    inputLight.putShort(0)
-    inputLight.putShort(10000.toShort())
-    inputLight.putShort(0)
-    inputLight.putShort(0)
-    inputLight.putShort(0)
+    val inputLight = ByteBuffer.allocate(frameCount * 6 * 2).order(ByteOrder.LITTLE_ENDIAN)
+    repeat(frameCount) {
+      inputLight.putShort(0)
+      inputLight.putShort(0)
+      inputLight.putShort(10000.toShort())
+      inputLight.putShort(0)
+      inputLight.putShort(0)
+      inputLight.putShort(0)
+    }
     inputLight.flip()
 
     lightProcessor.queueInput(inputLight)
     val lightOutput = lightProcessor.output.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
-    val lightSampleL = lightOutput.get().toInt()
+    var lightSampleL = 0
+    while (lightOutput.hasRemaining()) {
+      val sample = lightOutput.get().toInt()
+      lightOutput.get() // right
+      if (sample > lightSampleL) lightSampleL = sample
+    }
 
     assertTrue("Light dialogue boost sample ($lightSampleL) must be greater than baseline ($baseSampleL)", lightSampleL > baseSampleL)
     val ratio = lightSampleL.toFloat() / baseSampleL.toFloat()
