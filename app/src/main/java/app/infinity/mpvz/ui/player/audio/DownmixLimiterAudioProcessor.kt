@@ -45,10 +45,9 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     private const val TAG = "DownmixLimiter"
     private const val TARGET_CEILING_PCM16 = 0.8414f // -1.5 dBFS safe ceiling for mobile DSP / Xiaomi Atmos EQ
     private const val TARGET_CEILING_FLOAT = 0.8414f // -1.5 dBFS
-    private const val ATTACK_TIME_SEC = 0.0010f // 1.0 ms fast lookahead attack
-    private const val RELEASE_TIME_SEC = 0.050f // 50 ms anti-pumping release
+    private const val ATTACK_TIME_SEC = 0.0025f // 2.5 ms smooth lookahead attack
+    private const val RELEASE_TIME_SEC = 0.050f // 50 ms release
     private const val LOOKAHEAD_TIME_SEC = 0.0025f // 2.5 ms lookahead delay window
-    private const val HOLD_TIME_SEC = 0.0025f // 2.5 ms peak hold to preserve transient envelope
 
     // BS2B Filter Constants (Default 700Hz, -3.7dB feed)
     private const val BS2B_FC = 700.0
@@ -72,11 +71,6 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   private var delayBufferL = FloatArray(120)
   private var delayBufferR = FloatArray(120)
   private var delayIndex = 0
-
-  // Peak hold state
-  private var holdFrames = 120
-  private var holdCounter = 0
-  private var currentPeakHoldValue = 0.0f
 
   // Pre-allocated array to eliminate GC allocation churn on the realtime audio thread
   private var channelSamples = FloatArray(16)
@@ -126,9 +120,6 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     releaseCoeff = exp(-1.0f / (sampleRateF * RELEASE_TIME_SEC))
 
     lookaheadFrames = (sampleRateF * LOOKAHEAD_TIME_SEC).roundToInt().coerceAtLeast(1)
-    holdFrames = (sampleRateF * HOLD_TIME_SEC).roundToInt().coerceAtLeast(1)
-    holdCounter = 0
-    currentPeakHoldValue = 0.0f
     if (delayBufferL.size < lookaheadFrames) {
       delayBufferL = FloatArray(lookaheadFrames)
       delayBufferR = FloatArray(lookaheadFrames)
@@ -347,35 +338,24 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         rightSum = binauralR
       }
 
-      // 4. Smooth Lookahead Peak Limiter with Soft Knee & Peak Hold (Transparent, zero overshoot)
+      // 4. Smooth Lookahead Peak Limiter with Soft Knee (Transparent, zero overshoot)
       if (leftSum.isNaN() || leftSum.isInfinite()) leftSum = 0f
       if (rightSum.isNaN() || rightSum.isInfinite()) rightSum = 0f
 
-      val sampleMax = max(abs(leftSum), abs(rightSum))
-      if (sampleMax > currentPeakHoldValue) {
-        currentPeakHoldValue = sampleMax
-        holdCounter = holdFrames
-      } else {
-        if (holdCounter > 0) {
-          holdCounter--
-        } else {
-          currentPeakHoldValue = sampleMax
-        }
-      }
-
       val targetCeiling = if (isOutputFloat) TARGET_CEILING_FLOAT else TARGET_CEILING_PCM16
       val kneeStart = targetCeiling * 0.7071f
+      val sampleMax = max(abs(leftSum), abs(rightSum))
 
       val rawTargetGain =
-        if (currentPeakHoldValue <= kneeStart) {
+        if (sampleMax <= kneeStart) {
           1.0f
-        } else if (currentPeakHoldValue < targetCeiling) {
-          val x = (currentPeakHoldValue - kneeStart) / (targetCeiling - kneeStart)
-          val linearTarget = targetCeiling / currentPeakHoldValue
+        } else if (sampleMax < targetCeiling) {
+          val x = (sampleMax - kneeStart) / (targetCeiling - kneeStart)
+          val linearTarget = targetCeiling / sampleMax
           val t = x * x * (3.0f - 2.0f * x)
           1.0f - t * (1.0f - linearTarget)
         } else {
-          targetCeiling / currentPeakHoldValue
+          targetCeiling / sampleMax
         }
 
       if (rawTargetGain < currentGain) {
@@ -438,8 +418,6 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     delayBufferL.fill(0.0f, 0, lookaheadFrames)
     delayBufferR.fill(0.0f, 0, lookaheadFrames)
     delayIndex = 0
-    holdCounter = 0
-    currentPeakHoldValue = 0.0f
   }
 
   override fun onReset() {
@@ -449,8 +427,6 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
     delayBufferL.fill(0.0f, 0, lookaheadFrames)
     delayBufferR.fill(0.0f, 0, lookaheadFrames)
     delayIndex = 0
-    holdCounter = 0
-    currentPeakHoldValue = 0.0f
   }
 
   private fun nextDither(): Float {
