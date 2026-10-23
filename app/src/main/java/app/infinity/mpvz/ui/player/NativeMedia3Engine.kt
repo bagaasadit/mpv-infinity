@@ -848,8 +848,8 @@ class NativeMedia3Engine(
           formatLabel == id ||
           formatLabel == uriStr ||
           activeSubtitleUris[groupId] == uriStr ||
-          activeSubtitleUris[formatId] == uriStr ||
-          activeSubtitleLabels[formatLabel] == uriStr
+          formatId?.let { activeSubtitleUris[it] == uriStr } == true ||
+          formatLabel?.let { activeSubtitleLabels[it] == uriStr } == true
       }
       ?: return null
     val group = match.first
@@ -907,8 +907,8 @@ class NativeMedia3Engine(
           formatLabel == idWithoutPrefix ||
           (wantedLabel != null && formatLabel == wantedLabel) ||
           activeSubtitleUris[groupId] == idWithoutPrefix ||
-          activeSubtitleUris[formatId] == idWithoutPrefix ||
-          (wantedLabel != null && activeSubtitleLabels[formatLabel] == idWithoutPrefix)
+          formatId?.let { activeSubtitleUris[it] == idWithoutPrefix } == true ||
+          (wantedLabel != null && formatLabel?.let { activeSubtitleLabels[it] == idWithoutPrefix } == true)
       }
       ?: return
     player.trackSelectionParameters = player.trackSelectionParameters
@@ -1111,11 +1111,9 @@ class NativeMedia3Engine(
     activeSubtitleUris.clear()
     activeSubtitleLabels.clear()
     subtitleConfigurations.forEach { config ->
-      activeSubtitleUris[config.id] = config.uri.toString()
+      config.id?.let { activeSubtitleUris[it] = config.uri.toString() }
       activeSubtitleUris[config.uri.toString()] = config.uri.toString()
-      if (!config.label.isNullOrBlank()) {
-        activeSubtitleLabels[config.label!!] = config.uri.toString()
-      }
+      config.label?.takeIf { it.isNotBlank() }?.let { activeSubtitleLabels[it] = config.uri.toString() }
     }
     val defaultSub = subtitleConfigurations.firstOrNull {
       (it.selectionFlags and C.SELECTION_FLAG_DEFAULT) != 0
@@ -1600,8 +1598,8 @@ class NativeMedia3Engine(
             formatId?.startsWith("external:") == true -> formatId.removePrefix("external:")
             formatLabel?.startsWith("external:") == true -> formatLabel.removePrefix("external:")
             activeSubtitleUris.containsKey(groupId) -> activeSubtitleUris[groupId]
-            activeSubtitleUris.containsKey(formatId) -> activeSubtitleUris[formatId]
-            activeSubtitleLabels.containsKey(formatLabel) -> activeSubtitleLabels[formatLabel]
+            formatId != null && activeSubtitleUris.containsKey(formatId) -> activeSubtitleUris[formatId]
+            formatLabel != null && activeSubtitleLabels.containsKey(formatLabel) -> activeSubtitleLabels[formatLabel]
             else -> null
           }
           val isExternal = externalUri != null
