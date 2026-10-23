@@ -20,4 +20,7 @@ internal fun setTrackSelectionId(
 ) {
   val value = id?.takeIf { it > 0 }?.toString() ?: "no"
   PlaybackSession.setPropertyString(property, value)
+  if (property == "aid") {
+    android.util.Log.i("MpvAudioDiag", "setTrackSelectionId: aid set to $value")
+  }
 }

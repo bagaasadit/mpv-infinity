@@ -4952,6 +4952,31 @@ class PlayerActivity :
           forceMpvAudioTrackAutoOnNextLoad = false
         }
 
+        if (activeEngineMode == PlaybackEngineMode.MPV) {
+          lifecycleScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(600)
+            val effAudioChannels = PlaybackSession.getPropertyString("audio-channels")
+            val aid = PlaybackSession.getPropertyInt("aid") ?: 0
+            val trackTitle = PlaybackSession.getPropertyString("current-tracks/audio/title")
+              ?: PlaybackSession.getPropertyString("media-title") ?: "unknown"
+            val trackCodec = PlaybackSession.getPropertyString("current-tracks/audio/codec")
+              ?: PlaybackSession.getPropertyString("audio-codec-name") ?: "unknown"
+            val trackChannels = PlaybackSession.getPropertyInt("audio-params/channel-count") ?: 0
+            val trackLayout = PlaybackSession.getPropertyString("audio-params/channels") ?: "unknown"
+            val aoChannels = PlaybackSession.getPropertyString("audio-out-params/channels") ?: "unknown"
+            val aoFormat = PlaybackSession.getPropertyString("audio-out-params/format") ?: "unknown"
+            val aoSampleRate = PlaybackSession.getPropertyInt("audio-out-params/samplerate") ?: 0
+
+            android.util.Log.i(
+              "MpvAudioDiag",
+              "=== MPV AUDIO DIAGNOSTIC INFO ===\n" +
+                "Effective 'audio-channels': '$effAudioChannels'\n" +
+                "Active Audio Track: aid=$aid, title='$trackTitle', codec='$trackCodec', channels=$trackChannels ($trackLayout)\n" +
+                "AudioTrack AO Sink: channels='$aoChannels', format='$aoFormat', sampleRate=${aoSampleRate}Hz",
+            )
+          }
+        }
+
         // Apply default zoom only if there's no saved state
         if (!hasState) {
           withContext(Dispatchers.Main) {

@@ -1622,7 +1622,8 @@ class PlayerViewModel : ViewModel(),
       ) { _, _, channels -> channels }.collect { channels ->
         if (!_isMpvCoreReady.value) return@collect
         if (channels != AudioChannels.ReverseStereo) {
-          PlaybackSession.setPropertyString("audio-channels", channels.value)
+          PlaybackSession.setPropertyString("audio-channels", "stereo")
+          Log.i("MpvAudioDiag", "PlayerViewModel: enforced audio-channels=stereo")
         }
         applyEqualizerMpvFilters(immediate = true)
       }

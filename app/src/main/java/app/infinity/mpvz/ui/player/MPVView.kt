@@ -251,7 +251,7 @@ class MPVView(
       PlaybackSession.setOptionString("vf", videoFilterChain.joinToString(","))
     }
     val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
-    PlaybackSession.setOptionString("msg-level", "all=$logLevel")
+    PlaybackSession.setOptionString("msg-level", "all=$logLevel,ao=v")
 
     PlaybackSession.setOptionString("keep-open", "yes")
     PlaybackSession.setOptionString("input-default-bindings", "yes")
@@ -497,6 +497,9 @@ class MPVView(
     PlaybackSession.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
     PlaybackSession.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
     PlaybackSession.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
+    // Enforce software stereo downmix inside mpv before Android AudioTrack
+    PlaybackSession.setOptionString("audio-channels", "stereo")
+    Log.i("MpvAudioDiag", "setupAudioOptions: enforced audio-channels=stereo")
     // Prevent automatic volume normalization when downmixing multi-channel audio
     PlaybackSession.setOptionString("audio-normalize-downmix", "no")
   }
