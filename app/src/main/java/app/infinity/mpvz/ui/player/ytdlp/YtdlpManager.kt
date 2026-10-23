@@ -51,13 +51,13 @@ object YtdlpManager {
     context: Context,
     source: String,
     onProgress: (String) -> Unit = {},
-  ): String = source
+  ): Boolean = true
 
   suspend fun resolveDirectMediaUrl(
     context: Context,
     source: String,
     onProgress: (String) -> Unit = {},
-  ): String = source
+  ): String? = null
 
   suspend fun ensureRuntimeInstalled(context: Context, onLog: (String) -> Unit = {}): Boolean = false
   suspend fun copyAssets(context: Context) {}
