@@ -2407,6 +2407,9 @@ class PlayerViewModel : ViewModel(),
 
         withContext(Dispatchers.Main) {
           PlaybackSession.command("sub-add", mpvPath, mode)
+          if (select) {
+            runCatching { PlaybackSession.setPropertyString("secondary-sid", "no") }
+          }
         }
 
         // Track external subtitle URI for persistence

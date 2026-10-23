@@ -557,6 +557,7 @@ class PlayerActivity :
   private var systemBarsAutoHideJob: Job? = null
   private var videoParamRefreshJob: Job? = null
   private var intentSubtitleJob: Job? = null
+  private var hasIntentExplicitSubtitleSelection = false
   private var mediaLoadJob: Job? = null
   private var playbackLoadRetryJob: Job? = null
   private var playbackLoadWatchdogJob: Job? = null
@@ -4023,11 +4024,22 @@ class PlayerActivity :
 
     val subList = extractSubtitleUriList(extras, "subs")
     val subsToEnable = extractSubtitleUriList(extras, "subs.enable")
-    val hasSubsToEnable = extras.containsKey("subs.enable")
+    val hasExplicitSubsToEnable = extras.containsKey("subs.enable")
+    val isSingleLegacyExtra = extras.containsKey("subtitles_location") || extras.containsKey("subtitle")
+
+    val effectiveSubsToEnable = when {
+      hasExplicitSubsToEnable -> subsToEnable
+      isSingleLegacyExtra || subList.size == 1 -> subList
+      else -> emptyList()
+    }
+    val hasEnabledExtra = hasExplicitSubsToEnable || isSingleLegacyExtra || subList.size == 1
+
+    hasIntentExplicitSubtitleSelection = hasExplicitSubsToEnable || isSingleLegacyExtra
+
     return IntentSubtitleLoadPolicy.entriesToLoad(
       subtitles = subList,
-      enabledSubtitles = subsToEnable,
-      hasEnabledSubtitleExtra = hasSubsToEnable,
+      enabledSubtitles = effectiveSubsToEnable,
+      hasEnabledSubtitleExtra = hasEnabledExtra,
     )
   }
 
@@ -4967,8 +4979,10 @@ class PlayerActivity :
           )
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
 
-        // Apply track selection logic (defaults only apply when no saved state)
-        trackSelector.onFileLoaded(hasState)
+        // Apply track selection logic (defaults only apply when no saved state and no explicit intent sub selection)
+        if (!hasIntentExplicitSubtitleSelection) {
+          trackSelector.onFileLoaded(hasState)
+        }
         if (activeEngineMode == PlaybackEngineMode.MPV && forceMpvAudioTrackAutoOnNextLoad) {
           // A saved Native track id is not valid for MPV and can leave the handoff silent.
           runCatching { PlaybackSession.setPropertyString("aid", "auto") }
@@ -5768,7 +5782,7 @@ class PlayerActivity :
 
     val resultIntent =
       Intent(action).apply {
-        intent.data?.let { data = it }
+        intent.data?.takeIf { it.scheme != "file" }?.let { data = it }
         putExtra("position", currentPositionMs.toInt())
         putExtra("position_ms", currentPositionMs)
         putExtra("duration", currentDurationMs.toInt())
