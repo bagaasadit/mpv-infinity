@@ -332,10 +332,6 @@ Próximo: NEXT</string>
   <string name="player_sheets_frame_navigation_title">Navegação por quadros</string>
   <string name="player_sheets_frame_navigation_include_subtitles">Incluir legendas na captura</string>
   <string name="player_sheets_zoom_slider_label">Zoom do vídeo</string>
-  <plurals name="seconds">
-    <item quantity="one">%1$d segundo</item>
-    <item quantity="other">%1$d segundos</item>
-  </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">Reprodução em segundo plano (Reprodutor de Áudio)</string>
   <string name="pref_audio_background_playback_summary">Manter o áudio tocando ao sair do reprodutor de áudio ou desligar a tela</string>
@@ -583,25 +579,12 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">Erro desconhecido</string>
   <string name="toast_error_loading_scripts">Erro ao carregar scripts: %1$s</string>
-  <string name="toast_copied_value">Copiado: %1$s</string>
-  <plurals name="toast_renamed_items">
-    <item quantity="one">%1$d item renomeado</item>
-    <item quantity="other">%1$d itens renomeados</item>
-  </plurals>
-  <plurals name="toast_failed_to_rename_items">
-    <item quantity="one">Falha ao renomear %1$d item</item>
-    <item quantity="other">Falha ao renomear %1$d itens</item>
-  </plurals>
   <string name="toast_failed_to_save_reason">Falha ao salvar: %1$s</string>
   <string name="toast_error_sharing_script">Erro ao compartilhar script: %1$s</string>
   <string name="toast_imported_buttons">%1$d botão(ões) importado(s)</string>
   <string name="toast_failed_to_save_snapshot">Falha ao salvar a captura: %1$s</string>
   <string name="pref_api_key_type">Chave de API: %1$s</string>
   <string name="pref_paste_api_key">Cole sua %1$s</string>
-  <plurals name="rename_files_action">
-    <item quantity="one">Renomear %1$d arquivo</item>
-    <item quantity="other">Renomear %1$d arquivos</item>
-  </plurals>
   <string name="subtitle_position_update">Posição da legenda: %1$d</string>
   <string name="hdr_screen_output_update">Saída de tela HDR: %1$s</string>
   <string name="ambient_style_update">Estilo ambiente: %1$s</string>
@@ -638,9 +621,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="hdr_mode_linear_description">Pipeline HDR linear através dos shaders Astra e Bottosson do hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR - Saída do modo %1$s</string>
   <string name="pref_section_system">Sistema</string>
-  <string name="ui_file_size">Tamanho do arquivo</string>
-  <string name="ui_duration">Duração</string>
-  <string name="ui_bitrate">Taxa de bits</string>
   <string name="ambient_glow">Brilho</string>
   <string name="ambient_color">Cor</string>
   <string name="ambient_compositing">Composição</string>
@@ -690,20 +670,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="btn_label_time_network">Hora + Rede</string>
   <string name="btn_label_equalizer">Equalizador</string>
   <string name="btn_label_none">Nenhum</string>
-  <string name="media_info_tab_overview">Visão geral</string>
-  <string name="media_info_tab_video">Vídeo</string>
-  <string name="media_info_tab_audio">Áudio</string>
-  <string name="media_info_tab_subtitles">Legendas</string>
-  <string name="media_info_tab_chapters">Capítulos</string>
-  <string name="media_info_tab_image">Imagem</string>
-  <string name="media_info_tab_other">Outros</string>
-  <string name="media_info_tab_raw">Bruto</string>
-  <string name="media_info_attachments">Anexos</string>
-  <string name="media_info_file_path">Caminho do arquivo</string>
-  <string name="media_info_stat_format">Formato</string>
-  <string name="media_info_stat_bit_depth">Profundidade de bits</string>
-  <string name="media_info_stat_channels">Canais</string>
-  <string name="media_info_stat_sample_rate">Taxa de amostragem</string>
   <string name="player_unknown_video">Vídeo desconhecido</string>
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">Rede</string>
@@ -713,23 +679,10 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="ui_select_subtitle">Selecionar legenda</string>
   <string name="ui_no_storage_devices_found">Nenhum dispositivo de armazenamento encontrado</string>
   <string name="ui_no_folders_or_supported_files">Nenhuma pasta ou arquivo compatível</string>
-  <string name="ui_resolution">Resolução</string>
   <string name="ui_close">Fechar</string>
-  <string name="ui_copy">Copiar</string>
   <string name="ui_drag_to_reorder">Arraste para reordenar</string>
-  <string name="ui_mpv_documentation">Documentação do mpv</string>
-  <string name="ui_search_commands_options_properties">Pesquisar comandos, opções e propriedades...</string>
-  <string name="ui_no_results_found">Nenhum resultado encontrado</string>
-  <string name="ui_no_android">Sem Android</string>
   <string name="ui_script_runtime">Ambiente de execução de scripts</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Scripts recém-ativados podem ser carregados durante a reprodução. Scripts desativados talvez exijam que o vídeo seja reaberto para pararem completamente.</string>
-  <string name="ui_media_info">Informações da mídia</string>
-  <string name="ui_analyzing_media_file">Analisando arquivo de mídia...</string>
-  <string name="ui_media_tracks_summary">Resumo das faixas de mídia</string>
-  <string name="ui_container_metadata">Metadados do contêiner</string>
-  <string name="ui_video_chapters_timeline">Capítulos e linha do tempo do vídeo</string>
-  <string name="ui_copy_all">Copiar tudo</string>
-  <string name="ui_copied_specifications_to_clipboard">Especificações copiadas para a área de transferência</string>
   <string name="ui_playback_speed">Velocidade de reprodução</string>
   <string name="ui_previous_frame">Quadro anterior</string>
   <string name="ui_take_screenshot">Fazer captura de tela</string>
@@ -933,14 +886,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_audio_drc_title">Compressão de faixa dinâmica (DRC)</string>
   <string name="pref_audio_drc_summary">Comprimir a faixa dinâmica do áudio para realçar diálogos baixos e suavizar sons altos</string>
   <string name="pref_audio_effects">Processamento de áudio</string>
-  <plurals name="ui_torrent_group_file_count">
-    <item quantity="one">%1$d arquivo reproduzível</item>
-    <item quantity="other">%1$d arquivos reproduzíveis</item>
-  </plurals>
-  <plurals name="torrent_picker_playable_count">
-    <item quantity="one">%1$d arquivo reproduzível</item>
-    <item quantity="other">%1$d arquivos reproduzíveis</item>
-  </plurals>
     <string name="pref_enable_hls_proxy_title">Ativar proxy de streaming HLS</string>
     <string name="pref_enable_hls_proxy_summary">Normalizar manifestos adaptativos HLS e processar fluxos de áudio/vídeo separados</string>
     <string name="ui_buffering">Armazenando em buffer…</string>
@@ -982,19 +927,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="clip_action">Criar clipe</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_checking_yt_dlp">Verificando o yt-dlp</string>
-  <string name="ui_yt_dlp_not_installed">yt-dlp não está instalado</string>
-  <string name="ui_yt_dlp_stable_release">Versão estável</string>
-  <string name="ui_yt_dlp_nightly_build">Build Nightly</string>
-  <string name="ui_yt_dlp_master_build">Build Master</string>
-  <string name="ui_yt_dlp_custom_build">Build personalizado</string>
-  <string name="ui_yt_dlp_installed_build">Build instalado</string>
-  <string name="ui_reading_installed_version">Lendo a versão instalada…</string>
-  <string name="ui_install_stable_to_play_web_links">Instale a versão estável para reproduzir links da Web compatíveis.</string>
-  <string name="ui_yt_dlp_build_and_commit">Build %1$s • Commit %2$s</string>
-  <string name="ui_yt_dlp_version">Versão %1$s</string>
-  <string name="ui_yt_dlp_commit">Commit %1$s</string>
-  <string name="ui_version_unavailable">Versão indisponível</string>
   <string name="update_whats_new">Novidades</string>
   <string name="update_no_release_notes">Nenhuma nota de versão foi fornecida.</string>
   <string name="update_ready_to_install">Pronto para instalar</string>

@@ -503,7 +503,7 @@ object Icons {
 
     @DrawableRes val Favorite = MaterialSymbolsR.drawable.materialsymbols_ic_favorite_rounded_filled
 
-    @DrawableRes val Repeat = app.infinity.mpvz.R.drawable.materialsymbols_ic_repeat_rounded
+    @DrawableRes val Repeat = MaterialSymbolsR.drawable.materialsymbols_ic_repeat_rounded_filled
 
     @DrawableRes val RepeatOn = MaterialSymbolsR.drawable.materialsymbols_ic_repeat_on_rounded_filled
 

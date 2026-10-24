@@ -332,10 +332,6 @@
   <string name="player_sheets_frame_navigation_title">التنقل بين الإطارات</string>
   <string name="player_sheets_frame_navigation_include_subtitles">تضمين الترجمة في لقطة الشاشة</string>
   <string name="player_sheets_zoom_slider_label">تكبير الفيديو</string>
-  <plurals name="seconds">
-    <item quantity="one">%1$d ثانية</item>
-    <item quantity="other">%1$d ثوانٍ</item>
-  </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">التشغيل في الخلفية (مشغل الصوت)</string>
   <string name="pref_audio_background_playback_summary">مواصلة تشغيل الصوت عند مغادرة مشغل الصوت أو إيقاف الشاشة</string>
@@ -583,25 +579,12 @@
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">خطأ غير معروف</string>
   <string name="toast_error_loading_scripts">حدث خطأ أثناء تحميل البرامج النصية: %1$s</string>
-  <string name="toast_copied_value">تم النسخ: %1$s</string>
-  <plurals name="toast_renamed_items">
-    <item quantity="one">تمت إعادة تسمية عنصر واحد (%1$d)</item>
-    <item quantity="other">تمت إعادة تسمية %1$d عناصر</item>
-  </plurals>
-  <plurals name="toast_failed_to_rename_items">
-    <item quantity="one">تعذّرت إعادة تسمية عنصر واحد (%1$d)</item>
-    <item quantity="other">تعذّرت إعادة تسمية %1$d عناصر</item>
-  </plurals>
   <string name="toast_failed_to_save_reason">تعذّر الحفظ: %1$s</string>
   <string name="toast_error_sharing_script">حدث خطأ أثناء مشاركة البرنامج النصي: %1$s</string>
   <string name="toast_imported_buttons">تم استيراد %1$d زر</string>
   <string name="toast_failed_to_save_snapshot">تعذّر حفظ اللقطة: %1$s</string>
   <string name="pref_api_key_type">مفتاح API:‏ %1$s</string>
   <string name="pref_paste_api_key">الصق %1$s الخاص بك</string>
-  <plurals name="rename_files_action">
-    <item quantity="one">إعادة تسمية ملف واحد (%1$d)</item>
-    <item quantity="other">إعادة تسمية %1$d ملفات</item>
-  </plurals>
   <string name="subtitle_position_update">موضع الترجمة: %1$d</string>
   <string name="hdr_screen_output_update">إخراج شاشة HDR:‏ %1$s</string>
   <string name="ambient_style_update">نمط الإضاءة المحيطية: %1$s</string>
@@ -638,9 +621,6 @@
   <string name="hdr_mode_linear_description">إخراج HDR الخطي عبر سلسلة تأثيرات hdr-toys من Astra وBottosson</string>
   <string name="hdr_mode_output_diagnostic">HDR - إخراج وضع %1$s</string>
   <string name="pref_section_system">النظام</string>
-  <string name="ui_file_size">حجم الملف</string>
-  <string name="ui_duration">المدة</string>
-  <string name="ui_bitrate">معدل البت</string>
   <string name="ambient_glow">توهّج</string>
   <string name="ambient_color">اللون</string>
   <string name="ambient_compositing">الدمج</string>
@@ -690,20 +670,6 @@
   <string name="btn_label_time_network">الوقت + الشبكة</string>
   <string name="btn_label_equalizer">موازن الصوت</string>
   <string name="btn_label_none">بلا</string>
-  <string name="media_info_tab_overview">نظرة عامة</string>
-  <string name="media_info_tab_video">الفيديو</string>
-  <string name="media_info_tab_audio">الصوت</string>
-  <string name="media_info_tab_subtitles">الترجمة</string>
-  <string name="media_info_tab_chapters">الفصول</string>
-  <string name="media_info_tab_image">الصورة</string>
-  <string name="media_info_tab_other">أخرى</string>
-  <string name="media_info_tab_raw">خام</string>
-  <string name="media_info_attachments">المرفقات</string>
-  <string name="media_info_file_path">مسار الملف</string>
-  <string name="media_info_stat_format">الصيغة</string>
-  <string name="media_info_stat_bit_depth">عمق البت</string>
-  <string name="media_info_stat_channels">القنوات</string>
-  <string name="media_info_stat_sample_rate">معدل العينات</string>
   <string name="player_unknown_video">فيديو غير معروف</string>
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">الشبكة</string>
@@ -713,23 +679,10 @@
   <string name="ui_select_subtitle">اختيار الترجمة</string>
   <string name="ui_no_storage_devices_found">لم يتم العثور على أجهزة تخزين</string>
   <string name="ui_no_folders_or_supported_files">لا توجد مجلدات أو ملفات مدعومة</string>
-  <string name="ui_resolution">الدقة</string>
   <string name="ui_close">إغلاق</string>
-  <string name="ui_copy">نسخ</string>
   <string name="ui_drag_to_reorder">اسحب لإعادة الترتيب</string>
-  <string name="ui_mpv_documentation">وثائق mpv</string>
-  <string name="ui_search_commands_options_properties">البحث في الأوامر والخيارات والخصائص...</string>
-  <string name="ui_no_results_found">لم يتم العثور على نتائج</string>
-  <string name="ui_no_android">لا يدعم Android</string>
   <string name="ui_script_runtime">بيئة تشغيل البرنامج النصي</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">يمكن تحميل البرامج النصية التي تم تفعيلها حديثًا أثناء التشغيل. وقد تحتاج البرامج النصية التي توقفها إلى إعادة فتح الفيديو قبل أن تتوقف تمامًا.</string>
-  <string name="ui_media_info">معلومات الوسائط</string>
-  <string name="ui_analyzing_media_file">جارٍ تحليل ملف الوسائط...</string>
-  <string name="ui_media_tracks_summary">ملخّص مسارات الوسائط</string>
-  <string name="ui_container_metadata">البيانات الوصفية للحاوية</string>
-  <string name="ui_video_chapters_timeline">فصول الفيديو والخط الزمني</string>
-  <string name="ui_copy_all">نسخ الكل</string>
-  <string name="ui_copied_specifications_to_clipboard">تم نسخ المواصفات إلى الحافظة</string>
   <string name="ui_playback_speed">سرعة التشغيل</string>
   <string name="ui_previous_frame">الإطار السابق</string>
   <string name="ui_take_screenshot">التقاط لقطة شاشة</string>
@@ -935,14 +888,6 @@
   <string name="pref_audio_drc_title">ضغط المدى الديناميكي (DRC)</string>
   <string name="pref_audio_drc_summary">ضغط النطاق الديناميكي للصوت لتعزيز الحوار الهادئ وتخفيف الأصوات العالية</string>
   <string name="pref_audio_effects">معالجة الصوت</string>
-  <plurals name="ui_torrent_group_file_count">
-    <item quantity="one">%1$d ملف قابل للتشغيل</item>
-    <item quantity="other">%1$d ملفات قابلة للتشغيل</item>
-  </plurals>
-  <plurals name="torrent_picker_playable_count">
-    <item quantity="one">%1$d ملف قابل للتشغيل</item>
-    <item quantity="other">%1$d ملفات قابلة للتشغيل</item>
-  </plurals>
     <string name="pref_enable_hls_proxy_title">تفعيل وكيل بث HLS</string>
     <string name="pref_enable_hls_proxy_summary">معالجة تدفقات HLS التكيفية وتقسيم مسارات الصوت والفيديو</string>
     <string name="ui_buffering">جارٍ التخزين المؤقت…</string>
@@ -984,19 +929,6 @@
   <string name="clip_action">إنشاء مقطع</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_checking_yt_dlp">جارٍ التحقق من yt-dlp</string>
-  <string name="ui_yt_dlp_not_installed">yt-dlp غير مثبت</string>
-  <string name="ui_yt_dlp_stable_release">الإصدار المستقر</string>
-  <string name="ui_yt_dlp_nightly_build">البنية الليلية</string>
-  <string name="ui_yt_dlp_master_build">بنية Master</string>
-  <string name="ui_yt_dlp_custom_build">بنية مخصصة</string>
-  <string name="ui_yt_dlp_installed_build">البنية المثبتة</string>
-  <string name="ui_reading_installed_version">جارٍ قراءة الإصدار المثبت…</string>
-  <string name="ui_install_stable_to_play_web_links">ثبّت الإصدار المستقر لتشغيل روابط الويب المدعومة.</string>
-  <string name="ui_yt_dlp_build_and_commit">البنية %1$s • الالتزام %2$s</string>
-  <string name="ui_yt_dlp_version">الإصدار %1$s</string>
-  <string name="ui_yt_dlp_commit">الالتزام %1$s</string>
-  <string name="ui_version_unavailable">الإصدار غير متاح</string>
   <string name="update_whats_new">ما الجديد</string>
   <string name="update_no_release_notes">لا توجد ملاحظات إصدار.</string>
   <string name="update_ready_to_install">جاهز للتثبيت</string>

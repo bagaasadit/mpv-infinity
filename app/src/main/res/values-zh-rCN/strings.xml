@@ -332,10 +332,6 @@
   <string name="player_sheets_frame_navigation_title">逐帧导航</string>
   <string name="player_sheets_frame_navigation_include_subtitles">截图中包含字幕</string>
   <string name="player_sheets_zoom_slider_label">视频缩放</string>
-  <plurals name="seconds">
-    <item quantity="one">%1$d 秒</item>
-    <item quantity="other">%1$d 秒</item>
-  </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">后台播放（音频播放器）</string>
   <string name="pref_audio_background_playback_summary">在离开音频播放器或关闭屏幕时保持音频播放</string>
@@ -585,25 +581,12 @@
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">未知错误</string>
   <string name="toast_error_loading_scripts">加载脚本时出错：%1$s</string>
-  <string name="toast_copied_value">已复制：%1$s</string>
-  <plurals name="toast_renamed_items">
-    <item quantity="one">已重命名 %1$d 个项目</item>
-    <item quantity="other">已重命名 %1$d 个项目</item>
-  </plurals>
-  <plurals name="toast_failed_to_rename_items">
-    <item quantity="one">%1$d 个项目重命名失败</item>
-    <item quantity="other">%1$d 个项目重命名失败</item>
-  </plurals>
   <string name="toast_failed_to_save_reason">保存失败：%1$s</string>
   <string name="toast_error_sharing_script">共享脚本时出错：%1$s</string>
   <string name="toast_imported_buttons">已导入 %1$d 个按钮</string>
   <string name="toast_failed_to_save_snapshot">保存截图失败：%1$s</string>
   <string name="pref_api_key_type">API 密钥：%1$s</string>
   <string name="pref_paste_api_key">粘贴您的 %1$s</string>
-  <plurals name="rename_files_action">
-    <item quantity="one">重命名 %1$d 个文件</item>
-    <item quantity="other">重命名 %1$d 个文件</item>
-  </plurals>
   <string name="subtitle_position_update">字幕位置：%1$d</string>
   <string name="hdr_screen_output_update">HDR 屏幕输出：%1$s</string>
   <string name="ambient_style_update">环境光样式：%1$s</string>
@@ -640,9 +623,6 @@
   <string name="hdr_mode_linear_description">通过 hdr-toys 的 Astra 和 Bottosson 着色器链实现的线性 HDR</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s 模式输出</string>
   <string name="pref_section_system">系统</string>
-  <string name="ui_file_size">文件大小</string>
-  <string name="ui_duration">时长</string>
-  <string name="ui_bitrate">比特率</string>
   <string name="ambient_glow">辉光</string>
   <string name="ambient_color">颜色</string>
   <string name="ambient_compositing">合成</string>
@@ -692,20 +672,6 @@
   <string name="btn_label_time_network">时间 + 网络</string>
   <string name="btn_label_equalizer">均衡器</string>
   <string name="btn_label_none">无</string>
-  <string name="media_info_tab_overview">概览</string>
-  <string name="media_info_tab_video">视频</string>
-  <string name="media_info_tab_audio">音频</string>
-  <string name="media_info_tab_subtitles">字幕</string>
-  <string name="media_info_tab_chapters">章节</string>
-  <string name="media_info_tab_image">图像</string>
-  <string name="media_info_tab_other">其他</string>
-  <string name="media_info_tab_raw">原始报告</string>
-  <string name="media_info_attachments">附件</string>
-  <string name="media_info_file_path">文件路径</string>
-  <string name="media_info_stat_format">格式</string>
-  <string name="media_info_stat_bit_depth">位深</string>
-  <string name="media_info_stat_channels">声道</string>
-  <string name="media_info_stat_sample_rate">采样率</string>
   <string name="player_unknown_video">未知视频</string>
   <string name="ui_logcat">Logcat：</string>
   <string name="ui_network">网络</string>
@@ -715,23 +681,10 @@
   <string name="ui_select_subtitle">选择字幕</string>
   <string name="ui_no_storage_devices_found">未找到存储设备</string>
   <string name="ui_no_folders_or_supported_files">没有文件夹或支持的文件</string>
-  <string name="ui_resolution">分辨率</string>
   <string name="ui_close">关闭</string>
-  <string name="ui_copy">复制</string>
   <string name="ui_drag_to_reorder">拖动以重新排序</string>
-  <string name="ui_mpv_documentation">mpv 文档</string>
-  <string name="ui_search_commands_options_properties">搜索命令、选项和属性...</string>
-  <string name="ui_no_results_found">未找到结果</string>
-  <string name="ui_no_android">非 Android</string>
   <string name="ui_script_runtime">脚本运行时</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">新启用的脚本可在播放期间加载。关闭的脚本可能需要重新打开视频后才会完全停止运行。</string>
-  <string name="ui_media_info">媒体信息</string>
-  <string name="ui_analyzing_media_file">正在分析媒体文件...</string>
-  <string name="ui_media_tracks_summary">媒体轨道摘要</string>
-  <string name="ui_container_metadata">容器元数据</string>
-  <string name="ui_video_chapters_timeline">视频章节和时间轴</string>
-  <string name="ui_copy_all">全部复制</string>
-  <string name="ui_copied_specifications_to_clipboard">规格已复制到剪贴板</string>
   <string name="ui_playback_speed">播放速度</string>
   <string name="ui_previous_frame">上一帧</string>
   <string name="ui_take_screenshot">截取屏幕</string>
@@ -935,14 +888,6 @@
   <string name="pref_audio_drc_title">动态范围压缩 (DRC)</string>
   <string name="pref_audio_drc_summary">压缩音频动态范围，以增强安静的对白并减弱响亮的声音</string>
   <string name="pref_audio_effects">音频处理</string>
-  <plurals name="ui_torrent_group_file_count">
-    <item quantity="one">%1$d 个可播放文件</item>
-    <item quantity="other">%1$d 个可播放文件</item>
-  </plurals>
-  <plurals name="torrent_picker_playable_count">
-    <item quantity="one">%1$d 个可播放文件</item>
-    <item quantity="other">%1$d 个可播放文件</item>
-  </plurals>
     <string name="pref_enable_hls_proxy_title">启用 HLS 流式传输代理</string>
     <string name="pref_enable_hls_proxy_summary">规范化自适应 HLS 清单并处理分离的音频/视频流</string>
     <string name="ui_buffering">正在缓冲…</string>
@@ -984,19 +929,6 @@
   <string name="clip_action">创建片段</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_checking_yt_dlp">正在检查 yt-dlp</string>
-  <string name="ui_yt_dlp_not_installed">未安装 yt-dlp</string>
-  <string name="ui_yt_dlp_stable_release">稳定版</string>
-  <string name="ui_yt_dlp_nightly_build">Nightly 构建</string>
-  <string name="ui_yt_dlp_master_build">Master 构建</string>
-  <string name="ui_yt_dlp_custom_build">自定义构建</string>
-  <string name="ui_yt_dlp_installed_build">已安装构建</string>
-  <string name="ui_reading_installed_version">正在读取已安装版本…</string>
-  <string name="ui_install_stable_to_play_web_links">安装稳定版以播放受支持的网页链接。</string>
-  <string name="ui_yt_dlp_build_and_commit">构建 %1$s • 提交 %2$s</string>
-  <string name="ui_yt_dlp_version">版本 %1$s</string>
-  <string name="ui_yt_dlp_commit">提交 %1$s</string>
-  <string name="ui_version_unavailable">版本不可用</string>
   <string name="update_whats_new">新增内容</string>
   <string name="update_no_release_notes">未提供发行说明。</string>
   <string name="update_ready_to_install">可以安装</string>

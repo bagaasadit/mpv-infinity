@@ -332,10 +332,6 @@
   <string name="player_sheets_frame_navigation_title">Навигация по кадрам</string>
   <string name="player_sheets_frame_navigation_include_subtitles">Включать субтитры в снимок</string>
   <string name="player_sheets_zoom_slider_label">Масштаб видео</string>
-  <plurals name="seconds">
-    <item quantity="one">%1$d секунда</item>
-    <item quantity="other">%1$d секунд</item>
-  </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">Фоновое воспроизведение (Аудиоплеер)</string>
   <string name="pref_audio_background_playback_summary">Продолжать воспроизведение аудио при выходе из аудиоплеера или выключении экрана</string>
@@ -583,25 +579,12 @@
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">Неизвестная ошибка</string>
   <string name="toast_error_loading_scripts">Ошибка загрузки скриптов: %1$s</string>
-  <string name="toast_copied_value">Скопировано: %1$s</string>
-  <plurals name="toast_renamed_items">
-    <item quantity="one">Переименован %1$d элемент</item>
-    <item quantity="other">Переименовано элементов: %1$d</item>
-  </plurals>
-  <plurals name="toast_failed_to_rename_items">
-    <item quantity="one">Не удалось переименовать %1$d элемент</item>
-    <item quantity="other">Не удалось переименовать элементов: %1$d</item>
-  </plurals>
   <string name="toast_failed_to_save_reason">Не удалось сохранить: %1$s</string>
   <string name="toast_error_sharing_script">Ошибка отправки скрипта: %1$s</string>
   <string name="toast_imported_buttons">Импортировано кнопок: %1$d</string>
   <string name="toast_failed_to_save_snapshot">Не удалось сохранить снимок: %1$s</string>
   <string name="pref_api_key_type">Ключ API: %1$s</string>
   <string name="pref_paste_api_key">Вставьте свой %1$s</string>
-  <plurals name="rename_files_action">
-    <item quantity="one">Переименовать %1$d файл</item>
-    <item quantity="other">Переименовать %1$d файлов</item>
-  </plurals>
   <string name="subtitle_position_update">Положение субтитров: %1$d</string>
   <string name="hdr_screen_output_update">Вывод HDR на экран: %1$s</string>
   <string name="ambient_style_update">Стиль подсветки: %1$s</string>
@@ -638,9 +621,6 @@
   <string name="hdr_mode_linear_description">Линейный HDR-конвейер через шейдеры Astra и Bottosson от hdr-toys</string>
   <string name="hdr_mode_output_diagnostic">HDR — вывод в режиме %1$s</string>
   <string name="pref_section_system">Система</string>
-  <string name="ui_file_size">Размер файла</string>
-  <string name="ui_duration">Длительность</string>
-  <string name="ui_bitrate">Битрейт</string>
   <string name="ambient_glow">Свечение</string>
   <string name="ambient_color">Цвет</string>
   <string name="ambient_compositing">Композиция</string>
@@ -690,20 +670,6 @@
   <string name="btn_label_time_network">Время + Сеть</string>
   <string name="btn_label_equalizer">Эквалайзер</string>
   <string name="btn_label_none">Нет</string>
-  <string name="media_info_tab_overview">Обзор</string>
-  <string name="media_info_tab_video">Видео</string>
-  <string name="media_info_tab_audio">Аудио</string>
-  <string name="media_info_tab_subtitles">Субтитры</string>
-  <string name="media_info_tab_chapters">Главы</string>
-  <string name="media_info_tab_image">Изображение</string>
-  <string name="media_info_tab_other">Прочее</string>
-  <string name="media_info_tab_raw">Исходный</string>
-  <string name="media_info_attachments">Вложения</string>
-  <string name="media_info_file_path">Путь к файлу</string>
-  <string name="media_info_stat_format">Формат</string>
-  <string name="media_info_stat_bit_depth">Глубина цвета</string>
-  <string name="media_info_stat_channels">Каналы</string>
-  <string name="media_info_stat_sample_rate">Частота дискретизации</string>
   <string name="player_unknown_video">Неизвестное видео</string>
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">Сеть</string>
@@ -713,23 +679,10 @@
   <string name="ui_select_subtitle">Выбрать субтитры</string>
   <string name="ui_no_storage_devices_found">Устройства хранения не найдены</string>
   <string name="ui_no_folders_or_supported_files">Нет папок или поддерживаемых файлов</string>
-  <string name="ui_resolution">Разрешение</string>
   <string name="ui_close">Закрыть</string>
-  <string name="ui_copy">Копировать</string>
   <string name="ui_drag_to_reorder">Перетащите для изменения порядка</string>
-  <string name="ui_mpv_documentation">Документация mpv</string>
-  <string name="ui_search_commands_options_properties">Поиск команд, параметров и свойств...</string>
-  <string name="ui_no_results_found">Результаты не найдены</string>
-  <string name="ui_no_android">Не Android</string>
   <string name="ui_script_runtime">Среда выполнения скриптов</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Недавно включённые скрипты могут загружаться во время воспроизведения. После отключения скрипта может потребоваться заново открыть видео, чтобы он полностью остановился.</string>
-  <string name="ui_media_info">Информация о медиа</string>
-  <string name="ui_analyzing_media_file">Анализ медиафайла...</string>
-  <string name="ui_media_tracks_summary">Сводка медиадорожек</string>
-  <string name="ui_container_metadata">Метаданные контейнера</string>
-  <string name="ui_video_chapters_timeline">Главы и шкала времени видео</string>
-  <string name="ui_copy_all">Копировать всё</string>
-  <string name="ui_copied_specifications_to_clipboard">Характеристики скопированы в буфер обмена</string>
   <string name="ui_playback_speed">Скорость воспроизведения</string>
   <string name="ui_previous_frame">Предыдущий кадр</string>
   <string name="ui_take_screenshot">Сделать снимок экрана</string>
@@ -933,14 +886,6 @@
   <string name="pref_audio_drc_title">Сжатие динамического диапазона (DRC)</string>
   <string name="pref_audio_drc_summary">Сжимать динамический диапазон звука, чтобы усилить тихие диалоги и приглушить громкие звуки</string>
   <string name="pref_audio_effects">Обработка звука</string>
-  <plurals name="ui_torrent_group_file_count">
-    <item quantity="one">%1$d воспроизводимый файл</item>
-    <item quantity="other">%1$d воспроизводимых файлов</item>
-  </plurals>
-  <plurals name="torrent_picker_playable_count">
-    <item quantity="one">%1$d воспроизводимый файл</item>
-    <item quantity="other">%1$d воспроизводимых файлов</item>
-  </plurals>
     <string name="pref_enable_hls_proxy_title">Включить прокси потоковой передачи HLS</string>
     <string name="pref_enable_hls_proxy_summary">Нормализовать адаптивные манифесты HLS и обрабатывать раздельные аудио/видеопотоки</string>
     <string name="ui_buffering">Буферизация…</string>
@@ -982,19 +927,6 @@
   <string name="clip_action">Создать клип</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_checking_yt_dlp">Проверка yt-dlp</string>
-  <string name="ui_yt_dlp_not_installed">yt-dlp не установлен</string>
-  <string name="ui_yt_dlp_stable_release">Стабильная версия</string>
-  <string name="ui_yt_dlp_nightly_build">Ночная сборка</string>
-  <string name="ui_yt_dlp_master_build">Сборка Master</string>
-  <string name="ui_yt_dlp_custom_build">Пользовательская сборка</string>
-  <string name="ui_yt_dlp_installed_build">Установленная сборка</string>
-  <string name="ui_reading_installed_version">Чтение установленной версии…</string>
-  <string name="ui_install_stable_to_play_web_links">Установите стабильную версию для воспроизведения поддерживаемых веб-ссылок.</string>
-  <string name="ui_yt_dlp_build_and_commit">Сборка %1$s • Коммит %2$s</string>
-  <string name="ui_yt_dlp_version">Версия %1$s</string>
-  <string name="ui_yt_dlp_commit">Коммит %1$s</string>
-  <string name="ui_version_unavailable">Версия недоступна</string>
   <string name="update_whats_new">Что нового</string>
   <string name="update_no_release_notes">Примечания к выпуску отсутствуют.</string>
   <string name="update_ready_to_install">Готово к установке</string>

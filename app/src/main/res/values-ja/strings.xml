@@ -332,10 +332,6 @@
   <string name="player_sheets_frame_navigation_title">フレーム移動</string>
   <string name="player_sheets_frame_navigation_include_subtitles">スナップショットに字幕を含める</string>
   <string name="player_sheets_zoom_slider_label">動画ズーム</string>
-  <plurals name="seconds">
-    <item quantity="one">%1$d秒</item>
-    <item quantity="other">%1$d秒</item>
-  </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">バックグラウンド再生（オーディオプレイヤー）</string>
   <string name="pref_audio_background_playback_summary">オーディオプレイヤーを離れたり画面をオフにしても音声を再生し続ける</string>
@@ -583,25 +579,12 @@
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">不明なエラー</string>
   <string name="toast_error_loading_scripts">スクリプトの読み込みエラー: %1$s</string>
-  <string name="toast_copied_value">コピーしました: %1$s</string>
-  <plurals name="toast_renamed_items">
-    <item quantity="one">%1$d件の項目の名前を変更しました</item>
-    <item quantity="other">%1$d件の項目の名前を変更しました</item>
-  </plurals>
-  <plurals name="toast_failed_to_rename_items">
-    <item quantity="one">%1$d件の項目の名前を変更できませんでした</item>
-    <item quantity="other">%1$d件の項目の名前を変更できませんでした</item>
-  </plurals>
   <string name="toast_failed_to_save_reason">保存できませんでした: %1$s</string>
   <string name="toast_error_sharing_script">スクリプトの共有エラー: %1$s</string>
   <string name="toast_imported_buttons">%1$d個のボタンをインポートしました</string>
   <string name="toast_failed_to_save_snapshot">スナップショットを保存できませんでした: %1$s</string>
   <string name="pref_api_key_type">APIキー: %1$s</string>
   <string name="pref_paste_api_key">%1$s を貼り付け</string>
-  <plurals name="rename_files_action">
-    <item quantity="one">%1$d個のファイル名を変更</item>
-    <item quantity="other">%1$d個のファイル名を変更</item>
-  </plurals>
   <string name="subtitle_position_update">字幕位置: %1$d</string>
   <string name="hdr_screen_output_update">HDR画面出力: %1$s</string>
   <string name="ambient_style_update">アンビエントスタイル: %1$s</string>
@@ -638,9 +621,6 @@
   <string name="hdr_mode_linear_description">hdr-toys の Astra および Bottosson シェーダーによるリニア HDR パイプライン</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$sモード出力</string>
   <string name="pref_section_system">システム</string>
-  <string name="ui_file_size">ファイルサイズ</string>
-  <string name="ui_duration">長さ</string>
-  <string name="ui_bitrate">ビットレート</string>
   <string name="ambient_glow">グロー</string>
   <string name="ambient_color">カラー</string>
   <string name="ambient_compositing">合成</string>
@@ -690,20 +670,6 @@
   <string name="btn_label_time_network">時刻 + ネットワーク</string>
   <string name="btn_label_equalizer">イコライザー</string>
   <string name="btn_label_none">なし</string>
-  <string name="media_info_tab_overview">概要</string>
-  <string name="media_info_tab_video">動画</string>
-  <string name="media_info_tab_audio">音声</string>
-  <string name="media_info_tab_subtitles">字幕</string>
-  <string name="media_info_tab_chapters">チャプター</string>
-  <string name="media_info_tab_image">画像</string>
-  <string name="media_info_tab_other">その他</string>
-  <string name="media_info_tab_raw">ロー</string>
-  <string name="media_info_attachments">添付ファイル</string>
-  <string name="media_info_file_path">ファイルパス</string>
-  <string name="media_info_stat_format">フォーマット</string>
-  <string name="media_info_stat_bit_depth">ビット深度</string>
-  <string name="media_info_stat_channels">チャンネル</string>
-  <string name="media_info_stat_sample_rate">サンプリングレート</string>
   <string name="player_unknown_video">不明な動画</string>
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">ネットワーク</string>
@@ -713,23 +679,10 @@
   <string name="ui_select_subtitle">字幕を選択</string>
   <string name="ui_no_storage_devices_found">ストレージデバイスが見つかりません</string>
   <string name="ui_no_folders_or_supported_files">フォルダーまたは対応ファイルがありません</string>
-  <string name="ui_resolution">解像度</string>
   <string name="ui_close">閉じる</string>
-  <string name="ui_copy">コピー</string>
   <string name="ui_drag_to_reorder">ドラッグして並べ替え</string>
-  <string name="ui_mpv_documentation">mpvドキュメント</string>
-  <string name="ui_search_commands_options_properties">コマンド、オプション、プロパティを検索...</string>
-  <string name="ui_no_results_found">結果が見つかりません</string>
-  <string name="ui_no_android">Androidなし</string>
   <string name="ui_script_runtime">スクリプト実行環境</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">新しく有効にしたスクリプトは再生中に読み込めます。無効にしたスクリプトを完全に停止するには、動画を開き直す必要がある場合があります。</string>
-  <string name="ui_media_info">メディア情報</string>
-  <string name="ui_analyzing_media_file">メディアファイルを解析中...</string>
-  <string name="ui_media_tracks_summary">メディアトラックの概要</string>
-  <string name="ui_container_metadata">コンテナのメタデータ</string>
-  <string name="ui_video_chapters_timeline">動画チャプターとタイムライン</string>
-  <string name="ui_copy_all">すべてコピー</string>
-  <string name="ui_copied_specifications_to_clipboard">仕様をクリップボードにコピーしました</string>
   <string name="ui_playback_speed">再生速度</string>
   <string name="ui_previous_frame">前のフレーム</string>
   <string name="ui_take_screenshot">スクリーンショットを撮影</string>
@@ -933,14 +886,6 @@
   <string name="pref_audio_drc_title">ダイナミックレンジ压縮 (DRC)</string>
   <string name="pref_audio_drc_summary">オーディオのダイナミックレンジを圧縮し、静かな台詞を強調して大きな音を軽めます</string>
   <string name="pref_audio_effects">音声処理</string>
-  <plurals name="ui_torrent_group_file_count">
-    <item quantity="one">%1$d 個の再生可能なファイル</item>
-    <item quantity="other">%1$d 個の再生可能なファイル</item>
-  </plurals>
-  <plurals name="torrent_picker_playable_count">
-    <item quantity="one">%1$d 個の再生可能なファイル</item>
-    <item quantity="other">%1$d 個の再生可能なファイル</item>
-  </plurals>
     <string name="pref_enable_hls_proxy_title">HLSストリーミングプロキシを有効化</string>
     <string name="pref_enable_hls_proxy_summary">適応型HLSマニフェストを正規化し、分離された音声/動画ストリームを処理します</string>
     <string name="ui_buffering">バッファリング中…</string>
@@ -982,19 +927,6 @@
   <string name="clip_action">クリップを作成</string>
 
   <!-- Seerr (Overseerr / Jellyseerr) Requests & Discover -->
-  <string name="ui_checking_yt_dlp">yt-dlp を確認中</string>
-  <string name="ui_yt_dlp_not_installed">yt-dlp はインストールされていません</string>
-  <string name="ui_yt_dlp_stable_release">安定版</string>
-  <string name="ui_yt_dlp_nightly_build">Nightly ビルド</string>
-  <string name="ui_yt_dlp_master_build">Master ビルド</string>
-  <string name="ui_yt_dlp_custom_build">カスタムビルド</string>
-  <string name="ui_yt_dlp_installed_build">インストール済みビルド</string>
-  <string name="ui_reading_installed_version">インストール済みバージョンを読み取り中…</string>
-  <string name="ui_install_stable_to_play_web_links">対応するウェブリンクを再生するには安定版をインストールしてください。</string>
-  <string name="ui_yt_dlp_build_and_commit">ビルド %1$s • コミット %2$s</string>
-  <string name="ui_yt_dlp_version">バージョン %1$s</string>
-  <string name="ui_yt_dlp_commit">コミット %1$s</string>
-  <string name="ui_version_unavailable">バージョンを取得できません</string>
   <string name="update_whats_new">新機能</string>
   <string name="update_no_release_notes">リリースノートはありません。</string>
   <string name="update_ready_to_install">インストール準備完了</string>

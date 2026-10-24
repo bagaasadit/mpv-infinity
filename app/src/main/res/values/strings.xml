@@ -388,10 +388,6 @@
   <string name="player_sheets_frame_navigation_snapshot_saved" translatable="false">Saved to Pictures/mpvSnaps</string>
   <string name="player_sheets_frame_navigation_include_subtitles">Include subtitles in snapshot</string>
   <string name="player_sheets_zoom_slider_label">Video Zoom</string>
-  <plurals name="seconds">
-    <item quantity="one">%1$d second</item>
-    <item quantity="other">%1$d seconds</item>
-  </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">Audio Player Background Playback</string>
   <string name="pref_audio_background_playback_summary">Keep audio playing when leaving the audio player or turning off screen</string>
@@ -575,15 +571,7 @@
   <string name="pref_section_mpv_config">MPV Configuration</string>
   <string name="pref_config_edit_summary">Tap to edit configuration</string>
   <string name="pref_section_scripts">Scripts (Lua / JS)</string>
-  <plurals name="ui_torrent_group_file_count">
-    <item quantity="one">%1$d playable file</item>
-    <item quantity="other">%1$d playable files</item>
-  </plurals>
   <string name="ui_buffering">Buffering…</string>
-  <plurals name="torrent_picker_playable_count">
-    <item quantity="one">%1$d playable file</item>
-    <item quantity="other">%1$d playable files</item>
-  </plurals>
   <string name="pref_manage_scripts_summary_disabled">Set storage location and enable scripts first</string>
   <string name="pref_manage_scripts_summary_none">No scripts enabled</string>
   <string name="pref_manage_scripts_summary_singular">1 script enabled</string>
@@ -647,25 +635,12 @@
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">Unknown error</string>
   <string name="toast_error_loading_scripts">Error loading scripts: %1$s</string>
-  <string name="toast_copied_value">Copied: %1$s</string>
-  <plurals name="toast_renamed_items">
-    <item quantity="one">Renamed %1$d item</item>
-    <item quantity="other">Renamed %1$d items</item>
-  </plurals>
-  <plurals name="toast_failed_to_rename_items">
-    <item quantity="one">Failed to rename %1$d item</item>
-    <item quantity="other">Failed to rename %1$d items</item>
-  </plurals>
   <string name="toast_failed_to_save_reason">Failed to save: %1$s</string>
   <string name="toast_error_sharing_script">Error sharing script: %1$s</string>
   <string name="toast_imported_buttons">Imported %1$d button(s)</string>
   <string name="toast_failed_to_save_snapshot">Failed to save snapshot: %1$s</string>
   <string name="pref_api_key_type">API Key: %1$s</string>
   <string name="pref_paste_api_key">Paste your %1$s</string>
-  <plurals name="rename_files_action">
-    <item quantity="one">Rename %1$d File</item>
-    <item quantity="other">Rename %1$d Files</item>
-  </plurals>
   <string name="subtitle_position_update">Subtitle Position: %1$d</string>
   <string name="hdr_screen_output_update">HDR Screen Output: %1$s</string>
   <string name="ambient_style_update">Ambient Style: %1$s</string>
@@ -707,9 +682,6 @@
   <string name="hdr_mode_linear_description">Linear light HDR pipeline with hdr-toys Astra and Bottosson shaders</string>
   <string name="hdr_mode_output_diagnostic">HDR - %1$s Mode Output</string>
   <string name="pref_section_system">System</string>
-  <string name="ui_file_size">File Size</string>
-  <string name="ui_duration">Duration</string>
-  <string name="ui_bitrate">Bitrate</string>
   <string name="ambient_glow">Glow</string>
   <string name="ambient_style_youtube">YouTube</string>
   <string name="ambient_color">Color</string>
@@ -761,20 +733,6 @@
   <string name="btn_label_time_network">Time + Network</string>
   <string name="btn_label_equalizer">Equalizer</string>
   <string name="btn_label_none">None</string>
-  <string name="media_info_tab_overview">Overview</string>
-  <string name="media_info_tab_video">Video</string>
-  <string name="media_info_tab_audio">Audio</string>
-  <string name="media_info_tab_subtitles">Subtitles</string>
-  <string name="media_info_tab_chapters">Chapters</string>
-  <string name="media_info_tab_image">Image</string>
-  <string name="media_info_tab_other">Other</string>
-  <string name="media_info_tab_raw">Raw</string>
-  <string name="media_info_attachments">Attachments</string>
-  <string name="media_info_file_path">File path</string>
-  <string name="media_info_stat_format">Format</string>
-  <string name="media_info_stat_bit_depth">Bit depth</string>
-  <string name="media_info_stat_channels">Channels</string>
-  <string name="media_info_stat_sample_rate">Sample rate</string>
   <string name="player_unknown_video">Unknown Video</string>
   <string name="ui_logcat">Logcat:</string>
   <string name="ui_network">Network</string>
@@ -785,23 +743,10 @@
   <string name="ui_select_audio">Select Audio Track</string>
   <string name="ui_no_storage_devices_found">No storage devices found</string>
   <string name="ui_no_folders_or_supported_files">No folders or supported files</string>
-  <string name="ui_resolution">Resolution</string>
   <string name="ui_close">Close</string>
-  <string name="ui_copy">Copy</string>
   <string name="ui_drag_to_reorder">Drag to reorder</string>
-  <string name="ui_mpv_documentation">mpv Documentation</string>
-  <string name="ui_search_commands_options_properties">Search commands, options, properties...</string>
-  <string name="ui_no_results_found">No results found</string>
-  <string name="ui_no_android">No Android</string>
   <string name="ui_script_runtime">Script runtime</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Newly enabled scripts can load during playback. Scripts you turn off may need the video to be reopened before they fully stop running.</string>
-  <string name="ui_media_info">Media Info</string>
-  <string name="ui_analyzing_media_file">Analyzing media file...</string>
-  <string name="ui_media_tracks_summary">Media Tracks Summary</string>
-  <string name="ui_container_metadata">Container Metadata</string>
-  <string name="ui_video_chapters_timeline">Video Chapters &amp; Timeline</string>
-  <string name="ui_copy_all">Copy all</string>
-  <string name="ui_copied_specifications_to_clipboard">Copied specifications to clipboard</string>
   <string name="ui_playback_speed">Playback Speed</string>
   <string name="ui_previous_frame">Previous Frame</string>
   <string name="ui_take_screenshot">Take Screenshot</string>
@@ -904,19 +849,6 @@
   <string name="ui_paid_sources">Paid Sources</string>
   <string name="ui_restricted_requires_paid_api_key">Restricted (Requires Paid API Key)</string>
   <string name="ui_restricted">Restricted</string>
-  <string name="ui_checking_yt_dlp">Checking yt-dlp</string>
-  <string name="ui_yt_dlp_not_installed">yt-dlp Not Installed</string>
-  <string name="ui_yt_dlp_stable_release">Stable Release</string>
-  <string name="ui_yt_dlp_nightly_build">Nightly Build</string>
-  <string name="ui_yt_dlp_master_build">Master Build</string>
-  <string name="ui_yt_dlp_custom_build">Custom Build</string>
-  <string name="ui_yt_dlp_installed_build">Installed Build</string>
-  <string name="ui_reading_installed_version">Reading installed version…</string>
-  <string name="ui_install_stable_to_play_web_links">Install the stable release to play supported web links.</string>
-  <string name="ui_yt_dlp_build_and_commit">Build %1$s • Commit %2$s</string>
-  <string name="ui_yt_dlp_version">Version %1$s</string>
-  <string name="ui_yt_dlp_commit">Commit %1$s</string>
-  <string name="ui_version_unavailable">Version unavailable</string>
   <string name="ui_video_title">Video Title</string>
   <string name="ui_1_06_chapter_1">1:06 • Chapter 1</string>
   <string name="ui_downloading">Downloading...</string>
