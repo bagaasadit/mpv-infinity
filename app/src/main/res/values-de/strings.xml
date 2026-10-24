@@ -195,7 +195,7 @@ Weiter: NEXT</string>
   <string name="pref_app_language_title">Sprache</string>
   <string name="pref_app_language_system_default">Systemstandard</string>
   <string name="pref_app_language_restart_title">Neustart erforderlich</string>
-  <string name="pref_app_language_restart_message">Starte Mpv∞ neu, um die neue Sprache anzuwenden.</string>
+  <string name="pref_app_language_restart_message">Starte mpvZero neu, um die neue Sprache anzuwenden.</string>
   <string name="pref_app_language_restart_now">Jetzt neu starten</string>
   <string name="pref_advanced_mpv_conf_storage_location">Speicherort der Konfiguration auswählen</string>
   <string name="pref_advanced_mpv_conf">mpv.conf bearbeiten</string>
@@ -354,7 +354,7 @@ Weiter: NEXT</string>
   <string name="notification_saved_to_favorites">In Favoriten gespeichert</string>
   <string name="notification_chapter_counter">Kapitel %1$d von %2$d</string>
   <string name="notification_permission_denied">Für die Steuerung der Hintergrundwiedergabe ist die Benachrichtigungsberechtigung erforderlich.</string>
-  <string name="notification_permission_disabled">Benachrichtigungen sind für Mpv∞ deaktiviert. Aktivieren Sie sie, um Wiedergabesteuerungen anzuzeigen.</string>
+  <string name="notification_permission_disabled">Benachrichtigungen sind für mpvZero deaktiviert. Aktivieren Sie sie, um Wiedergabesteuerungen anzuzeigen.</string>
   <string name="notification_disabled_in_advanced_settings">Aktivieren Sie Benachrichtigungen in den erweiterten Einstellungen, um die Hintergrundwiedergabe zu nutzen.</string>
   <string name="pref_advanced_notification_style">Benachrichtigungsstil</string>
   <!-- Media Info Activity -->
@@ -726,7 +726,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_increase_zoom">Vergrößern</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">Geräteinformationen</string>
-  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Von Mpv∞ verwendete zentrale Open-Source-Abhängigkeiten.</string>
+  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Von mpvZero verwendete zentrale Open-Source-Abhängigkeiten.</string>
   <string name="ui_already_using_latest_version">Die neueste Version wird bereits verwendet</string>
   <string name="ui_refresh">Aktualisieren</string>
   <string name="ui_unsaved_changes">Ungespeicherte Änderungen</string>

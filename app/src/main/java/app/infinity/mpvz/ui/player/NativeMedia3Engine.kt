@@ -1,3 +1,12 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package app.infinity.mpvz.ui.player
 
 import android.content.Context
@@ -127,7 +136,7 @@ class NativeMedia3Engine(
   private val engineScope = CoroutineScope(Dispatchers.Main.immediate)
   private var dialogueBoostJob: Job? = null
   private val appContext = context.applicationContext
-  private val logTag = "Mpv∞-Media3"
+  private val logTag = "mpvZero-Media3"
   private val httpDataSourceFactory = DefaultHttpDataSource.Factory()
     .setAllowCrossProtocolRedirects(true)
     .setConnectTimeoutMs(15_000)

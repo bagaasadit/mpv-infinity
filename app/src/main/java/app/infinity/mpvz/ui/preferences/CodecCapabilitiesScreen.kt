@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -575,7 +575,7 @@ object CodecCapabilitiesScreen : Screen {
 
     val copyReportToClipboard = {
       val sb = StringBuilder()
-      sb.appendLine("=== Mpv∞ Hardware vs Software Codec Diagnostics ===")
+      sb.appendLine("=== mpvZero Hardware vs Software Codec Diagnostics ===")
       sb.appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE}, API ${Build.VERSION.SDK_INT})")
       sb.appendLine("Decoders: $hwCount Hardware Accelerated, $swCount Software Fallback ($videoCount Video, $audioCount Audio)")
       sb.appendLine()

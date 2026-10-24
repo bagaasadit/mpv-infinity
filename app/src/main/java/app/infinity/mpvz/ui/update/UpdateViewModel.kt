@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -42,7 +42,7 @@ class UpdateViewModel(
   val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
   private var updateCheckJob: Job? = null
 
-  private val prefs = application.getSharedPreferences("Mpv∞_prefs", Context.MODE_PRIVATE)
+  private val prefs = application.getSharedPreferences("mpvzero_prefs", Context.MODE_PRIVATE)
   private val _isAutoUpdateEnabled =
     MutableStateFlow(
       if (BuildConfig.ENABLE_UPDATE_FEATURE) prefs.getBoolean("auto_update", false) else false,

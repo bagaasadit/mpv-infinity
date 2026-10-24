@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -69,7 +69,7 @@ import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
 import app.infinity.mpvz.ui.theme.DarkMode
-import app.infinity.mpvz.ui.theme.MpvInfinityTheme
+import app.infinity.mpvz.ui.theme.MpvZeroTheme
 import app.infinity.mpvz.ui.theme.spacing
 import app.infinity.mpvz.utils.clipboard.SafeClipboard
 import `is`.xyz.mpv.Utils
@@ -104,7 +104,7 @@ class CrashActivity : AppCompatActivity() {
           darkScrim = Color.Transparent.toArgb(),
         ) { isDarkMode },
       )
-      MpvInfinityTheme {
+      MpvZeroTheme {
         if (debugLogsMode) {
           DebugLogsScreen(onNavigateBack = ::finish)
         } else {
@@ -124,19 +124,14 @@ class CrashActivity : AppCompatActivity() {
 
   private fun deleteDatabase(): Boolean =
     try {
-      val dbFile = getDatabasePath("Mpv∞.db")
-      val dbWalFile = File(dbFile.parent, "Mpv∞.db-wal")
-      val dbShmFile = File(dbFile.parent, "Mpv∞.db-shm")
-
       var deleted = false
-      if (dbFile.exists()) {
-        deleted = dbFile.delete() || deleted
-      }
-      if (dbWalFile.exists()) {
-        deleted = dbWalFile.delete() || deleted
-      }
-      if (dbShmFile.exists()) {
-        deleted = dbShmFile.delete() || deleted
+      listOf("mpvzero.db", "Mpv∞.db").forEach { dbName ->
+        val dbFile = getDatabasePath(dbName)
+        val dbWalFile = File(dbFile.parent, "$dbName-wal")
+        val dbShmFile = File(dbFile.parent, "$dbName-shm")
+        if (dbFile.exists()) deleted = dbFile.delete() || deleted
+        if (dbWalFile.exists()) deleted = dbWalFile.delete() || deleted
+        if (dbShmFile.exists()) deleted = dbShmFile.delete() || deleted
       }
       deleted
     } catch (_: Exception) {
@@ -152,6 +147,8 @@ class CrashActivity : AppCompatActivity() {
         "database",
         "sqlite",
         "room",
+        "mpvzero.db",
+        "mpvzeroDatabase",
         "Mpv∞.db",
         "Mpv∞Database",
         "android.database",
@@ -191,7 +188,7 @@ class CrashActivity : AppCompatActivity() {
       }
 
       withContext(NonCancellable) {
-        val file = File(activity.cacheDir, "Mpv∞_logs.txt")
+        val file = File(activity.cacheDir, "mpvzero_logs.txt")
         if (file.exists()) file.delete()
         file.createNewFile()
         file.appendText(concatLogs(deviceInfo, exceptionString, logcat))
@@ -236,6 +233,7 @@ class CrashActivity : AppCompatActivity() {
           .lineSequence()
           .filter { line ->
             listOf(
+              "mpvZero-Media3",
               "Mpv∞-Media3",
               "ExoPlayer",
               "Media3",
@@ -390,7 +388,7 @@ class CrashActivity : AppCompatActivity() {
               onClick = {
                 SafeClipboard.copyPlainText(
                   context = this@CrashActivity,
-                  label = "Mpv∞_crash_logs",
+                  label = "mpvzero_crash_logs",
                   text = concatLogs(collectDeviceInfo(), exceptionString, logcat),
                 )
               },

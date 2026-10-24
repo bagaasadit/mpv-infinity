@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -5498,8 +5498,9 @@ class PlayerViewModel : ViewModel(),
 
     // Use labeled video filter for mirroring to avoid state desync
     if (newMirrorState) {
-      PlaybackSession.command("vf", "add", "@Mpv∞_hflip:hflip")
+      PlaybackSession.command("vf", "add", "@mpvzero_hflip:hflip")
     } else {
+      PlaybackSession.command("vf", "remove", "@mpvzero_hflip")
       PlaybackSession.command("vf", "remove", "@Mpv∞_hflip")
     }
     playerUpdate.value =
@@ -5516,8 +5517,9 @@ class PlayerViewModel : ViewModel(),
 
     // Use labeled video filter for vflip to avoid state desync
     if (newState) {
-      PlaybackSession.command("vf", "add", "@Mpv∞_vflip:vflip")
+      PlaybackSession.command("vf", "add", "@mpvzero_vflip:vflip")
     } else {
+      PlaybackSession.command("vf", "remove", "@mpvzero_vflip")
       PlaybackSession.command("vf", "remove", "@Mpv∞_vflip")
     }
 

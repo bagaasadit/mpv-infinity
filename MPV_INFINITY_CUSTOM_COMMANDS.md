@@ -1,15 +1,15 @@
-# Mpv∞ Lua and JavaScript Command Guide
+# mpvZero Lua and JavaScript Command Guide
 
-This file documents the public scripting surface that Mpv∞ exposes to mpv Lua
+This file documents the public scripting surface that mpvZero exposes to mpv Lua
 and JavaScript scripts.
 
-Scripts talk to Mpv∞ by writing string values to properties under:
+Scripts talk to mpvZero by writing string values to properties under:
 
 ```text
-user-data/Mpv∞/*
+user-data/mpvZero/*
 ```
 
-Mpv∞ observes those properties, performs the native player action, and clears
+mpvZero observes those properties, performs the native player action, and clears
 the command property after handling it. The only exception is the curl bridge:
 `curl_request` and `curl_response` are kept long enough for async HTTP handling.
 
@@ -20,18 +20,18 @@ The examples below use public no-auth API endpoints from:
 
 ## Quick Start
 
-1. Enable Lua/JS scripting in Mpv∞ advanced settings.
+1. Enable Lua/JS scripting in mpvZero advanced settings.
 2. Put script files in the selected mpv config folder.
-3. Prefer the `scripts/` subfolder. Mpv∞ also falls back to the config root.
+3. Prefer the `scripts/` subfolder. mpvZero also falls back to the config root.
 4. Use `.lua` for Lua scripts and `.js` for JavaScript scripts.
-5. Select the scripts in the Mpv∞ scripts panel.
+5. Select the scripts in the mpvZero scripts panel.
 6. Reopen the video if a script was added before playback started.
 
-Mpv∞ also syncs `script-opts/` from the selected mpv config folder.
+mpvZero also syncs `script-opts/` from the selected mpv config folder.
 
 ## Important Rules
 
-- Every Mpv∞ command property is handled as a string.
+- Every mpvZero command property is handled as a string.
 - Seek values must be integer seconds. Do not send decimals.
 - `seek_to_with_text` and `seek_by_with_text` use the format `seconds|message`.
 - `curl_request` is async. Always observe `curl_response`.
@@ -44,16 +44,16 @@ Mpv∞ also syncs `script-opts/` from the selected mpv config folder.
 
 | Property | Value | What it does |
 | --- | --- | --- |
-| `user-data/Mpv∞/show_text` | Any string | Shows a native Mpv∞ text overlay. |
-| `user-data/Mpv∞/toggle_ui` | `show`, `hide`, `toggle` | Shows, hides, or toggles player controls. |
-| `user-data/Mpv∞/show_panel` | Panel id | Opens a native Mpv∞ sheet or panel. |
-| `user-data/Mpv∞/seek_to` | Integer seconds | Seeks to an absolute timestamp. |
-| `user-data/Mpv∞/seek_by` | Integer seconds | Seeks relative to the current timestamp. |
-| `user-data/Mpv∞/seek_to_with_text` | `seconds|message` | Absolute seek with overlay text. |
-| `user-data/Mpv∞/seek_by_with_text` | `seconds|message` | Relative seek with overlay text. |
-| `user-data/Mpv∞/software_keyboard` | `show`, `hide`, `toggle` | Controls the Android software keyboard. |
-| `user-data/Mpv∞/curl_request` | JSON string | Runs an async HTTP request through native curl. |
-| `user-data/Mpv∞/curl_response` | JSON string | Response written by Mpv∞. Scripts should observe it. |
+| `user-data/mpvZero/show_text` | Any string | Shows a native mpvZero text overlay. |
+| `user-data/mpvZero/toggle_ui` | `show`, `hide`, `toggle` | Shows, hides, or toggles player controls. |
+| `user-data/mpvZero/show_panel` | Panel id | Opens a native mpvZero sheet or panel. |
+| `user-data/mpvZero/seek_to` | Integer seconds | Seeks to an absolute timestamp. |
+| `user-data/mpvZero/seek_by` | Integer seconds | Seeks relative to the current timestamp. |
+| `user-data/mpvZero/seek_to_with_text` | `seconds|message` | Absolute seek with overlay text. |
+| `user-data/mpvZero/seek_by_with_text` | `seconds|message` | Relative seek with overlay text. |
+| `user-data/mpvZero/software_keyboard` | `show`, `hide`, `toggle` | Controls the Android software keyboard. |
+| `user-data/mpvZero/curl_request` | JSON string | Runs an async HTTP request through native curl. |
+| `user-data/mpvZero/curl_response` | JSON string | Response written by mpvZero. Scripts should observe it. |
 
 Supported panel ids:
 
@@ -75,30 +75,30 @@ not implement public behavior for them. Treat them as reserved.
 
 ## Full Working Lua Example
 
-Save this as `Mpv∞_demo.lua` in your mpv `scripts/` folder.
+Save this as `mpvZero_demo.lua` in your mpv `scripts/` folder.
 
 It fetches a public JSONPlaceholder post, shows the post title, and includes
-key bindings for common Mpv∞ commands.
+key bindings for common mpvZero commands.
 
 ```lua
--- Mpv∞_demo.lua
+-- mpvZero_demo.lua
 
 local utils = require("mp.utils")
 
-local REQUEST_ID = "Mpv∞-demo-lua-post"
+local REQUEST_ID = "mpvZero-demo-lua-post"
 
-local function Mpv∞(command, value)
-    mp.set_property("user-data/Mpv∞/" .. command, tostring(value))
+local function mpvZero(command, value)
+    mp.set_property("user-data/mpvZero/" .. command, tostring(value))
 end
 
 local function show(message)
-    Mpv∞("show_text", message)
+    mpvZero("show_text", message)
 end
 
 local function fetch_post()
     show("Fetching JSONPlaceholder post...")
 
-    Mpv∞("curl_request", utils.format_json({
+    mpvZero("curl_request", utils.format_json({
         id = REQUEST_ID,
         url = "https://jsonplaceholder.typicode.com/posts/1",
         method = "GET",
@@ -109,7 +109,7 @@ local function fetch_post()
     }))
 end
 
-mp.observe_property("user-data/Mpv∞/curl_response", "string", function(_, value)
+mp.observe_property("user-data/mpvZero/curl_response", "string", function(_, value)
     if value == nil or value == "" then return end
 
     local res = utils.parse_json(value)
@@ -136,52 +136,52 @@ end)
 
 mp.register_event("file-loaded", fetch_post)
 
-mp.add_key_binding("J", "Mpv∞-fetch-jsonplaceholder-post", fetch_post)
-mp.add_key_binding("U", "Mpv∞-toggle-ui", function()
-    Mpv∞("toggle_ui", "toggle")
+mp.add_key_binding("J", "mpvZero-fetch-jsonplaceholder-post", fetch_post)
+mp.add_key_binding("U", "mpvZero-toggle-ui", function()
+    mpvZero("toggle_ui", "toggle")
 end)
-mp.add_key_binding("V", "Mpv∞-open-video-filters", function()
-    Mpv∞("show_panel", "video_filters")
+mp.add_key_binding("V", "mpvZero-open-video-filters", function()
+    mpvZero("show_panel", "video_filters")
 end)
-mp.add_key_binding("RIGHT", "Mpv∞-seek-forward", function()
-    Mpv∞("seek_by_with_text", "30|Forward 30 seconds")
+mp.add_key_binding("RIGHT", "mpvZero-seek-forward", function()
+    mpvZero("seek_by_with_text", "30|Forward 30 seconds")
 end)
-mp.add_key_binding("LEFT", "Mpv∞-seek-back", function()
-    Mpv∞("seek_by_with_text", "-10|Back 10 seconds")
+mp.add_key_binding("LEFT", "mpvZero-seek-back", function()
+    mpvZero("seek_by_with_text", "-10|Back 10 seconds")
 end)
 ```
 
 ## Full Working JavaScript Example
 
-Save this as `Mpv∞_demo.js` in your mpv `scripts/` folder.
+Save this as `mpvZero_demo.js` in your mpv `scripts/` folder.
 
 This example uses ES5-style JavaScript for mpv compatibility. It sends a POST
 request to JSONPlaceholder and shows the fake created post id returned by the
 public test API.
 
 ```javascript
-// Mpv∞_demo.js
+// mpvZero_demo.js
 
-var REQUEST_ID = "Mpv∞-demo-js-create-post";
+var REQUEST_ID = "mpvZero-demo-js-create-post";
 
-function Mpv∞(command, value) {
-    mp.set_property("user-data/Mpv∞/" + command, String(value));
+function mpvZero(command, value) {
+    mp.set_property("user-data/mpvZero/" + command, String(value));
 }
 
 function show(message) {
-    Mpv∞("show_text", message);
+    mpvZero("show_text", message);
 }
 
 function createPost() {
     var payload = {
-        title: "Mpv∞ JavaScript curl test",
-        body: "Posted from an mpv JavaScript script through Mpv∞ curl.",
+        title: "mpvZero JavaScript curl test",
+        body: "Posted from an mpv JavaScript script through mpvZero curl.",
         userId: 1
     };
 
     show("Posting to JSONPlaceholder...");
 
-    Mpv∞("curl_request", JSON.stringify({
+    mpvZero("curl_request", JSON.stringify({
         id: REQUEST_ID,
         url: "https://jsonplaceholder.typicode.com/posts",
         method: "POST",
@@ -195,7 +195,7 @@ function createPost() {
     }));
 }
 
-mp.observe_property("user-data/Mpv∞/curl_response", "string", function(name, value) {
+mp.observe_property("user-data/mpvZero/curl_response", "string", function(name, value) {
     if (!value) return;
 
     var res;
@@ -228,15 +228,15 @@ mp.observe_property("user-data/Mpv∞/curl_response", "string", function(name, v
     show("Created fake post #" + body.id + "\nHTTP " + res.status);
 });
 
-mp.add_key_binding("P", "Mpv∞-create-jsonplaceholder-post", createPost);
-mp.add_key_binding("U", "Mpv∞-toggle-ui-js", function() {
-    Mpv∞("toggle_ui", "toggle");
+mp.add_key_binding("P", "mpvZero-create-jsonplaceholder-post", createPost);
+mp.add_key_binding("U", "mpvZero-toggle-ui-js", function() {
+    mpvZero("toggle_ui", "toggle");
 });
-mp.add_key_binding("S", "Mpv∞-open-subtitle-settings-js", function() {
-    Mpv∞("show_panel", "subtitle_settings");
+mp.add_key_binding("S", "mpvZero-open-subtitle-settings-js", function() {
+    mpvZero("show_panel", "subtitle_settings");
 });
-mp.add_key_binding("K", "Mpv∞-show-keyboard-js", function() {
-    Mpv∞("software_keyboard", "show");
+mp.add_key_binding("K", "mpvZero-show-keyboard-js", function() {
+    mpvZero("software_keyboard", "show");
 });
 ```
 
@@ -244,18 +244,18 @@ mp.add_key_binding("K", "Mpv∞-show-keyboard-js", function() {
 
 ### `show_text`
 
-Shows a short native Mpv∞ overlay.
+Shows a short native mpvZero overlay.
 
 Lua:
 
 ```lua
-mp.set_property("user-data/Mpv∞/show_text", "Shaders enabled")
+mp.set_property("user-data/mpvZero/show_text", "Shaders enabled")
 ```
 
 JavaScript:
 
 ```javascript
-mp.set_property("user-data/Mpv∞/show_text", "Shaders enabled");
+mp.set_property("user-data/mpvZero/show_text", "Shaders enabled");
 ```
 
 ### `toggle_ui`
@@ -271,31 +271,31 @@ Accepted values:
 Lua:
 
 ```lua
-mp.set_property("user-data/Mpv∞/toggle_ui", "hide")
+mp.set_property("user-data/mpvZero/toggle_ui", "hide")
 ```
 
 JavaScript:
 
 ```javascript
-mp.set_property("user-data/Mpv∞/toggle_ui", "toggle");
+mp.set_property("user-data/mpvZero/toggle_ui", "toggle");
 ```
 
 ### `show_panel`
 
-Opens a native Mpv∞ sheet or panel.
+Opens a native mpvZero sheet or panel.
 
 Lua:
 
 ```lua
-mp.set_property("user-data/Mpv∞/show_panel", "frame_navigation")
-mp.set_property("user-data/Mpv∞/show_panel", "video_filters")
+mp.set_property("user-data/mpvZero/show_panel", "frame_navigation")
+mp.set_property("user-data/mpvZero/show_panel", "video_filters")
 ```
 
 JavaScript:
 
 ```javascript
-mp.set_property("user-data/Mpv∞/show_panel", "lua_scripts");
-mp.set_property("user-data/Mpv∞/show_panel", "hdr_screen_output");
+mp.set_property("user-data/mpvZero/show_panel", "lua_scripts");
+mp.set_property("user-data/mpvZero/show_panel", "hdr_screen_output");
 ```
 
 ### `seek_to`
@@ -303,7 +303,7 @@ mp.set_property("user-data/Mpv∞/show_panel", "hdr_screen_output");
 Seeks to an absolute timestamp in integer seconds.
 
 ```lua
-mp.set_property("user-data/Mpv∞/seek_to", "600")
+mp.set_property("user-data/mpvZero/seek_to", "600")
 ```
 
 ### `seek_by`
@@ -311,8 +311,8 @@ mp.set_property("user-data/Mpv∞/seek_to", "600")
 Seeks relative to the current timestamp in integer seconds.
 
 ```lua
-mp.set_property("user-data/Mpv∞/seek_by", "30")
-mp.set_property("user-data/Mpv∞/seek_by", "-10")
+mp.set_property("user-data/mpvZero/seek_by", "30")
+mp.set_property("user-data/mpvZero/seek_by", "-10")
 ```
 
 ### `seek_to_with_text`
@@ -328,13 +328,13 @@ seconds|message
 Lua:
 
 ```lua
-mp.set_property("user-data/Mpv∞/seek_to_with_text", "90|Jumping to intro")
+mp.set_property("user-data/mpvZero/seek_to_with_text", "90|Jumping to intro")
 ```
 
 JavaScript:
 
 ```javascript
-mp.set_property("user-data/Mpv∞/seek_to_with_text", "3600|Jumping to final act");
+mp.set_property("user-data/mpvZero/seek_to_with_text", "3600|Jumping to final act");
 ```
 
 ### `seek_by_with_text`
@@ -344,14 +344,14 @@ Seeks relative to the current timestamp and shows custom overlay text.
 Lua:
 
 ```lua
-mp.set_property("user-data/Mpv∞/seek_by_with_text", "85|Skipping opening")
-mp.set_property("user-data/Mpv∞/seek_by_with_text", "-15|Back 15 seconds")
+mp.set_property("user-data/mpvZero/seek_by_with_text", "85|Skipping opening")
+mp.set_property("user-data/mpvZero/seek_by_with_text", "-15|Back 15 seconds")
 ```
 
 JavaScript:
 
 ```javascript
-mp.set_property("user-data/Mpv∞/seek_by_with_text", "30|Forward 30 seconds");
+mp.set_property("user-data/mpvZero/seek_by_with_text", "30|Forward 30 seconds");
 ```
 
 ### `software_keyboard`
@@ -367,13 +367,13 @@ Accepted values:
 Lua:
 
 ```lua
-mp.set_property("user-data/Mpv∞/software_keyboard", "show")
+mp.set_property("user-data/mpvZero/software_keyboard", "show")
 ```
 
 JavaScript:
 
 ```javascript
-mp.set_property("user-data/Mpv∞/software_keyboard", "hide");
+mp.set_property("user-data/mpvZero/software_keyboard", "hide");
 ```
 
 ## Curl Bridge
@@ -382,13 +382,13 @@ The curl bridge lets Lua and JavaScript scripts make HTTP requests through the
 native libcurl bridge. Scripts write a JSON request to:
 
 ```text
-user-data/Mpv∞/curl_request
+user-data/mpvZero/curl_request
 ```
 
-Mpv∞ writes the response to:
+mpvZero writes the response to:
 
 ```text
-user-data/Mpv∞/curl_response
+user-data/mpvZero/curl_response
 ```
 
 Requests are async. Playback continues while the request runs.
@@ -397,7 +397,7 @@ Requests are async. Playback continues while the request runs.
 
 | Field | Type | Required | Default | Notes |
 | --- | --- | --- | --- | --- |
-| `id` | string | No | UUID generated by Mpv∞ | Use your own id so scripts can match responses. |
+| `id` | string | No | UUID generated by mpvZero | Use your own id so scripts can match responses. |
 | `url` | string | Yes | none | Must not be blank. Use `http://` or `https://`. |
 | `method` | string | No | `GET` | Supported: `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`. |
 | `headers` | object | No | `{}` | String key/value request headers. Maximum 64 headers. |
@@ -410,7 +410,7 @@ Lua request:
 ```lua
 local utils = require("mp.utils")
 
-mp.set_property("user-data/Mpv∞/curl_request", utils.format_json({
+mp.set_property("user-data/mpvZero/curl_request", utils.format_json({
     id = "lua-httpbin-get",
     url = "https://httpbin.org/get",
     method = "GET",
@@ -424,7 +424,7 @@ mp.set_property("user-data/Mpv∞/curl_request", utils.format_json({
 JavaScript request:
 
 ```javascript
-mp.set_property("user-data/Mpv∞/curl_request", JSON.stringify({
+mp.set_property("user-data/mpvZero/curl_request", JSON.stringify({
     id: "js-httpbin-get",
     url: "https://httpbin.org/get",
     method: "GET",
@@ -450,25 +450,25 @@ Lua observer:
 ```lua
 local utils = require("mp.utils")
 
-mp.observe_property("user-data/Mpv∞/curl_response", "string", function(_, value)
+mp.observe_property("user-data/mpvZero/curl_response", "string", function(_, value)
     if value == nil or value == "" then return end
 
     local res = utils.parse_json(value)
     if res == nil or res.id ~= "lua-httpbin-get" then return end
 
     if res.error ~= nil then
-        mp.set_property("user-data/Mpv∞/show_text", "Curl error: " .. res.error)
+        mp.set_property("user-data/mpvZero/show_text", "Curl error: " .. res.error)
         return
     end
 
-    mp.set_property("user-data/Mpv∞/show_text", "HTTP " .. tostring(res.status))
+    mp.set_property("user-data/mpvZero/show_text", "HTTP " .. tostring(res.status))
 end)
 ```
 
 JavaScript observer:
 
 ```javascript
-mp.observe_property("user-data/Mpv∞/curl_response", "string", function(name, value) {
+mp.observe_property("user-data/mpvZero/curl_response", "string", function(name, value) {
     if (!value) return;
 
     var res;
@@ -481,11 +481,11 @@ mp.observe_property("user-data/Mpv∞/curl_response", "string", function(name, v
     if (!res || res.id !== "js-httpbin-get") return;
 
     if (res.error) {
-        mp.set_property("user-data/Mpv∞/show_text", "Curl error: " + res.error);
+        mp.set_property("user-data/mpvZero/show_text", "Curl error: " + res.error);
         return;
     }
 
-    mp.set_property("user-data/Mpv∞/show_text", "HTTP " + res.status);
+    mp.set_property("user-data/mpvZero/show_text", "HTTP " + res.status);
 });
 ```
 
@@ -502,7 +502,7 @@ mp.observe_property("user-data/Mpv∞/curl_response", "string", function(name, v
 
 ## Custom Buttons
 
-Mpv∞ custom buttons support Lua and JavaScript actions.
+mpvZero custom buttons support Lua and JavaScript actions.
 
 In the Custom Button editor:
 
@@ -512,40 +512,40 @@ In the Custom Button editor:
 - `On startup` is optional.
 - `Script language` can be Lua or JavaScript.
 
-Paste only the action body into the editor. Mpv∞ wraps it in a generated
+Paste only the action body into the editor. mpvZero wraps it in a generated
 script and registers the correct script message internally.
 
 Lua tap action example:
 
 ```lua
 mp.set_property("deband", "yes")
-mp.set_property("user-data/Mpv∞/show_text", "Deband enabled")
+mp.set_property("user-data/mpvZero/show_text", "Deband enabled")
 ```
 
 Lua long press action example:
 
 ```lua
 mp.set_property("deband", "no")
-mp.set_property("user-data/Mpv∞/show_text", "Deband disabled")
+mp.set_property("user-data/mpvZero/show_text", "Deband disabled")
 ```
 
 JavaScript tap action example:
 
 ```javascript
 mp.set_property("video-zoom", "0.25");
-mp.set_property("user-data/Mpv∞/show_text", "Zoom 25%");
+mp.set_property("user-data/mpvZero/show_text", "Zoom 25%");
 ```
 
 JavaScript long press action example:
 
 ```javascript
 mp.set_property("video-zoom", "0");
-mp.set_property("user-data/Mpv∞/show_text", "Zoom reset");
+mp.set_property("user-data/mpvZero/show_text", "Zoom reset");
 ```
 
 Generated custom button internals:
 
-- Mpv∞ writes generated scripts to the app internal `scripts/` directory.
+- mpvZero writes generated scripts to the app internal `scripts/` directory.
 - Lua buttons are generated into `custombuttons.lua`.
 - JavaScript buttons are generated into `custombuttons.js`.
 - Tapping a button sends `script-message call_button_<safe_id>`.
@@ -559,7 +559,7 @@ files. They exist only inside generated custom button scripts.
 
 ## Android Telemetry Properties
 
-Mpv∞ writes Android device state into mpv `user-data/android/*` properties.
+mpvZero writes Android device state into mpv `user-data/android/*` properties.
 Scripts can read or observe these values.
 
 | Property | Type | Meaning |
@@ -577,7 +577,7 @@ mp.observe_property("user-data/android/battery-level", "native", function(_, lev
     local charging = mp.get_property_native("user-data/android/battery-charging")
     if tonumber(level) < 15 and not charging then
         mp.set_property("deband", "no")
-        mp.set_property("user-data/Mpv∞/show_text", "Low battery: deband disabled")
+        mp.set_property("user-data/mpvZero/show_text", "Low battery: deband disabled")
     end
 end)
 ```
@@ -591,7 +591,7 @@ mp.observe_property("user-data/android/battery-level", "native", function(name, 
     var charging = mp.get_property_native("user-data/android/battery-charging");
     if (Number(level) < 15 && !charging) {
         mp.set_property("deband", "no");
-        mp.set_property("user-data/Mpv∞/show_text", "Low battery: deband disabled");
+        mp.set_property("user-data/mpvZero/show_text", "Low battery: deband disabled");
     }
 });
 ```
@@ -600,7 +600,7 @@ mp.observe_property("user-data/android/battery-level", "native", function(name, 
 
 If a command does nothing:
 
-- Confirm scripting is enabled in Mpv∞ settings.
+- Confirm scripting is enabled in mpvZero settings.
 - Confirm the script is selected in the scripts panel.
 - Confirm the script file extension is `.lua` or `.js`.
 - Use integer seconds for seek commands.
@@ -615,7 +615,7 @@ Lua:
 
 ```lua
 mp.register_event("file-loaded", function()
-    mp.set_property("user-data/Mpv∞/show_text", "Lua script loaded")
+    mp.set_property("user-data/mpvZero/show_text", "Lua script loaded")
 end)
 ```
 
@@ -623,6 +623,6 @@ JavaScript:
 
 ```javascript
 mp.register_event("file-loaded", function() {
-    mp.set_property("user-data/Mpv∞/show_text", "JavaScript script loaded");
+    mp.set_property("user-data/mpvZero/show_text", "JavaScript script loaded");
 });
 ```

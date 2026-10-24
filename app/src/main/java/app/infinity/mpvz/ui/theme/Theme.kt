@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -270,7 +270,7 @@ private fun ThemeTransitionContent(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MpvInfinityTheme(
+fun MpvZeroTheme(
   transitionState: ThemeTransitionState = rememberThemeTransitionState(),
   content: @Composable () -> Unit,
 ) {
@@ -328,6 +328,12 @@ fun MpvInfinityTheme(
     }
   }
 }
+
+@Composable
+fun MpvInfinityTheme(
+  transitionState: ThemeTransitionState = rememberThemeTransitionState(),
+  content: @Composable () -> Unit,
+) = MpvZeroTheme(transitionState, content)
 
 private fun resolveAppColorScheme(
   context: Context,

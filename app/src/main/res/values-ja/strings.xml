@@ -195,7 +195,7 @@
   <string name="pref_app_language_title">言語</string>
   <string name="pref_app_language_system_default">システムのデフォルト</string>
   <string name="pref_app_language_restart_title">再起動が必要です</string>
-  <string name="pref_app_language_restart_message">新しい言語を適用するには Mpv∞ を再起動してください。</string>
+  <string name="pref_app_language_restart_message">新しい言語を適用するには mpvZero を再起動してください。</string>
   <string name="pref_app_language_restart_now">今すぐ再起動</string>
   <string name="pref_advanced_mpv_conf_storage_location">設定の保存場所を選択</string>
   <string name="pref_advanced_mpv_conf">mpv.confを編集</string>
@@ -354,7 +354,7 @@
   <string name="notification_saved_to_favorites">お気に入りに保存しました</string>
   <string name="notification_chapter_counter">チャプター %1$d / %2$d</string>
   <string name="notification_permission_denied">バックグラウンド再生の操作には通知権限が必要です。</string>
-  <string name="notification_permission_disabled">Mpv∞の通知が無効です。再生操作を表示するには有効にしてください。</string>
+  <string name="notification_permission_disabled">mpvZeroの通知が無効です。再生操作を表示するには有効にしてください。</string>
   <string name="notification_disabled_in_advanced_settings">バックグラウンド再生を使用するには、高度な設定で通知を有効にしてください。</string>
   <string name="pref_advanced_notification_style">通知スタイル</string>
   <!-- Media Info Activity -->
@@ -726,7 +726,7 @@
   <string name="ui_increase_zoom">拡大</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">端末情報</string>
-  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Mpv∞で使用している主要なオープンソース依存関係。</string>
+  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">mpvZeroで使用している主要なオープンソース依存関係。</string>
   <string name="ui_already_using_latest_version">すでに最新バージョンです</string>
   <string name="ui_refresh">更新</string>
   <string name="ui_unsaved_changes">未保存の変更</string>

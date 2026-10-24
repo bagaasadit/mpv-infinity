@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -856,8 +856,20 @@ val DatabaseModule =
 
     single<MpvInfinityDatabase> {
       val context = androidContext()
+      val newDb = context.getDatabasePath("mpvzero.db")
+      val legacyDb = context.getDatabasePath("Mpv∞.db")
+      if (!newDb.exists() && legacyDb.exists()) {
+        runCatching {
+          legacyDb.renameTo(newDb)
+          val legacyWal = java.io.File(legacyDb.parent, "Mpv∞.db-wal")
+          if (legacyWal.exists()) legacyWal.renameTo(java.io.File(newDb.parent, "mpvzero.db-wal"))
+          val legacyShm = java.io.File(legacyDb.parent, "Mpv∞.db-shm")
+          if (legacyShm.exists()) legacyShm.renameTo(java.io.File(newDb.parent, "mpvzero.db-shm"))
+        }
+      }
+      val dbName = if (newDb.exists() || !legacyDb.exists()) "mpvzero.db" else "Mpv∞.db"
       Room
-        .databaseBuilder(context, MpvInfinityDatabase::class.java, "Mpv∞.db")
+        .databaseBuilder(context, MpvInfinityDatabase::class.java, dbName)
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
         .addMigrations(
           MIGRATION_1_2,

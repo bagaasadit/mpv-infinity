@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -31,7 +31,8 @@ class SettingsManager(
   private val database: MpvInfinityDatabase,
 ) {
   companion object {
-    private const val TAG_ROOT = "Mpv∞Settings"
+    private const val TAG_ROOT = "mpvzeroSettings"
+    private const val LEGACY_TAG_ROOT = "Mpv∞Settings"
     private const val TAG_PREFERENCES = "preferences"
     private const val TAG_PREFERENCE = "preference"
     private const val TAG_DATABASE = "database"
@@ -184,7 +185,7 @@ class SettingsManager(
       when (eventType) {
         XmlPullParser.START_TAG -> {
           when (parser.name) {
-            TAG_ROOT -> {
+            TAG_ROOT, LEGACY_TAG_ROOT -> {
               val version = parser.getAttributeValue(null, ATTR_VERSION)
               stats.version = version ?: "unknown"
             }
@@ -241,7 +242,7 @@ class SettingsManager(
 
   fun getDefaultExportFilename(): String {
     val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-    return "Mpv∞_settings_${dateFormat.format(Date())}.xml"
+    return "mpvzero_settings_${dateFormat.format(Date())}.xml"
   }
 
   data class ImportStats(

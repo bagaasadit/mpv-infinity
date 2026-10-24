@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -100,7 +100,7 @@ import app.infinity.mpvz.ui.player.controls.PlayerControls
 import app.infinity.mpvz.ui.player.components.VideoAmbientBackground
 import app.infinity.mpvz.ui.player.components.rememberVideoAmbientFrame
 import app.infinity.mpvz.ui.player.ytdlp.YtdlpManager
-import app.infinity.mpvz.ui.theme.MpvInfinityTheme
+import app.infinity.mpvz.ui.theme.MpvZeroTheme
 import app.infinity.mpvz.utils.device.VulkanCapabilities
 import app.infinity.mpvz.utils.history.RecentlyPlayedOps
 import app.infinity.mpvz.utils.media.HttpUtils
@@ -1503,7 +1503,7 @@ class PlayerActivity :
 
   private fun setupPlayerControls() {
     binding.controls.setContent {
-      MpvInfinityTheme {
+      MpvZeroTheme {
         Box(modifier = Modifier.fillMaxSize()) {
           PlayerControls(
             viewModel = viewModel,
@@ -1621,7 +1621,7 @@ class PlayerActivity :
         }
       }
 
-      MpvInfinityTheme {
+      MpvZeroTheme {
         if (presentationActive) {
           VideoAmbientBackground(
             frame = ambientFrame.frame,
@@ -4700,7 +4700,7 @@ class PlayerActivity :
       }
       else -> {
         when (property.substringBeforeLast("/")) {
-          "user-data/Mpv∞" -> viewModel.handleLuaInvocation(property, value)
+          "user-data/mpvzero", "user-data/Mpv∞" -> viewModel.handleLuaInvocation(property, value)
         }
       }
     }
@@ -8551,7 +8551,7 @@ class PlayerActivity :
     /**
      * General tag for logging from PlayerActivity.
      */
-    const val TAG = "Mpv∞"
+    const val TAG = "mpvZero"
 
     const val EXTRA_PREPARED_PLAYBACK_QUEUE = "prepared_playback_queue"
     const val EXTRA_PREPARED_PLAYBACK_TOKEN = "prepared_playback_token"

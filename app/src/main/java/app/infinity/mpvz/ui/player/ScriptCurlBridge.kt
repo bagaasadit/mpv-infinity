@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -37,7 +37,8 @@ class ScriptCurlBridge(
 ) {
   companion object {
     private const val TAG = "ScriptCurlBridge"
-    private const val RESPONSE_PROPERTY = "user-data/Mpv∞/curl_response"
+    private const val RESPONSE_PROPERTY = "user-data/mpvzero/curl_response"
+    private const val LEGACY_RESPONSE_PROPERTY = "user-data/Mpv∞/curl_response"
 
     private const val DEFAULT_TIMEOUT_SECONDS = 30L
     private const val MAX_TIMEOUT_SECONDS = 120L
@@ -47,7 +48,7 @@ class ScriptCurlBridge(
     private const val MAX_BODY_BYTES = 8L * 1024 * 1024
     private const val MAX_CONCURRENT_REQUESTS = 4
     private const val MAX_PENDING_REQUESTS = 32
-    private const val USER_AGENT = "MpvInfinity-script-curl/1.0"
+    private const val USER_AGENT = "mpvZero-script-curl/1.0"
 
     private val ALLOWED_METHODS = setOf("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE")
     private val METHODS_WITH_BODY = setOf("POST", "PUT", "PATCH")
@@ -359,6 +360,12 @@ class ScriptCurlBridge(
       RESPONSE_PROPERTY,
       responseJson,
     )
+    runCatching {
+      PlaybackSession.setPropertyString(
+        LEGACY_RESPONSE_PROPERTY,
+        responseJson,
+      )
+    }
   }
 
   private fun writeErrorResponse(

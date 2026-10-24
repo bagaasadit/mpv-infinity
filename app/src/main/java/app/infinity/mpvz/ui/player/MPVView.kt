@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -467,6 +467,19 @@ class MPVView(
       "video-params/h" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
       "container-fps" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
       "eof-reached" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
+      "user-data/mpvzero/show_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/toggle_ui" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/show_panel" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/set_button_title" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/reset_button_title" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/toggle_button" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/seek_by" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/seek_to" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/seek_by_with_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/seek_to_with_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/software_keyboard" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/curl_request" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvzero/curl_response" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       "user-data/Mpv∞/show_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       "user-data/Mpv∞/toggle_ui" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       "user-data/Mpv∞/show_panel" to MPVLib.MpvFormat.MPV_FORMAT_STRING,

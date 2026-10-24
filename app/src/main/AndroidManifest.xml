@@ -69,7 +69,7 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.mpvinfinity.Player">
-            <!-- MIME-only discovery lets external-player pickers find Mpv∞ before they
+            <!-- MIME-only discovery lets external-player pickers find mpvZero before they
                  attach the final stream URI. URI playback remains constrained below. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

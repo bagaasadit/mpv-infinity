@@ -1,0 +1,72 @@
+mpvZero
+Copyright (c) 2026 mpvZero Contributors
+
+This project is licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
+See the LICENSE file for details.
+
+===============================================================================
+Lineage and Acknowledgements
+===============================================================================
+
+mpvZero is an independent lightweight Android media player tailored for dedicated
+4K Remux direct-stream decoding and audiophile IEM headphone downmixing.
+
+Its architectural lineage builds upon the work of several prior open-source projects:
+- mpv-android (https://github.com/mpv-android/mpv-android)
+  Licensed under GPL-3.0-or-later / LGPL-2.1-or-later
+- mpvEx (https://github.com/marlboro-advance/mpvEx)
+  Licensed under GPL-3.0-or-later
+- mpvRx (https://github.com/Riteshp2001/mpvRx)
+  Licensed under GPL-3.0-or-later
+- mpvKt / mpv-infinity (https://github.com/bagaasadit/mpv-infinity)
+  Licensed under GPL-3.0-or-later
+
+===============================================================================
+Third-Party Software and Dependencies
+===============================================================================
+
+This software includes and links with the following third-party libraries and components:
+
+1. mpv (libmpv)
+   Copyright (c) mpv-player developers
+   License: GPL-2.0-or-later / LGPL-2.1-or-later
+   Website: https://mpv.io
+
+2. FFmpeg & media3-ffmpeg-decoder
+   Copyright (c) FFmpeg developers
+   License: GPL-3.0-or-later
+   Website: https://ffmpeg.org
+
+3. AndroidX Media3
+   Copyright (c) The Android Open Source Project
+   License: Apache-2.0 (see THIRD_PARTY_LICENSES/Apache-2.0.txt)
+   Website: https://developer.android.com/media/media3
+
+4. libass (and ass-media JNI bindings)
+   Copyright (c) libass team
+   License: ISC (see THIRD_PARTY_LICENSES/ISC.txt)
+   Website: https://github.com/libass/libass
+
+5. QuickJS (quickjs-android)
+   Copyright (c) Fabrice Bellard, Charlie Gordon, and contributors
+   License: MIT (see THIRD_PARTY_LICENSES/MIT.txt)
+   Website: https://bellard.org/quickjs/
+
+6. Jetpack Compose, KotlinX, and AndroidX Libraries
+   Copyright (c) The Android Open Source Project
+   License: Apache-2.0 (see THIRD_PARTY_LICENSES/Apache-2.0.txt)
+
+7. Koin Dependency Injection
+   Copyright (c) InsertKoin.io
+   License: Apache-2.0 (see THIRD_PARTY_LICENSES/Apache-2.0.txt)
+   Website: https://insert-koin.io
+
+8. Coil Image Loader
+   Copyright (c) Coil Contributors
+   License: Apache-2.0 (see THIRD_PARTY_LICENSES/Apache-2.0.txt)
+   Website: https://coil-kt.github.io/coil/
+
+9. OkHttp & Okio
+   Copyright (c) Square, Inc.
+   License: Apache-2.0 (see THIRD_PARTY_LICENSES/Apache-2.0.txt)
+   Website: https://square.github.io/okhttp/

@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published
+ * it under the terms of the GNU General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -107,7 +107,7 @@ class MpvInfinitySubtitleHubRepository(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e(TAG, "Mpv∞ SubtitleHub search failed", e)
+        Log.e(TAG, "mpvZero SubtitleHub search failed", e)
         Result.failure(e)
       }
     }
@@ -144,7 +144,7 @@ class MpvInfinitySubtitleHubRepository(
           Result.success(fileStore.save(readBoundedSubtitleResponse(response.body), subtitle, mediaTitle))
         }
       } catch (e: Exception) {
-        Log.e(TAG, "Mpv∞ SubtitleHub download failed", e)
+        Log.e(TAG, "mpvZero SubtitleHub download failed", e)
         Result.failure(e)
       }
     }
@@ -857,7 +857,7 @@ class MpvInfinitySubtitleHubRepository(
     }
 
   private companion object {
-    const val TAG = "Mpv∞SubtitleHub"
+    const val TAG = "mpvZeroSubtitleHub"
     const val MAX_CONCURRENT_PROVIDER_REQUESTS = 4
     const val USER_AGENT =
       "Mozilla/5.0 (Linux; Android 14; MpvInfinity) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"

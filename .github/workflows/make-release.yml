@@ -118,16 +118,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          cp app/build/outputs/apk/standard/release/app-standard-universal-release.apk release/mpv-infinity-standard-universal-${VERSION_TAG}.apk
-          cp app/build/outputs/apk/standard/release/app-standard-arm64-v8a-release.apk release/mpv-infinity-standard-arm64-v8a-${VERSION_TAG}.apk
-          cp app/build/outputs/apk/standard/release/app-standard-armeabi-v7a-release.apk release/mpv-infinity-standard-armeabi-v7a-${VERSION_TAG}.apk
-          cp app/build/outputs/apk/standard/release/app-standard-x86-release.apk release/mpv-infinity-standard-x86-${VERSION_TAG}.apk
-          cp app/build/outputs/apk/standard/release/app-standard-x86_64-release.apk release/mpv-infinity-standard-x86_64-${VERSION_TAG}.apk
-          cp app/build/outputs/apk/fongmi/release/app-fongmi-universal-release.apk release/mpv-infinity-fongmi-universal-${VERSION_TAG}.apk
-          cp app/build/outputs/apk/noVulkan/release/app-noVulkan-universal-release.apk release/mpv-infinity-no-vulkan-universal-${VERSION_TAG}.apk
+          cp app/build/outputs/apk/standard/release/app-standard-universal-release.apk release/mpvZero-standard-universal-${VERSION_TAG}.apk
+          cp app/build/outputs/apk/standard/release/app-standard-arm64-v8a-release.apk release/mpvZero-standard-arm64-v8a-${VERSION_TAG}.apk
+          cp app/build/outputs/apk/standard/release/app-standard-armeabi-v7a-release.apk release/mpvZero-standard-armeabi-v7a-${VERSION_TAG}.apk
+          cp app/build/outputs/apk/standard/release/app-standard-x86-release.apk release/mpvZero-standard-x86-${VERSION_TAG}.apk
+          cp app/build/outputs/apk/standard/release/app-standard-x86_64-release.apk release/mpvZero-standard-x86_64-${VERSION_TAG}.apk
+          cp app/build/outputs/apk/fongmi/release/app-fongmi-universal-release.apk release/mpvZero-fongmi-universal-${VERSION_TAG}.apk
+          cp app/build/outputs/apk/noVulkan/release/app-noVulkan-universal-release.apk release/mpvZero-no-vulkan-universal-${VERSION_TAG}.apk
 
           cat > release-notes.md <<EOF
-          ## Mpv∞ ${VERSION_TAG}
+          ## mpvZero ${VERSION_TAG}
 
           ### Highlights
 
@@ -159,19 +159,19 @@ jobs:
         with:
           tag_name: ${{ env.VERSION_TAG }}
           target_commitish: ${{ github.sha }}
-          name: Mpv∞ ${{ env.VERSION_TAG }}
+          name: mpvZero ${{ env.VERSION_TAG }}
           body_path: release-notes.md
           draft: false
           prerelease: false
           generate_release_notes: false
           fail_on_unmatched_files: true
           files: |
-            release/mpv-infinity-standard-universal-${{ env.VERSION_TAG }}.apk
-            release/mpv-infinity-standard-arm64-v8a-${{ env.VERSION_TAG }}.apk
-            release/mpv-infinity-standard-armeabi-v7a-${{ env.VERSION_TAG }}.apk
-            release/mpv-infinity-standard-x86-${{ env.VERSION_TAG }}.apk
-            release/mpv-infinity-standard-x86_64-${{ env.VERSION_TAG }}.apk
-            release/mpv-infinity-fongmi-universal-${{ env.VERSION_TAG }}.apk
-            release/mpv-infinity-no-vulkan-universal-${{ env.VERSION_TAG }}.apk
+            release/mpvZero-standard-universal-${{ env.VERSION_TAG }}.apk
+            release/mpvZero-standard-arm64-v8a-${{ env.VERSION_TAG }}.apk
+            release/mpvZero-standard-armeabi-v7a-${{ env.VERSION_TAG }}.apk
+            release/mpvZero-standard-x86-${{ env.VERSION_TAG }}.apk
+            release/mpvZero-standard-x86_64-${{ env.VERSION_TAG }}.apk
+            release/mpvZero-fongmi-universal-${{ env.VERSION_TAG }}.apk
+            release/mpvZero-no-vulkan-universal-${{ env.VERSION_TAG }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

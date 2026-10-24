@@ -195,7 +195,7 @@
   <string name="pref_app_language_title">语言</string>
   <string name="pref_app_language_system_default">跟随系统</string>
   <string name="pref_app_language_restart_title">需要重启</string>
-  <string name="pref_app_language_restart_message">重启 Mpv∞ 以应用新语言。</string>
+  <string name="pref_app_language_restart_message">重启 mpvZero 以应用新语言。</string>
   <string name="pref_app_language_restart_now">立即重启</string>
   <string name="pref_advanced_mpv_conf_storage_location">选择配置存储位置</string>
   <string name="pref_advanced_mpv_conf">编辑 mpv.conf</string>
@@ -356,7 +356,7 @@
   <string name="notification_saved_to_favorites">已保存到收藏</string>
   <string name="notification_chapter_counter">第 %1$d 章，共 %2$d 章</string>
   <string name="notification_permission_denied">后台播放控制需要通知权限。</string>
-  <string name="notification_permission_disabled">Mpv∞ 的通知已禁用。请启用通知以显示播放控制。</string>
+  <string name="notification_permission_disabled">mpvZero 的通知已禁用。请启用通知以显示播放控制。</string>
   <string name="notification_disabled_in_advanced_settings">请在高级设置中启用通知以使用后台播放。</string>
   <string name="pref_advanced_notification_style">通知样式</string>
   <!-- Media Info Activity -->
@@ -728,7 +728,7 @@
   <string name="ui_increase_zoom">放大</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">设备信息</string>
-  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">Mpv∞ 使用的核心开源依赖项。</string>
+  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">mpvZero 使用的核心开源依赖项。</string>
   <string name="ui_already_using_latest_version">已是最新版本</string>
   <string name="ui_refresh">刷新</string>
   <string name="ui_unsaved_changes">未保存的更改</string>

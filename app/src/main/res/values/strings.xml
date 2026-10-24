@@ -207,7 +207,7 @@
   <string name="pref_app_language_title">Language</string>
   <string name="pref_app_language_system_default">System default</string>
   <string name="pref_app_language_restart_title">Restart required</string>
-  <string name="pref_app_language_restart_message">Restart Mpv∞ to apply the new language.</string>
+  <string name="pref_app_language_restart_message">Restart mpvZero to apply the new language.</string>
   <string name="pref_app_language_restart_now">Restart now</string>
   <string name="pref_advanced_mpv_conf_storage_location">Pick configuration storage location</string>
   <string name="pref_advanced_mpv_conf">Edit mpv.conf</string>
@@ -413,7 +413,7 @@
   <string name="notification_close">Close</string>
   <string name="notification_chapter_counter">Chapter %1$d of %2$d</string>
   <string name="notification_permission_denied">Notification permission is required for background playback controls.</string>
-  <string name="notification_permission_disabled">Notifications are disabled for Mpv∞. Enable them to show playback controls.</string>
+  <string name="notification_permission_disabled">Notifications are disabled for mpvZero. Enable them to show playback controls.</string>
   <string name="notification_disabled_in_advanced_settings">Enable notifications in Advanced Settings to use background playback.</string>
   <string name="pref_advanced_notification_style">Notification style</string>
   <!-- Media Info Activity -->

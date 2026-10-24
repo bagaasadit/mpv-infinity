@@ -1,6 +1,6 @@
-# Contributing to Mpv∞
+# Contributing to mpvZero
 
-Thank you for helping improve Mpv∞. This repository is an Android media-player project built with Kotlin, Jetpack Compose, MPV/libmpv, and AndroidX Media3.
+Thank you for helping improve mpvZero. This repository is an Android media-player project built with Kotlin, Jetpack Compose, MPV/libmpv, and AndroidX Media3.
 
 ## Before opening an issue
 
@@ -27,4 +27,4 @@ Use short, imperative commit subjects, such as `fix: preserve subtitle selection
 
 ## License
 
-By contributing, you agree that your contribution may be distributed under the repository's [AGPL-3.0-or-later license](LICENSE), subject to applicable third-party notices.
+By contributing, you agree that your contribution may be distributed under the repository's [GPL-3.0-or-later license](LICENSE), subject to applicable third-party notices.

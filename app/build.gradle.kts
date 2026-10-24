@@ -168,7 +168,7 @@ android {
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
       applicationIdSuffix = ".debug"
       versionNameSuffix = "-${getCommitCount()}"
-      resValue("string", "app_name", "Mpv∞-Debug")
+      resValue("string", "app_name", "mpvZero-Debug")
     }
   }
 

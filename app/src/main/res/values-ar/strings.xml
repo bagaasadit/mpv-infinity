@@ -195,7 +195,7 @@
   <string name="pref_app_language_title">اللغة</string>
   <string name="pref_app_language_system_default">إعداد النظام الافتراضي</string>
   <string name="pref_app_language_restart_title">إعادة التشغيل مطلوبة</string>
-  <string name="pref_app_language_restart_message">أعد تشغيل Mpv∞ لتطبيق اللغة الجديدة.</string>
+  <string name="pref_app_language_restart_message">أعد تشغيل mpvZero لتطبيق اللغة الجديدة.</string>
   <string name="pref_app_language_restart_now">إعادة التشغيل الآن</string>
   <string name="pref_advanced_mpv_conf_storage_location">اختيار موقع تخزين الإعدادات</string>
   <string name="pref_advanced_mpv_conf">تحرير mpv.conf</string>
@@ -354,7 +354,7 @@
   <string name="notification_saved_to_favorites">تم الحفظ في المفضلة</string>
   <string name="notification_chapter_counter">الفصل %1$d من %2$d</string>
   <string name="notification_permission_denied">يلزم إذن الإشعارات لعناصر تحكم التشغيل في الخلفية.</string>
-  <string name="notification_permission_disabled">الإشعارات معطّلة لـ Mpv∞. فعّلها لإظهار عناصر تحكم التشغيل.</string>
+  <string name="notification_permission_disabled">الإشعارات معطّلة لـ mpvZero. فعّلها لإظهار عناصر تحكم التشغيل.</string>
   <string name="notification_disabled_in_advanced_settings">قم بتمكين الإشعارات من الإعدادات المتقدمة لاستخدام التشغيل في الخلفية.</string>
   <string name="pref_advanced_notification_style">نمط الإشعار</string>
   <!-- Media Info Activity -->
@@ -726,7 +726,7 @@
   <string name="ui_increase_zoom">تكبير</string>
   <string name="ui_github">GitHub</string>
   <string name="ui_device_info">معلومات الجهاز</string>
-  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">التبعيات الأساسية مفتوحة المصدر التي يستخدمها Mpv∞.</string>
+  <string name="ui_core_open_source_dependencies_used_by_mpv_infinity">التبعيات الأساسية مفتوحة المصدر التي يستخدمها mpvZero.</string>
   <string name="ui_already_using_latest_version">أنت تستخدم أحدث إصدار بالفعل</string>
   <string name="ui_refresh">تحديث</string>
   <string name="ui_unsaved_changes">تغييرات غير محفوظة</string>
