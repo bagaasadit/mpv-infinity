@@ -48,6 +48,7 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-material3-android = { group = "androidx.compose.material3", name = "material3", version.ref = "androidxMaterial3" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppcompat" }
 composables-material-symbols-rounded-filled-android = { module = "com.composables:icons-material-symbols-rounded-filled-android", version.ref = "materialSymbols" }
+composables-material-symbols-rounded-filled-cmp = { module = "com.composables:icons-material-symbols-rounded-filled-cmp-jvm", version.ref = "materialSymbols" }
 androidx-compose-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "composeConstraintLayout" }
 androidx-compose-animation-graphics = { group = "androidx.compose.animation", name = "animation-graphics-android" }
 mediasession = { group = "androidx.media", name = "media", version.ref = "androidxMedia" }
@@ -74,6 +75,7 @@ koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-compose = { module = "io.insert-koin:koin-compose" }
+koin-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel" }
 
 compose-prefs = { module = "me.zhanghai.compose.preference:preference", version.ref = "composePrefs" }
 
@@ -95,7 +97,7 @@ jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
 [bundles]
-koin = ["koin-core", "koin-android", "koin-compose"]
+koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel"]
 compose-navigation3 = ["androidx-navigation3-runtime", "androidx-navigation3-ui"]
 
 [plugins]
