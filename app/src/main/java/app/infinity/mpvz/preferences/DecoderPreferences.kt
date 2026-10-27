@@ -23,7 +23,7 @@ class DecoderPreferences(
   val profile = preferenceStore.getString("mpv_profile", "gpu-hq")
   val tryHWDecoding = preferenceStore.getBoolean("try_hw_dec", true)
   val gpuNext = preferenceStore.getBoolean("gpu_next", true)
-  val useVulkan = preferenceStore.getBoolean("use_vulkan", true)
+  val useVulkan = preferenceStore.getBoolean("use_vulkan", false)
   val hdrScreenOutput = preferenceStore.getBoolean("hdr_screen_output", false)
   val hdrScreenMode = preferenceStore.getEnum("hdr_screen_mode", HdrScreenMode.OFF)
   val lastHdrMode = preferenceStore.getEnum("hdr_last_selected_mode", HdrScreenMode.BT_2020)

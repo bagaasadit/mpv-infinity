@@ -170,6 +170,9 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -225,7 +228,6 @@ fun PlayerControls(
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val playbackQueue by PlaybackSession.queue.collectAsStateWithLifecycle()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
-  val demuxerCacheTime by PlaybackSession.propDouble["demuxer-cache-time"].collectAsState()
   val mpvPlaybackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
   val seekbarDuration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f
   val seekState by viewModel.seekState.collectAsState()
@@ -262,9 +264,42 @@ fun PlayerControls(
   val isPlayerSeeking = isSeeking || (mpvSeeking ?: false)
   val activity = LocalActivity.current as? PlayerActivity
   val streamPlaybackHidesQuality = activity?.isStreamTabPlayback == true
-  val nativeSnapshot by activity?.nativePlaybackSnapshot?.collectAsState()
-    ?: remember { mutableStateOf(NativePlaybackSnapshot()) }
   val nativeEngineActive = activity?.isNativeEngineActive() == true
+
+  // Isolate high-frequency buffer/position updates from the root controls scope.
+  // Using distinctUntilChanged ensures root PlayerControls does NOT recompose on every 500ms buffer packet!
+  val nativeIsBuffering by remember(activity, nativeEngineActive) {
+    if (nativeEngineActive && activity != null) {
+      activity.nativePlaybackSnapshot.map { it.isBuffering }.distinctUntilChanged()
+    } else {
+      flowOf(false)
+    }
+  }.collectAsState(initial = false)
+
+  val nativeIsPlaying by remember(activity, nativeEngineActive) {
+    if (nativeEngineActive && activity != null) {
+      activity.nativePlaybackSnapshot.map { it.isPlaying }.distinctUntilChanged()
+    } else {
+      flowOf(false)
+    }
+  }.collectAsState(initial = false)
+
+  val nativeSpeed by remember(activity, nativeEngineActive) {
+    if (nativeEngineActive && activity != null) {
+      activity.nativePlaybackSnapshot.map { it.speed }.distinctUntilChanged()
+    } else {
+      flowOf(1f)
+    }
+  }.collectAsState(initial = 1f)
+
+  val nativeChapters by remember(activity, nativeEngineActive) {
+    if (nativeEngineActive && activity != null) {
+      activity.nativePlaybackSnapshot.map { it.chapters }.distinctUntilChanged()
+    } else {
+      flowOf(emptyList())
+    }
+  }.collectAsState(initial = emptyList())
+
   // A Native seek is committed asynchronously. Do not clear the preview on pointer-up: the next
   // snapshot can still contain the old position, and the seekbar would animate 20m -> 10m before
   // jumping back to the committed 20m target. Clear it only after Media3 reports the target.
@@ -281,33 +316,11 @@ fun PlayerControls(
       }
     }
   }
-  val isNativeBuffering = nativeEngineActive && nativeSnapshot.isBuffering
+  val isNativeBufferingActive = nativeEngineActive && nativeIsBuffering
   val showBufferingIndicator =
-    (bufferingState.visible || isNativeBuffering) &&
-      (controlsShown || isNativeBuffering || playbackSessionState.phase == PlaybackPhase.LOADING) &&
+    (bufferingState.visible || isNativeBufferingActive) &&
+      (controlsShown || isNativeBufferingActive || playbackSessionState.phase == PlaybackPhase.LOADING) &&
       !isPlayerSeeking
-  var stableDemuxerCacheTime by remember { mutableFloatStateOf(0f) }
-  val currentDemuxerCacheTime =
-    if (nativeEngineActive) {
-      val livePos = activity?.nativePositionMs?.value ?: 0L
-      val nativeBufferEndpoint = (livePos + nativeSnapshot.totalBufferedDurationMs) / 1000f
-      nativeBufferEndpoint
-        .takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && seekbarDuration > 0f }
-        ?.coerceIn(0f, seekbarDuration)
-    } else {
-      demuxerCacheTime
-        ?.toFloat()
-        ?.takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && seekbarDuration > 0f }
-        ?.coerceIn(0f, seekbarDuration)
-    }
-
-  LaunchedEffect(showBufferedRange, seekbarDuration, currentDemuxerCacheTime, isPlayerSeeking, nativeEngineActive) {
-    when {
-      !showBufferedRange || seekbarDuration <= 0f -> stableDemuxerCacheTime = 0f
-      currentDemuxerCacheTime != null -> stableDemuxerCacheTime = currentDemuxerCacheTime
-      !isPlayerSeeking -> stableDemuxerCacheTime = 0f
-    }
-  }
   var resetControlsTimestamp by remember { mutableStateOf(0L) }
   val seekText = seekState.text
   val mpvCurrentChapter by PlaybackSession.propInt["chapter"].collectAsState()
@@ -363,20 +376,21 @@ fun PlayerControls(
 
   val isAudioOnly by viewModel.isAudioOnly.collectAsState()
   val mpvChapters by viewModel.chapters.collectAsState(persistentListOf())
-  val chapters = remember(nativeEngineActive, nativeSnapshot.chapters, mpvChapters) {
-    if (nativeEngineActive && nativeSnapshot.chapters.isNotEmpty()) {
-      nativeSnapshot.chapters.map { dev.vivvvek.seeker.Segment(it.title, it.startSeconds) }.toImmutableList()
+  val chapters = remember(nativeEngineActive, nativeChapters, mpvChapters) {
+    if (nativeEngineActive && nativeChapters.isNotEmpty()) {
+      nativeChapters.map { dev.vivvvek.seeker.Segment(it.title, it.startSeconds) }.toImmutableList()
     } else {
       mpvChapters
     }
   }
   val currentChapter = if (nativeEngineActive) {
-    chapters.indexOfLast { it.start <= nativeSnapshot.positionMs / 1000f }.takeIf { it >= 0 }
+    val currentPosSec = (activity?.nativePositionMs?.value ?: 0L) / 1000f
+    chapters.indexOfLast { it.start <= currentPosSec }.takeIf { it >= 0 }
   } else {
     mpvCurrentChapter
   }
-  val paused = if (nativeEngineActive) !nativeSnapshot.isPlaying else (mpvPaused ?: false)
-  val playbackSpeed = if (nativeEngineActive) nativeSnapshot.speed else mpvPlaybackSpeed
+  val paused = if (nativeEngineActive) !nativeIsPlaying else (mpvPaused ?: false)
+  val playbackSpeed = if (nativeEngineActive) nativeSpeed else mpvPlaybackSpeed
   val isSpeedNonOne = remember(playbackSpeed) {
     abs((playbackSpeed ?: 1f) - 1f) > 0.001f
   }
@@ -410,6 +424,12 @@ fun PlayerControls(
     val sleepTimerTimeRemaining by viewModel.remainingTime.collectAsState()
     val speedPresets by playerPreferences.speedPresets.collectAsState()
     val sortedSpeedPresets = remember(speedPresets) { speedPresets.map { it.toFloat() }.sorted() }
+
+    val nativeSnapshotForAudio by if (nativeEngineActive) {
+      activity?.nativePlaybackSnapshot?.collectAsState() ?: remember { mutableStateOf(NativePlaybackSnapshot()) }
+    } else {
+      remember { mutableStateOf(NativePlaybackSnapshot()) }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
       AudioPlayerControls(
@@ -470,7 +490,7 @@ fun PlayerControls(
         onOpenPanel = onOpenPanel,
         onShowSheet = onOpenSheet,
         activeEngine = if (nativeEngineActive) PlaybackEngineMode.NATIVE else PlaybackEngineMode.MPV,
-        nativeSnapshot = nativeSnapshot,
+        nativeSnapshot = nativeSnapshotForAudio,
         onDisableNativeSubtitles = { activity?.nativeDisableSubtitles() },
         onDismissRequest = { onOpenSheet(Sheets.None) },
       )
@@ -649,7 +669,8 @@ fun PlayerControls(
             ),
           ).padding(top = 16.dp, start = 14.dp)
       if (activity?.isNativeEngineActive() == true) {
-        NativeStatsPageOverlay(page = statisticsPage, snapshot = nativeSnapshot, modifier = statsModifier)
+        val nativeSnapshotForStats by activity.nativePlaybackSnapshot.collectAsState()
+        NativeStatsPageOverlay(page = statisticsPage, snapshot = nativeSnapshotForStats, modifier = statsModifier)
       } else if (statisticsPage == 6) {
         CustomStatsPageSixOverlay(viewModel = viewModel, modifier = statsModifier)
       }
@@ -1658,6 +1679,18 @@ fun PlayerControls(
             val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
             val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
             val liveNativePositionMs by (activity?.nativePositionMs ?: remember { MutableStateFlow(0L) }).collectAsState()
+
+            val demuxerCacheTime by if (!nativeEngineActive && showBufferedRange) {
+              PlaybackSession.propDouble["demuxer-cache-time"].collectAsState()
+            } else {
+              remember { mutableStateOf<Double?>(null) }
+            }
+            val nativeSnapshotForSeekbar by if (nativeEngineActive) {
+              activity?.nativePlaybackSnapshot?.collectAsState() ?: remember { mutableStateOf(NativePlaybackSnapshot()) }
+            } else {
+              remember { mutableStateOf(NativePlaybackSnapshot()) }
+            }
+
             val displayedSeekbarPosition =
               if (nativeEngineActive) {
                 nativeSeekPreviewPosition ?: (liveNativePositionMs / 1000f)
@@ -1666,12 +1699,35 @@ fun PlayerControls(
               }
             val displayedSeekbarDuration =
               if (nativeEngineActive) {
-                nativeSnapshot.durationMs.takeIf { it > 0L }?.div(1000f)
+                nativeSnapshotForSeekbar.durationMs.takeIf { it > 0L }?.div(1000f)
                   ?: preciseDuration.takeIf { it > 0 }
                   ?: duration?.toFloat()
                   ?: 0f
               }
               else if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f
+
+            var stableDemuxerCacheTime by remember { mutableFloatStateOf(0f) }
+            val currentDemuxerCacheTime =
+              if (nativeEngineActive) {
+                val livePos = activity?.nativePositionMs?.value ?: 0L
+                val nativeBufferEndpoint = (livePos + nativeSnapshotForSeekbar.totalBufferedDurationMs) / 1000f
+                nativeBufferEndpoint
+                  .takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && displayedSeekbarDuration > 0f }
+                  ?.coerceIn(0f, displayedSeekbarDuration)
+              } else {
+                demuxerCacheTime
+                  ?.toFloat()
+                  ?.takeIf { it > 0f && !it.isNaN() && !it.isInfinite() && displayedSeekbarDuration > 0f }
+                  ?.coerceIn(0f, displayedSeekbarDuration)
+              }
+
+            LaunchedEffect(showBufferedRange, displayedSeekbarDuration, currentDemuxerCacheTime, isPlayerSeeking, nativeEngineActive) {
+              when {
+                !showBufferedRange || displayedSeekbarDuration <= 0f -> stableDemuxerCacheTime = 0f
+                currentDemuxerCacheTime != null -> stableDemuxerCacheTime = currentDemuxerCacheTime
+                !isPlayerSeeking -> stableDemuxerCacheTime = 0f
+              }
+            }
             // Memoize the immutable copies so they are not reallocated on every position
             // tick (this scope recomposes ~20x/sec while scrubbing).
             val seekbarChapters =
@@ -1989,6 +2045,12 @@ fun PlayerControls(
         speedPresets,
       ) { speedPresets.map { it.toFloat() }.sorted() }
 
+    val nativeSnapshotForSheets by if (nativeEngineActive && sheetShown != Sheets.None) {
+      activity?.nativePlaybackSnapshot?.collectAsState() ?: remember { mutableStateOf(NativePlaybackSnapshot()) }
+    } else {
+      remember { mutableStateOf(NativePlaybackSnapshot()) }
+    }
+
     PlayerSheets(
       viewModel = viewModel,
       sheetShown = sheetShown,
@@ -2041,7 +2103,7 @@ fun PlayerControls(
       onOpenPanel = onOpenPanel,
       onShowSheet = onOpenSheet,
       activeEngine = if (nativeEngineActive) PlaybackEngineMode.NATIVE else PlaybackEngineMode.MPV,
-      nativeSnapshot = nativeSnapshot,
+      nativeSnapshot = nativeSnapshotForSheets,
       onDisableNativeSubtitles = { activity?.nativeDisableSubtitles() },
       onDismissRequest = { onOpenSheet(Sheets.None) },
     )
