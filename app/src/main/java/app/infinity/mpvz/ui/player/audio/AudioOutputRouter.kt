@@ -145,7 +145,7 @@ class AudioOutputRouter(
       listeners.add(onRouteChanged)
     }
     // Immediately inform listener of the currently active route
-    onRouteChanged(currentOutput)
+    runCatching { onRouteChanged(currentOutput) }
   }
 
   /** Removes a specific observer. */

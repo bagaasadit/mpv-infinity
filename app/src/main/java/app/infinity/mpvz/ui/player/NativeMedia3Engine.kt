@@ -153,6 +153,24 @@ class NativeMedia3Engine(
    * while headphones/IEM activate stereo downmixing and binaural crossfeed.
    */
   private val audioOutputRouter: AudioOutputRouter by inject()
+  private val routeObserver: (AudioOutputType) -> Unit = ::handleAudioRouteChanged
+
+  private fun handleAudioRouteChanged(newOutput: AudioOutputType) {
+    val isSpeaker = newOutput == AudioOutputType.Speaker
+    Log.i(logTag, "Audio output route resolved: $newOutput (isSpeaker=$isSpeaker)")
+    registeredAudioProcessor.get()?.apply {
+      bypassDownmix = isSpeaker
+      enableBinauralCrossfeed = !isSpeaker
+      enableStereoCrossfeed = !isSpeaker
+      enableLfeMixing = !isSpeaker
+    }
+    runCatching {
+      if (player.playbackState != Player.STATE_IDLE && player.isPlaying) {
+        val pos = player.currentPosition
+        player.seekTo(pos)
+      }
+    }
+  }
 
   /** Most recent audio processor handed to the sink, kept so route changes can retune it. */
   private val registeredAudioProcessor = java.util.concurrent.atomic.AtomicReference<DownmixLimiterAudioProcessor?>(null)
@@ -1544,21 +1562,6 @@ class NativeMedia3Engine(
    * the current buffer simply plays out with the previous tuning. This avoids an audible glitch
    * every time a headset is plugged in.
    */
-  private val routeObserver: (AudioOutputType) -> Unit = { newOutput ->
-    val isSpeaker = newOutput == AudioOutputType.Speaker
-    Log.i(logTag, "Audio output route resolved: $newOutput (isSpeaker=$isSpeaker)")
-    registeredAudioProcessor.get()?.apply {
-      bypassDownmix = isSpeaker
-      enableBinauralCrossfeed = !isSpeaker
-      enableStereoCrossfeed = !isSpeaker
-      enableLfeMixing = !isSpeaker
-    }
-    if (player.isPlaying) {
-      val pos = player.currentPosition
-      player.seekTo(pos)
-    }
-  }
-
   fun startAudioOutputTracking() {
     dialogueBoostJob?.cancel()
     dialogueBoostJob =
