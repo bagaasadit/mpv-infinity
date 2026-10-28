@@ -2335,6 +2335,7 @@ private fun CustomStatsPageSixOverlay(
   viewModel: PlayerViewModel,
   modifier: Modifier = Modifier,
 ) {
+  val playerPreferences = koinInject<PlayerPreferences>()
   val context = LocalContext.current.applicationContext
   val activity = LocalActivity.current as? PlayerActivity
   val isHdrOutputEnabled by viewModel.isHdrScreenOutputEnabled.collectAsState()
