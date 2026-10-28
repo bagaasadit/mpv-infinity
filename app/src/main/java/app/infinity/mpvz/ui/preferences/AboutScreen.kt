@@ -1,8 +1,8 @@
 /*
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  *
  * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published
+ * it under the terms of the GNU Affero General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
@@ -817,10 +817,24 @@ private val OPEN_SOURCE_LIBRARIES =
       url = "https://github.com/mpv-player/mpv",
     ),
     OpenSourceLibrary(
-      name = "mpvlib Android",
-      artifact = "mpvlib.aar / mpvlib-no-vulkun.aar / mpvlib-fongmi.aar",
+      name = "Mpv-infinity (Upstream Project)",
+      artifact = "ZHINFINITY/Mpv-infinity",
       descriptionRes = R.string.oss_mpvlib_android_description,
-      license = "GPL-3.0-or-later",
-      url = "https://github.com/bagaasadit/mpv-infinity",
+      license = "AGPL-3.0-or-later",
+      url = "https://github.com/ZHINFINITY/Mpv-infinity",
+    ),
+    OpenSourceLibrary(
+      name = "mpvRx / mpvKt",
+      artifact = "Riteshp2001/mpvRx",
+      descriptionRes = R.string.oss_mpvlib_android_description,
+      license = "AGPL-3.0-or-later",
+      url = "https://github.com/Riteshp2001/mpvRx",
+    ),
+    OpenSourceLibrary(
+      name = "mpv-android",
+      artifact = "mpv-android/mpv-android",
+      descriptionRes = R.string.oss_mpv_description,
+      license = "GPL-3.0-or-later / LGPL-2.1-or-later",
+      url = "https://github.com/mpv-android/mpv-android",
     ),
   ).sortedBy { library -> library.name.lowercase(Locale.ROOT) }

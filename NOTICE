@@ -1,7 +1,7 @@
 mpvZero
 Copyright (c) 2026 mpvZero Contributors
 
-This project is licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
+This project is licensed under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).
 See the LICENSE file for details.
 
 ===============================================================================
@@ -12,14 +12,16 @@ mpvZero is an independent lightweight Android media player tailored for dedicate
 4K Remux direct-stream decoding and audiophile IEM headphone downmixing.
 
 Its architectural lineage builds upon the work of several prior open-source projects:
-- mpv-android (https://github.com/mpv-android/mpv-android)
-  Licensed under GPL-3.0-or-later / LGPL-2.1-or-later
+- Mpv-infinity (https://github.com/ZHINFINITY/Mpv-infinity)
+  Licensed under AGPL-3.0-or-later
+- mpvRx (https://github.com/Riteshp2001/mpvRx)
+  Licensed under AGPL-3.0-or-later
+- mpvKt (https://github.com/husams/mpvKt)
+  Licensed under AGPL-3.0-or-later
 - mpvEx (https://github.com/marlboro-advance/mpvEx)
   Licensed under GPL-3.0-or-later
-- mpvRx (https://github.com/Riteshp2001/mpvRx)
-  Licensed under GPL-3.0-or-later
-- mpvKt / mpv-infinity (https://github.com/bagaasadit/mpv-infinity)
-  Licensed under GPL-3.0-or-later
+- mpv-android (https://github.com/mpv-android/mpv-android)
+  Licensed under GPL-3.0-or-later / LGPL-2.1-or-later
 
 ===============================================================================
 Third-Party Software and Dependencies

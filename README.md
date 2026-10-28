@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-brightgreen.svg" />
-  <img src="https://img.shields.io/badge/License-GPL_v3-blue.svg" />
+  <img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" />
   <img src="https://img.shields.io/github/v/release/bagaasadit/mpv-infinity.svg?logo=github&label=Release&cacheSeconds=3600" />
 </p>
 
@@ -58,10 +58,11 @@
 ## Lineage & Acknowledgments
 
 mpvZero is built upon the open-source lineage of:
-- **[mpv-android](https://github.com/mpv-android)**
-- **[mpvEx](https://github.com/marlboro-advance/mpvEx)**
+- **[Mpv-infinity](https://github.com/ZHINFINITY/Mpv-infinity)** (Upstream Project by ZHINFINITY)
 - **[mpvRx](https://github.com/Riteshp2001/mpvRx)**
-- **[mpv-infinity](https://github.com/bagaasadit/mpv-infinity)**
+- **[mpvKt](https://github.com/husams/mpvKt)**
+- **[mpvEx](https://github.com/marlboro-advance/mpvEx)**
+- **[mpv-android](https://github.com/mpv-android/mpv-android)**
 
 And relies on foundational open-source components:
 - [mpv](https://mpv.io) & [libmpv](https://github.com/mpv-player/mpv)
@@ -74,4 +75,4 @@ And relies on foundational open-source components:
 
 ## License
 
-Distributed under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) for details.
+Distributed under the **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE) for details.
