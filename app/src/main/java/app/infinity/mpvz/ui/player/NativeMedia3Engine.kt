@@ -720,11 +720,6 @@ class NativeMedia3Engine(
         pendingExternalSelectionId != null || hasIntentExplicitSubtitleSelection) return
     val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
     if (textGroups.isEmpty()) return
-    // If any text track is already selected, respect it and avoid overriding
-    if (textGroups.any { group -> (0 until group.length).any { group.isTrackSelected(it) } }) {
-      hasAutoSelectedSubtitleForCurrentItem = true
-      return
-    }
     hasAutoSelectedSubtitleForCurrentItem = true
 
     var bestGroup: Tracks.Group? = null
@@ -734,7 +729,7 @@ class NativeMedia3Engine(
     for (group in textGroups) {
       for (i in 0 until group.length) {
         val format = group.getTrackFormat(i)
-        val score = scoreSubtitleTrack(format)
+        val score = scoreSubtitleTrack(format, group)
         if (score > highestScore) {
           highestScore = score
           bestGroup = group
@@ -758,16 +753,27 @@ class NativeMedia3Engine(
     }
   }
 
-  private fun scoreSubtitleTrack(format: androidx.media3.common.Format): Int {
+  private fun scoreSubtitleTrack(format: androidx.media3.common.Format, group: Tracks.Group? = null): Int {
     var score = 0
     val label = (format.label ?: "").lowercase()
     val mime = (format.sampleMimeType ?: "").lowercase()
     val lang = (format.language ?: "").lowercase()
 
+    // External tracks (from Stremio or downloaded) get top priority if they are English
+    val isExternal = group?.mediaTrackGroup?.id?.startsWith("external:") == true ||
+      format.id?.startsWith("external:") == true ||
+      activeSubtitleUris.containsKey(group?.mediaTrackGroup?.id) ||
+      activeSubtitleUris.containsKey(format.id)
+
     // English check
     val isEnglish = lang in setOf("eng", "en", "enm") ||
-                    listOf("english", "eng", "inglés", "ingles", "anglais").any { label.contains(it) }
+                    listOf("english", "eng", "inglés", "ingles", "anglais").any { label.contains(it) } ||
+                    (isExternal && lang.isBlank())
     if (!isEnglish) return -50000
+
+    if (isExternal) {
+      score += 20000
+    }
 
     // Anti-Commentary
     if (listOf("commentary", "director", "cast").any { label.contains(it) }) return -40000
