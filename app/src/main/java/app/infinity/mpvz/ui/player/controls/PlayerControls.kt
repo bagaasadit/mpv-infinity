@@ -2212,6 +2212,9 @@ private fun NativeStatsPageOverlay(
   snapshot: NativePlaybackSnapshot,
   modifier: Modifier = Modifier,
 ) {
+  val playerPreferences = koinInject<PlayerPreferences>()
+  val ramBufferMb by playerPreferences.ramBufferSizeMb.collectAsState()
+  val maxBufferSecs = (ramBufferMb.toFloat() / 160f * 50).roundToInt().coerceIn(20, 180)
   val quality = if (snapshot.videoWidth > 0 && snapshot.videoHeight > 0) {
     "${snapshot.videoWidth}×${snapshot.videoHeight}"
   } else {
@@ -2240,7 +2243,7 @@ private fun NativeStatsPageOverlay(
           Text("Bitrate: $videoBitrate · Duration: ${snapshot.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = Color.White)
           val aheadSecs = String.format("%.1f", snapshot.totalBufferedDurationMs / 1000.0)
           val bufferStatus = if (snapshot.isBuffering) "Buffering..." else if (snapshot.isLoading) "Buffering from network" else "Buffer ready"
-          Text("Buffer: ${aheadSecs}s ahead · $bufferStatus (target 256MB)", style = MaterialTheme.typography.bodySmall, color = Color.White)
+          Text("Buffer: ${aheadSecs}s ahead · $bufferStatus (target ${ramBufferMb}MB)", style = MaterialTheme.typography.bodySmall, color = Color.White)
         }
         2 -> {
           Text("Audio: $audioCodec · Decoder: $audioDecoder", style = MaterialTheme.typography.bodySmall, color = Color.White)
@@ -2256,7 +2259,7 @@ private fun NativeStatsPageOverlay(
           Text("Position: ${snapshot.positionMs / 1000}s / ${snapshot.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("Speed: ${"%.2f".format(snapshot.speed)}×", style = MaterialTheme.typography.bodySmall, color = Color.White)
           val aheadSecs = String.format("%.1f", snapshot.totalBufferedDurationMs / 1000.0)
-          Text("Buffer: ${aheadSecs}s ahead (max 120s / 256MB)", style = MaterialTheme.typography.bodySmall, color = Color.White)
+          Text("Buffer: ${aheadSecs}s ahead (max ${maxBufferSecs}s / ${ramBufferMb}MB)", style = MaterialTheme.typography.bodySmall, color = Color.White)
           Text("State: ${if (snapshot.isBuffering) "Buffering" else if (snapshot.isPlaying) "Playing" else "Paused"}", style = MaterialTheme.typography.bodySmall, color = Color.White)
         }
         5 -> {
@@ -2501,15 +2504,18 @@ private fun CustomStatsPageSixOverlay(
             formatByteSize(fileCacheBytes),
           )
         }
+      val currentRamBufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+      val maxNativeBufferSecs = (currentRamBufferMb.toFloat() / 160f * 50).roundToInt().coerceIn(20, 180)
+      val minNativeBufferSecs = (maxNativeBufferSecs / 2.5f).roundToInt().coerceAtLeast(10)
       val cacheActivityText =
         if (isNativeActive) {
-          "RAM Buffer target=256MB · max=120s · state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"
+          "RAM Buffer target=${currentRamBufferMb}MB · max=${maxNativeBufferSecs}s · state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"
         } else {
           "$cachePauseState · $cacheActivity · in $cacheReadRateText"
         }
       val cacheOptionsText =
         if (isNativeActive) {
-          "engine=Native(ExoPlayer) · min=30s · max=120s · RAM=256MB · ahead=${String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)}s"
+          "engine=Native(ExoPlayer) · min=${minNativeBufferSecs}s · max=${maxNativeBufferSecs}s · RAM=${currentRamBufferMb}MB · ahead=${String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)}s"
         } else {
           "cache=$cacheMode · pause=${cachePause?.toString() ?: "?"} · wait=${cachePauseWait?.toString() ?: "?"} · " +
             "max=$cacheMaxText · " +

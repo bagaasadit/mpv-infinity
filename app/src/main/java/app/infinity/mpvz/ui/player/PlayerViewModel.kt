@@ -1681,6 +1681,10 @@ class PlayerViewModel : ViewModel(),
         val readaheadSecs = (bufferMb.toFloat() / 160f * 60).toInt().coerceIn(20, 180)
         val backBytesMb = (bufferMb / 4).coerceIn(16, 128)
         runCatching {
+          val bytes = bufferMb.toLong() * 1024L * 1024L
+          val backBytes = backBytesMb.toLong() * 1024L * 1024L
+          PlaybackSession.setPropertyInt("demuxer-max-bytes", bytes.toInt())
+          PlaybackSession.setPropertyInt("demuxer-max-back-bytes", backBytes.toInt())
           PlaybackSession.setPropertyString("demuxer-max-bytes", "${bufferMb}MiB")
           PlaybackSession.setPropertyString("demuxer-max-back-bytes", "${backBytesMb}MiB")
           PlaybackSession.setPropertyString("demuxer-readahead-secs", readaheadSecs.toString())
