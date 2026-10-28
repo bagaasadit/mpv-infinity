@@ -76,6 +76,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
+import androidx.media3.common.PlaybackException
 import androidx.lifecycle.repeatOnLifecycle
 import app.infinity.mpvz.R
 import app.infinity.mpvz.database.entities.PlaybackStateEntity
@@ -186,6 +187,7 @@ class PlayerActivity :
   private val nativeEngine by lazy {
     NativeMedia3Engine(this).also {
       it.onEnded = { runOnUiThread { handleNativePlaybackEnded() } }
+      it.onError = { error -> runOnUiThread { handleNativePlaybackError(error) } }
     }
   }
   val nativePlaybackSnapshot get() = nativeEngine.snapshot
@@ -345,6 +347,13 @@ class PlayerActivity :
       (autoplay || viewModel.shouldRepeatPlaylist()) && viewModel.hasNext() -> playNextQueueItem()
       else -> finishAtEofIfRequested()
     }
+  }
+
+  private fun handleNativePlaybackError(error: PlaybackException) {
+    if (!isNativeEngineActive()) return
+    Log.w(TAG, "Native Media3 engine encountered error: ${error.message}, falling back to MPV", error)
+    Toast.makeText(this, "Media3 playback error. Beralih ke MPV...", Toast.LENGTH_SHORT).show()
+    selectEngineForCurrentVideo(PlaybackEngineMode.MPV)
   }
 
   override fun nativeSetZoom(zoom: Float) = nativeEngine.setZoom(zoom)
@@ -919,6 +928,23 @@ class PlayerActivity :
               activeEngineMode = PlaybackEngineMode.NATIVE
               viewModel.setNativeEngineActive(true)
               setNativeVideoSurfaceVisible(true)
+
+              val subtitleConfigs = viewModel.nativeExternalSubtitleTracks.value.mapNotNull { track ->
+                val uriStr = track.externalFilename ?: return@mapNotNull null
+                val uri = Uri.parse(uriStr)
+                nativeEngine.createSubtitleConfiguration(uri, track.selected, label = track.title)
+              }.ifEmpty {
+                val intentSubs = extractIntentSubtitleEntries(intent?.extras)
+                val subNames = extractSubtitleStringArray(intent?.extras ?: Bundle(), "subs.name", "subs.names", "subs.filename")
+                intentSubs.map { entry ->
+                  val uri = entry.value
+                  val customName = subNames.getOrNull(entry.metadataIndex)?.takeIf { it.isNotBlank() }
+                  nativeEngine.createSubtitleConfiguration(uri, entry.select, label = customName)
+                }
+              }
+              val hasExplicitSelection = hasIntentExplicitSubtitleSelection ||
+                viewModel.nativeExternalSubtitleTracks.value.any { it.selected }
+
               nativeEngine.play(
                 nativeUri,
                 outgoingPositionMs,
@@ -927,6 +953,8 @@ class PlayerActivity :
                 mimeType = currentItem?.mimeType,
                 sourceUri = currentItem?.originalUri?.toUri(),
                 sourceHint = fileName,
+                subtitleConfigurations = subtitleConfigs,
+                hasExplicitSubtitleSelection = hasExplicitSelection,
               )
               engineHandoffJob = lifecycleScope.launch {
                 // Some Android 13 devices need longer than 15 seconds to decode a local
@@ -4017,6 +4045,7 @@ class PlayerActivity :
    * @param extras Bundle containing subtitle URIs
    */
   private fun extractIntentSubtitleEntries(extras: Bundle?): List<IntentSubtitleLoadEntry<Uri>> {
+    hasIntentExplicitSubtitleSelection = false
     if (extras == null) return emptyList()
     if (!extras.containsKey("subs") && !extras.containsKey("subtitles") &&
         !extras.containsKey("subs.enable") && !extras.containsKey("subtitles_location") &&
@@ -5892,6 +5921,8 @@ class PlayerActivity :
     val previousItemWasReady = isReady
 
     setIntent(intent)
+    isStreamTabPlayback = intent.getBooleanExtra("stream_tab_playback", false)
+    hasIntentExplicitSubtitleSelection = false
     applyInitialVideoOrientation(intent)
     applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
     if (!beginMediaRequest()) return
@@ -6313,18 +6344,16 @@ class PlayerActivity :
     }
     // If a web source cannot be resolved to a direct Media3 URL, retain the MPV fallback.
     withContext(Dispatchers.Main) {
-      if (requiresYtdlp || selectedEngine != PlaybackEngineMode.NATIVE) {
-        activeEngineMode = PlaybackEngineMode.MPV
-        viewModel.setNativeEngineActive(false)
-        // Remove the ambient frame before MPV binds its SurfaceView. Re-enabling it is deferred
-        // until the MPV surface is ready, avoiding a one-frame scale/deformation during startup.
-        viewModel.setAmbientLifecycleActive(false)
-        setVideoAmbientPresentationActive(false)
-        nativeEngine.stop()
-        setNativeVideoSurfaceVisible(false)
-        binding.player.alpha = 1f
-        binding.player.visibility = View.VISIBLE
-      }
+      activeEngineMode = PlaybackEngineMode.MPV
+      viewModel.setNativeEngineActive(false)
+      // Remove the ambient frame before MPV binds its SurfaceView. Re-enabling it is deferred
+      // until the MPV surface is ready, avoiding a one-frame scale/deformation during startup.
+      viewModel.setAmbientLifecycleActive(false)
+      setVideoAmbientPresentationActive(false)
+      nativeEngine.stop()
+      setNativeVideoSurfaceVisible(false)
+      binding.player.alpha = 1f
+      binding.player.visibility = View.VISIBLE
     }
     if (!PlaybackSession.awaitStopCompletion()) {
       throw IllegalStateException("Timed out waiting for previous playback to stop")

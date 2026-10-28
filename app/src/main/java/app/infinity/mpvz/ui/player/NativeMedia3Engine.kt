@@ -339,6 +339,7 @@ class NativeMedia3Engine(
   val hasRenderedFirstFrame: StateFlow<Boolean> = _hasRenderedFirstFrame.asStateFlow()
   val currentPlayer: Player get() = player
   var onEnded: (() -> Unit)? = null
+  var onError: ((PlaybackException) -> Unit)? = null
   private var endedUri: Uri? = null
   private var metadataChapters: List<NativeChapter> = emptyList()
   private var preparationStartedAtMs: Long = 0L
@@ -412,6 +413,7 @@ class NativeMedia3Engine(
     }
     override fun onPlayerError(error: PlaybackException) {
       Log.e(logTag, "player error uri=${player.currentMediaItem?.localConfiguration?.uri}", error)
+      onError?.invoke(error)
     }
 
     override fun onCues(cueGroup: CueGroup) {
@@ -817,7 +819,7 @@ class NativeMedia3Engine(
       }
       return true
     }
-    val wasPlaying = player.isPlaying
+    val wasPlaying = player.playWhenReady && player.playbackState != Player.STATE_ENDED
     val positionMs = player.currentPosition.coerceAtLeast(0L)
     // Keep the original MediaItem (headers, DRM, metadata and stream identity) intact. Rebuilding
     // from only current.uri makes downloaded online subtitles fail on authenticated/network media.
