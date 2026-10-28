@@ -161,3 +161,4 @@ lint/tmp/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 graft/
+.backup_audio_exp/

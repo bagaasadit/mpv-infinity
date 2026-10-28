@@ -67,6 +67,8 @@ import app.infinity.mpvz.ui.player.anime4k.applyAnime4KShaderChain
 import app.infinity.mpvz.ui.player.anime4k.applyAnime4KStabilityOptions
 import app.infinity.mpvz.ui.player.anime4k.clearAnime4KShaders
 import app.infinity.mpvz.ui.player.anime4k.selectRuntimeStableAnime4K
+import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
+import app.infinity.mpvz.ui.player.audio.AudioOutputType
 import app.infinity.mpvz.ui.player.controls.components.sheets.EQ_MAX_DB
 import app.infinity.mpvz.ui.player.controls.components.sheets.EQ_MIN_DB
 import app.infinity.mpvz.ui.player.controls.components.sheets.EqualizerPreset
@@ -189,6 +191,7 @@ class PlayerViewModel : ViewModel(),
   private val appContext: Context by inject()
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
+  private val audioOutputRouter: AudioOutputRouter by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
@@ -1026,12 +1029,19 @@ class PlayerViewModel : ViewModel(),
     }
 
     // 6. Safe downmix & master brickwall peak limiter
-    val isStereoTarget = audioPreferences.audioChannels.get() in listOf(
+    val currentRoute = audioOutputRouter.currentOutput
+    val isSpeaker = currentRoute == AudioOutputType.Speaker
+    val selectedChannels = audioPreferences.audioChannels.get()
+
+    // Speaker: ZERO DOWNMIXING (raw passthrough / auto safe, no aformat=channel_layouts=stereo)
+    // Headphone/IEM: Force stereo downmixing for multichannel TrueHD stability
+    val shouldDownmixToStereo = !isSpeaker && (selectedChannels in listOf(
       AudioChannels.AutoSafe,
       AudioChannels.Stereo,
       AudioChannels.ReverseStereo,
-    )
-    if (isStereoTarget) {
+    ))
+
+    if (shouldDownmixToStereo) {
       filterList.add("lavfi=[aformat=channel_layouts=stereo]")
     }
     filterList.add("lavfi=[alimiter=level_in=1:level_out=1:limit=0.944:attack=5:release=60:asc=1:asc_level=0.5]")
@@ -1635,16 +1645,23 @@ class PlayerViewModel : ViewModel(),
         }
       }
     }
-    // Observe audio effect changes to update mpv af filters and audio-channels
+    // Observe audio effect and output route changes to update mpv af filters and audio-channels
     viewModelScope.launch(playbackStateDispatcher) {
       combine(
         audioPreferences.volumeNormalization.changes(),
         audioPreferences.drcEnabled.changes(),
         audioPreferences.audioChannels.changes(),
-      ) { _, _, channels -> channels }.collect { channels ->
+        audioOutputRouter.outputRoute,
+      ) { _, _, channels, route -> Pair(channels, route) }.collect { (channels, route) ->
         if (!_isMpvCoreReady.value) return@collect
-        if (channels != AudioChannels.ReverseStereo) {
-          PlaybackSession.setPropertyString("audio-channels", channels.value)
+        val isSpeaker = route == AudioOutputType.Speaker
+        val effectiveChannels = if (channels == AudioChannels.AutoSafe) {
+          if (isSpeaker) AudioChannels.AutoSafe else AudioChannels.Stereo
+        } else {
+          channels
+        }
+        if (effectiveChannels != AudioChannels.ReverseStereo) {
+          PlaybackSession.setPropertyString("audio-channels", effectiveChannels.value)
         }
         applyEqualizerMpvFilters(immediate = true)
       }

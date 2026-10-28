@@ -59,6 +59,12 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
   var enableBinauralCrossfeed: Boolean = false
   var enableStereoCrossfeed: Boolean = false
 
+  /**
+   * When true, disables downmixing completely and passes through the audio untouched (NOT_SET).
+   * Activated for phone speaker to strictly enforce Zero Downmixing.
+   */
+  var bypassDownmix: Boolean = false
+
   @Volatile var dialogueBoostGain: Float = 1.0f
   var outputFloatingPoint: Boolean = false
 
@@ -90,6 +96,11 @@ class DownmixLimiterAudioProcessor : BaseAudioProcessor() {
         inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT
     ) {
       throw UnhandledAudioFormatException(inputAudioFormat)
+    }
+
+    // When bypassDownmix is true (e.g. on Speaker), bypass all processing completely
+    if (bypassDownmix) {
+      return AudioFormat.NOT_SET
     }
 
     // Mono has no stereo image to crossfeed, so it stays on the passthrough path.

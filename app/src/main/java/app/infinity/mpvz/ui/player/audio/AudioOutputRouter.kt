@@ -16,6 +16,10 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Describes where the current sound is physically going.
@@ -67,13 +71,38 @@ class AudioOutputRouter(
   private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
   private val handler = Handler(Looper.getMainLooper())
 
+  private val _outputRoute = MutableStateFlow(resolve())
+  val outputRoute: StateFlow<AudioOutputType> = _outputRoute.asStateFlow()
+
   /** Last resolved route. Initialized immediately so active device is known at startup. */
   @Volatile
-  var currentOutput: AudioOutputType = resolve()
+  var currentOutput: AudioOutputType = _outputRoute.value
     private set
 
+  private val listeners = CopyOnWriteArrayList<(AudioOutputType) -> Unit>()
   private var deviceCallback: AudioDeviceCallback? = null
-  private var listener: ((AudioOutputType) -> Unit)? = null
+
+  init {
+    ensureCallbackRegistered()
+  }
+
+  private fun ensureCallbackRegistered() {
+    if (deviceCallback == null) {
+      val callback =
+        object : AudioDeviceCallback() {
+          override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+            notifyIfChanged()
+          }
+
+          override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+            notifyIfChanged()
+          }
+        }
+      deviceCallback = callback
+      runCatching { audioManager.registerAudioDeviceCallback(callback, handler) }
+        .onFailure { Log.w(TAG, "Unable to register audio device callback", it) }
+    }
+  }
 
   /**
    * Re-reads the active route and returns it.
@@ -107,41 +136,26 @@ class AudioOutputRouter(
   }
 
   /**
-   * Starts observing route changes. [onRouteChanged] fires only when the resolved route actually
-   * changes, so a single UI event does not rebuild the audio pipeline twice.
+   * Starts observing route changes. [onRouteChanged] fires immediately on subscription and whenever
+   * the resolved route actually changes.
    */
   fun startObserving(onRouteChanged: (AudioOutputType) -> Unit) {
-    stopObserving()
-    listener = onRouteChanged
-    currentOutput = resolve()
-
-    // Immediately inform the listener of the currently active route on startup
+    ensureCallbackRegistered()
+    if (!listeners.contains(onRouteChanged)) {
+      listeners.add(onRouteChanged)
+    }
+    // Immediately inform listener of the currently active route
     onRouteChanged(currentOutput)
-
-    val callback =
-      object : AudioDeviceCallback() {
-        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
-          notifyIfChanged()
-        }
-
-        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
-          notifyIfChanged()
-        }
-      }
-
-    deviceCallback = callback
-    runCatching { audioManager.registerAudioDeviceCallback(callback, handler) }
-      .onFailure { Log.w(TAG, "Unable to register audio device callback", it) }
   }
 
-  /** Detaches the platform callback. Safe to call repeatedly. */
+  /** Removes a specific observer. */
+  fun removeObserver(onRouteChanged: (AudioOutputType) -> Unit) {
+    listeners.remove(onRouteChanged)
+  }
+
+  /** Detaches all observers and platform callback if needed. */
   fun stopObserving() {
-    deviceCallback?.let { callback ->
-      runCatching { audioManager.unregisterAudioDeviceCallback(callback) }
-        .onFailure { Log.w(TAG, "Unable to unregister audio device callback", it) }
-    }
-    deviceCallback = null
-    listener = null
+    listeners.clear()
   }
 
   private fun notifyIfChanged() {
@@ -150,8 +164,10 @@ class AudioOutputRouter(
     val previous = currentOutput
     val resolved = resolve()
     if (resolved != previous) {
-      Log.d(TAG, "Audio output route changed: $previous -> $resolved")
-      listener?.invoke(resolved)
+      Log.i(TAG, "Audio output route changed: $previous -> $resolved")
+      currentOutput = resolved
+      _outputRoute.value = resolved
+      listeners.forEach { it(resolved) }
     }
   }
 

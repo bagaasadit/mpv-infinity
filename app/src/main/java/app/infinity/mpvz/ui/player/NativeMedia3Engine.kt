@@ -148,10 +148,10 @@ class NativeMedia3Engine(
 
   /**
    * Tracks whether the sound is leaving through the phone speaker, wired headphones, or Bluetooth.
-   * The downmix/crossfeed stage is tuned per route; without this the binaural filter would also
-   * run on the tiny built-in speakers and audibly narrow the stereo image there.
+   * The downmix/crossfeed stage is tuned per route: speaker bypasses downmixing completely,
+   * while headphones/IEM activate stereo downmixing and binaural crossfeed.
    */
-  private val audioOutputRouter = AudioOutputRouter(context.applicationContext)
+  private val audioOutputRouter: AudioOutputRouter by inject()
 
   /** Most recent audio processor handed to the sink, kept so route changes can retune it. */
   private val registeredAudioProcessor = java.util.concurrent.atomic.AtomicReference<DownmixLimiterAudioProcessor?>(null)
@@ -205,20 +205,21 @@ class NativeMedia3Engine(
           enableAudioTrackPlaybackParams: Boolean
         ): AudioSink? {
           val activeOutput = audioOutputRouter.currentOutput
-          Log.i(logTag, "Building AudioSink: activeOutput=$activeOutput, forcing STEREO PCM_16BIT capabilities")
+          val isSpeaker = activeOutput == AudioOutputType.Speaker
+          Log.i(logTag, "Building AudioSink: activeOutput=$activeOutput, isSpeaker=$isSpeaker (Zero-Downmix on Speaker)")
           val downmixLimiterProcessor = DownmixLimiterAudioProcessor().apply {
             dialogueBoostGain = audioPreferences.dialogueBoost.get().gain
-            // Crossfeed and LFE folddown default to OFF per audiophile & stability requirements
-            enableLfeMixing = false
-            enableBinauralCrossfeed = false
-            enableStereoCrossfeed = false
+            // Speaker -> Zero Downmixing (bypass). Headphones/IEM -> Stereo Downmixing
+            bypassDownmix = isSpeaker
+            enableLfeMixing = !isSpeaker
+            enableBinauralCrossfeed = !isSpeaker
+            enableStereoCrossfeed = !isSpeaker
             outputFloatingPoint = false // PCM 16-bit guarantees 100% stability on Qualcomm Audio HAL
           }
           registeredAudioProcessor.set(downmixLimiterProcessor)
           return DefaultAudioSink.Builder(context)
             .setAudioProcessors(arrayOf(downmixLimiterProcessor))
-            // Force standard stereo capabilities: prevents Media3 from opening direct 8-channel passthrough to analog jack
-            .setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
+            .setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.getCapabilities(context))
             .setEnableFloatOutput(false) // Prevent Snapdragon ADSP crash on analog stereo jack
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .build()
@@ -1542,6 +1543,21 @@ class NativeMedia3Engine(
    * the current buffer simply plays out with the previous tuning. This avoids an audible glitch
    * every time a headset is plugged in.
    */
+  private val routeObserver: (AudioOutputType) -> Unit = { newOutput ->
+    val isSpeaker = newOutput == AudioOutputType.Speaker
+    Log.i(logTag, "Audio output route resolved: $newOutput (isSpeaker=$isSpeaker)")
+    registeredAudioProcessor.get()?.apply {
+      bypassDownmix = isSpeaker
+      enableBinauralCrossfeed = !isSpeaker
+      enableStereoCrossfeed = !isSpeaker
+      enableLfeMixing = !isSpeaker
+    }
+    if (player.isPlaying) {
+      val pos = player.currentPosition
+      player.seekTo(pos)
+    }
+  }
+
   fun startAudioOutputTracking() {
     dialogueBoostJob?.cancel()
     dialogueBoostJob =
@@ -1554,27 +1570,14 @@ class NativeMedia3Engine(
         }
         .launchIn(engineScope)
 
-    audioOutputRouter.startObserving { newOutput ->
-      Log.i(logTag, "Audio output route resolved: $newOutput (crossfeed/LFE default OFF)")
-      registeredAudioProcessor.get()?.apply {
-        if (enableBinauralCrossfeed) {
-          enableBinauralCrossfeed = newOutput.supportsCrossfeed
-        }
-        if (enableStereoCrossfeed) {
-          enableStereoCrossfeed = newOutput.supportsCrossfeed
-        }
-        if (enableLfeMixing) {
-          enableLfeMixing = newOutput.supportsLfeFoldDown
-        }
-      }
-    }
+    audioOutputRouter.startObserving(routeObserver)
   }
 
   fun release() {
     clearLoop()
     dialogueBoostJob?.cancel()
     dialogueBoostJob = null
-    audioOutputRouter.stopObserving()
+    audioOutputRouter.removeObserver(routeObserver)
     registeredAudioProcessor.set(null)
     loopHandler.removeCallbacks(timelineRunnable)
     loopHandler.removeCallbacks(seekRunnable)

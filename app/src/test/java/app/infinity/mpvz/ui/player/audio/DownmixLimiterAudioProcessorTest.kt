@@ -31,6 +31,15 @@ class DownmixLimiterAudioProcessorTest {
   }
 
   @Test
+  fun multichannelPassesThroughWhenBypassDownmixIsEnabled() {
+    val bypassProcessor = DownmixLimiterAudioProcessor().apply {
+      bypassDownmix = true
+    }
+    val format71 = AudioFormat(48000, 8, C.ENCODING_PCM_16BIT)
+    assertEquals(AudioFormat.NOT_SET, bypassProcessor.configure(format71))
+  }
+
+  @Test
   fun stereoIsProcessedWhenCrossfeedIsEnabled() {
     val enabledProcessor = DownmixLimiterAudioProcessor().apply {
       enableStereoCrossfeed = true

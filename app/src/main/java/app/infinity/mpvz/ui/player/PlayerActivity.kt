@@ -38,6 +38,8 @@ import android.os.Looper
 import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.Settings
+import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
+import app.infinity.mpvz.ui.player.audio.AudioOutputType
 import android.util.Log
 import android.view.Display
 import android.view.KeyEvent
@@ -227,6 +229,7 @@ class PlayerActivity :
    * Preferences for audio settings.
    */
   private val audioPreferences: AudioPreferences by inject()
+  private val audioOutputRouter: AudioOutputRouter by inject()
 
   /**
    * Preferences for subtitle settings.
@@ -1858,7 +1861,14 @@ class PlayerActivity :
   }
 
   private fun setupAudio() {
-    audioPreferences.audioChannels.get().let {
+    val isSpeaker = audioOutputRouter.currentOutput == AudioOutputType.Speaker
+    val selectedChannels = audioPreferences.audioChannels.get()
+    val effectiveChannels = if (selectedChannels == AudioChannels.AutoSafe) {
+      if (isSpeaker) AudioChannels.AutoSafe else AudioChannels.Stereo
+    } else {
+      selectedChannels
+    }
+    effectiveChannels.let {
       runCatching {
         if (it == AudioChannels.ReverseStereo) {
           PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)

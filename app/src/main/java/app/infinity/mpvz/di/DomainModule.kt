@@ -20,6 +20,7 @@ import app.infinity.mpvz.repository.subtitle.OnlineSubtitleOrchestrator
 import app.infinity.mpvz.repository.subtitlehub.MpvInfinitySubtitleHubRepository
 import app.infinity.mpvz.repository.wyzie.WyzieSearchRepository
 import app.infinity.mpvz.ui.player.PlaybackSessionShaderRuntime
+import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit
 
 val domainModule =
   module {
+    single { AudioOutputRouter(androidContext()) }
     single { AndroidCookieJar() }
     single<OkHttpClient> {
       SharedHttpClient.derive {
