@@ -42,6 +42,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.common.audio.AudioProcessor
 import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
+import app.infinity.mpvz.ui.player.audio.AudioOutputType
 import app.infinity.mpvz.ui.player.audio.DownmixLimiterAudioProcessor
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
