@@ -929,10 +929,10 @@ class PlayerActivity :
               viewModel.setNativeEngineActive(true)
               setNativeVideoSurfaceVisible(true)
 
-              val subtitleConfigs = viewModel.nativeExternalSubtitleTracks.value.mapNotNull { track ->
+              val subtitleConfigs = viewModel.currentNativeExternalSubtitleTracks.mapNotNull { track ->
                 val uriStr = track.externalFilename ?: return@mapNotNull null
                 val uri = Uri.parse(uriStr)
-                nativeEngine.createSubtitleConfiguration(uri, track.selected, label = track.title)
+                nativeEngine.createSubtitleConfiguration(uri, track.selected == true, label = track.title)
               }.ifEmpty {
                 val intentSubs = extractIntentSubtitleEntries(intent?.extras)
                 val subNames = extractSubtitleStringArray(intent?.extras ?: Bundle(), "subs.name", "subs.names", "subs.filename")
@@ -943,7 +943,7 @@ class PlayerActivity :
                 }
               }
               val hasExplicitSelection = hasIntentExplicitSubtitleSelection ||
-                viewModel.nativeExternalSubtitleTracks.value.any { it.selected }
+                viewModel.currentNativeExternalSubtitleTracks.any { it.selected == true }
 
               nativeEngine.play(
                 nativeUri,

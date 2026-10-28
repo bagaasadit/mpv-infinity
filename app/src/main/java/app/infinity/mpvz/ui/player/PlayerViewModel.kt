@@ -555,6 +555,7 @@ class PlayerViewModel : ViewModel(),
   // These MPV-backed state flows must be initialized before any init block collects them.
   private val nativeSubtitleTracks = MutableStateFlow<List<TrackNode>>(emptyList())
   private val nativeExternalSubtitleTracks = MutableStateFlow<List<TrackNode>>(emptyList())
+  val currentNativeExternalSubtitleTracks: List<TrackNode> get() = nativeExternalSubtitleTracks.value
   private val nativeAudioTracks = MutableStateFlow<List<TrackNode>>(emptyList())
   private val nativeEngineActive = MutableStateFlow(false)
   private val nativeChapters = MutableStateFlow<List<Segment>>(emptyList())
