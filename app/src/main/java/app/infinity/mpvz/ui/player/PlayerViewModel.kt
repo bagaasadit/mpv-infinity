@@ -1646,6 +1646,7 @@ class PlayerViewModel : ViewModel(),
       }
     }
     // Observe audio effect and output route changes to update mpv af filters and audio-channels
+    var lastHandledMpvRoute: AudioOutputType? = null
     viewModelScope.launch(playbackStateDispatcher) {
       combine(
         audioPreferences.volumeNormalization.changes(),
@@ -1664,6 +1665,11 @@ class PlayerViewModel : ViewModel(),
           PlaybackSession.setPropertyString("audio-channels", effectiveChannels.value)
         }
         applyEqualizerMpvFilters(immediate = true)
+        val routeChanged = lastHandledMpvRoute != null && lastHandledMpvRoute != route
+        lastHandledMpvRoute = route
+        if (routeChanged) {
+          runCatching { PlaybackSession.command("audio-reinit") }
+        }
       }
     }
 

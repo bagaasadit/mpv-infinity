@@ -137,6 +137,7 @@ class NativeMedia3Engine(
   private val audioPreferences: AudioPreferences by inject()
   private val playerPreferences: PlayerPreferences by inject()
   private val engineScope = CoroutineScope(Dispatchers.Main.immediate)
+  private val loopHandler = Handler(Looper.getMainLooper())
   private var dialogueBoostJob: Job? = null
   private val appContext = context.applicationContext
   private val logTag = "mpvZero-Media3"
@@ -154,22 +155,48 @@ class NativeMedia3Engine(
    * The downmix/crossfeed stage is tuned per route: speaker bypasses downmixing completely,
    * while headphones/IEM activate stereo downmixing and binaural crossfeed.
    */
+  private var lastHandledRoute: AudioOutputType? = null
   private val audioOutputRouter: AudioOutputRouter by inject()
   private val routeObserver: (AudioOutputType) -> Unit = ::handleAudioRouteChanged
 
   private fun handleAudioRouteChanged(newOutput: AudioOutputType) {
     val isSpeaker = newOutput == AudioOutputType.Speaker
-    Log.i(logTag, "Audio output route resolved: $newOutput (isSpeaker=$isSpeaker)")
+    val previousRoute = lastHandledRoute
+    lastHandledRoute = newOutput
+    Log.i(logTag, "Audio output route resolved: $newOutput (isSpeaker=$isSpeaker, prev=$previousRoute)")
+
     registeredAudioProcessor.get()?.apply {
       bypassDownmix = isSpeaker
       enableBinauralCrossfeed = !isSpeaker
       enableStereoCrossfeed = !isSpeaker
       enableLfeMixing = !isSpeaker
     }
-    runCatching {
-      if (player.playbackState != Player.STATE_IDLE && player.isPlaying) {
-        val pos = player.currentPosition
-        player.seekTo(pos)
+
+    val routeActuallyChanged = previousRoute != null && previousRoute != newOutput
+    if (routeActuallyChanged) {
+      runCatching {
+        if (player.playbackState != Player.STATE_IDLE) {
+          Log.i(logTag, "Route changed ($previousRoute -> $newOutput): Re-negotiating AudioTrack format")
+          val originalParams = player.trackSelectionParameters
+          // Temporarily disable audio track renderer so MediaCodecAudioRenderer resets AudioSink & releases old AudioTrack
+          player.trackSelectionParameters = originalParams.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+            .build()
+
+          loopHandler.postDelayed({
+            runCatching {
+              if (player.playbackState != Player.STATE_IDLE) {
+                player.trackSelectionParameters = originalParams
+                val pos = player.currentPosition.coerceAtLeast(0L)
+                if (pos > 0L) {
+                  player.seekTo(pos)
+                }
+              }
+            }
+          }, 80L)
+        }
+      }.onFailure { e ->
+        Log.e(logTag, "Failed to re-negotiate AudioTrack on route switch", e)
       }
     }
   }
@@ -271,7 +298,6 @@ class NativeMedia3Engine(
   private val subtitleViewRunnable = Runnable { configureSubtitleView() }
   private var loopASeconds: Double? = null
   private var loopBSeconds: Double? = null
-  private val loopHandler = Handler(Looper.getMainLooper())
   private var pendingSeekPositionMs: Long? = null
   private var pendingSeekDisplayPositionMs: Long? = null
   private var pendingInitialSeekPositionMs: Long? = null
