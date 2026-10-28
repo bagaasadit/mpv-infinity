@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import app.infinity.mpvz.preferences.AudioPreferences
+import app.infinity.mpvz.preferences.PlayerPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -134,6 +135,7 @@ class NativeMedia3Engine(
   private val context: Context,
 ) : KoinComponent {
   private val audioPreferences: AudioPreferences by inject()
+  private val playerPreferences: PlayerPreferences by inject()
   private val engineScope = CoroutineScope(Dispatchers.Main.immediate)
   private var dialogueBoostJob: Job? = null
   private val appContext = context.applicationContext
@@ -189,14 +191,12 @@ class NativeMedia3Engine(
         val isLowRam = activityManager?.isLowRamDevice == true || totalMemMb < 3500L
         val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).coerceAtLeast(64L)
 
-        val targetBufferBytes = when {
-          isLowRam || maxHeapMb < 256 -> 32 * 1024 * 1024       // 32MB: Safe for 32-bit / Low-RAM
-          totalMemMb < 6000L || maxHeapMb < 512 -> 64 * 1024 * 1024 // 64MB: Mid-range devices
-          else -> 160 * 1024 * 1024                             // 160MB: Tailored for 4K 80Mbps UHD Blu-ray remux on Poco F5 (16s headroom)
-        }
-        val maxBufferMs = if (isLowRam) 30_000 else 50_000
-        val minBufferMs = if (isLowRam) 10_000 else 20_000
+        val userBufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+        val targetBufferBytes = userBufferMb * 1024 * 1024
+        val maxBufferMs = (userBufferMb.toFloat() / 160f * 50_000).toInt().coerceIn(20_000, 180_000)
+        val minBufferMs = (maxBufferMs / 2.5f).toInt().coerceAtLeast(10_000)
         val startBufferMs = if (isLowRam) 1_500 else 2_500
+        val backBufferMs = (userBufferMb.toFloat() / 160f * 20_000).toInt().coerceIn(10_000, 60_000)
 
         DefaultLoadControl.Builder()
           .setBufferDurationsMs(
@@ -205,7 +205,7 @@ class NativeMedia3Engine(
             startBufferMs,
             4_000,
           )
-          .setBackBuffer(if (isLowRam) 10_000 else 20_000, false)
+          .setBackBuffer(backBufferMs, false)
           .setTargetBufferBytes(targetBufferBytes)
           .setPrioritizeTimeOverSizeThresholds(false)
           .build()

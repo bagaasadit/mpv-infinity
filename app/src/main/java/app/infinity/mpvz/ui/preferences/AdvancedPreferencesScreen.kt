@@ -63,6 +63,7 @@ import app.infinity.mpvz.R
 import app.infinity.mpvz.domain.playbackstate.repository.PlaybackStateRepository
 import app.infinity.mpvz.domain.thumbnail.ThumbnailRepository
 import app.infinity.mpvz.preferences.AdvancedPreferences
+import app.infinity.mpvz.preferences.PlayerPreferences
 import app.infinity.mpvz.preferences.SettingsManager
 import app.infinity.mpvz.preferences.SubtitlesPreferences
 import app.infinity.mpvz.preferences.preference.collectAsState
@@ -84,13 +85,16 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.Preference
+import me.zhanghai.compose.preference.PreferenceDivider
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
+import me.zhanghai.compose.preference.SliderPreference
 import org.koin.compose.koinInject
 import java.io.File
 import java.util.Locale
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.outputStream
 import kotlin.io.path.readLines
+import kotlin.math.roundToInt
 
 private enum class AppLanguage(
   val languageTag: String,
@@ -138,6 +142,7 @@ object AdvancedPreferencesScreen : Screen {
     val playbackStateRepository = koinInject<PlaybackStateRepository>()
     val settingsManager = koinInject<SettingsManager>()
     val subtitlesPreferences = koinInject<SubtitlesPreferences>()
+    val playerPreferences = koinInject<PlayerPreferences>()
     val scope = rememberCoroutineScope()
     var showImportDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
@@ -604,6 +609,32 @@ object AdvancedPreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
+              )
+
+              PreferenceDivider()
+
+              val ramBufferMb by playerPreferences.ramBufferSizeMb.collectAsState()
+              val estSeconds = (ramBufferMb.toFloat() / 160f * 50).roundToInt().coerceIn(15, 180)
+
+              SliderPreference(
+                value = ramBufferMb.toFloat(),
+                onValueChange = {
+                  val snapped = (it / 16).roundToInt() * 16
+                  playerPreferences.ramBufferSizeMb.set(snapped.coerceIn(32, 512))
+                },
+                title = { Text("RAM Buffer Cache") },
+                valueRange = 32f..512f,
+                summary = {
+                  Text(
+                    "Network & file read-ahead memory buffer for MPV and Media3 ($ramBufferMb MB · ~$estSeconds s)",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                onSliderValueChange = {
+                  val snapped = (it / 16).roundToInt() * 16
+                  playerPreferences.ramBufferSizeMb.set(snapped.coerceIn(32, 512))
+                },
+                sliderValue = ramBufferMb.toFloat(),
               )
             }
           }

@@ -285,9 +285,12 @@ class MPVView(
     PlaybackSession.setOptionString("cache", "auto")
     PlaybackSession.setOptionString("cache-pause", "yes")
     PlaybackSession.setOptionString("cache-pause-wait", "1")
-    PlaybackSession.setOptionString("demuxer-max-bytes", "128MiB")
-    PlaybackSession.setOptionString("demuxer-max-back-bytes", "32MiB")
-    PlaybackSession.setOptionString("demuxer-readahead-secs", "60")
+    val bufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+    val readaheadSecs = (bufferMb.toFloat() / 160f * 60).toInt().coerceIn(20, 180)
+    val backBytesMb = (bufferMb / 4).coerceIn(16, 128)
+    PlaybackSession.setOptionString("demuxer-max-bytes", "${bufferMb}MiB")
+    PlaybackSession.setOptionString("demuxer-max-back-bytes", "${backBytesMb}MiB")
+    PlaybackSession.setOptionString("demuxer-readahead-secs", readaheadSecs.toString())
     PlaybackSession.setOptionString("demuxer-lavf-buffersize", "1048576")
     // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
     // Do not use reconnect_at_eof globally: a legitimate VOD EOF must still finish normally.

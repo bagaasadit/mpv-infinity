@@ -51,6 +51,7 @@ class PlayerPreferences(
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
 
   val showBufferedRange = preferenceStore.getBoolean("show_buffered_range", true)
+  val ramBufferSizeMb = preferenceStore.getInt("ram_buffer_size_mb", 160)
   val showChapterIndicators = preferenceStore.getBoolean("show_chapter_indicators", true)
 
   val brightnessGesture = preferenceStore.getBoolean("gestures_brightness", true)

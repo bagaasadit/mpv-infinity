@@ -1667,6 +1667,23 @@ class PlayerViewModel : ViewModel(),
       }
     }
 
+    // Observe RAM buffer size preference changes to update MPV cache dynamically
+    viewModelScope.launch(playbackStateDispatcher) {
+      playerPreferences.ramBufferSizeMb.changes().collect { mb ->
+        if (!_isMpvCoreReady.value) return@collect
+        val bufferMb = mb.coerceIn(32, 1024)
+        val readaheadSecs = (bufferMb.toFloat() / 160f * 60).toInt().coerceIn(20, 180)
+        val backBytesMb = (bufferMb / 4).coerceIn(16, 128)
+        runCatching {
+          PlaybackSession.setPropertyString("demuxer-max-bytes", "${bufferMb}MiB")
+          PlaybackSession.setPropertyString("demuxer-max-back-bytes", "${backBytesMb}MiB")
+          PlaybackSession.setPropertyString("demuxer-readahead-secs", readaheadSecs.toString())
+        }.onFailure { e ->
+          Log.w(TAG, "Error updating dynamic buffer options: $e")
+        }
+      }
+    }
+
     // Monitor duration and AB loop changes to automatically enable precise seeking
     viewModelScope.launch(playbackStateDispatcher) {
       combine(_duration, abLoopState) { duration, abLoop ->

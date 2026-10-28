@@ -34,10 +34,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +58,8 @@ import androidx.compose.ui.window.DialogProperties
 import app.infinity.mpvz.R
 import app.infinity.mpvz.domain.anime4k.Anime4KManager
 import app.infinity.mpvz.preferences.AdvancedPreferences
+import app.infinity.mpvz.preferences.PlayerPreferences
+import kotlin.math.roundToInt
 import app.infinity.mpvz.preferences.preference.collectAsState
 import app.infinity.mpvz.presentation.components.PlayerSheet
 import app.infinity.mpvz.ui.icons.Icon
@@ -262,6 +264,86 @@ fun MoreSheet(
             )
           } else {
             Text("Output: MPV renderer", style = MaterialTheme.typography.bodySmall)
+          }
+        }
+      }
+
+      val playerPreferences = koinInject<PlayerPreferences>()
+      val ramBufferMb by playerPreferences.ramBufferSizeMb.collectAsState()
+      val estimatedBufferSeconds = (ramBufferMb.toFloat() / 160f * 50).roundToInt().coerceIn(15, 180)
+
+      Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+      ) {
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium),
+          verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              text = "RAM Buffer Cache",
+              style = MaterialTheme.typography.titleSmall,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+              text = "$ramBufferMb MB (~${estimatedBufferSeconds}s buffer)",
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+          ) {
+            IconButton(
+              onClick = { playerPreferences.ramBufferSizeMb.set((ramBufferMb - 32).coerceAtLeast(32)) },
+              modifier = Modifier.size(36.dp),
+            ) {
+              Icon(imageVector = Icons.RoundedFilled.Remove, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+
+            Slider(
+              value = ramBufferMb.toFloat(),
+              onValueChange = {
+                val snapped = (it / 16).roundToInt() * 16
+                playerPreferences.ramBufferSizeMb.set(snapped.coerceIn(32, 512))
+              },
+              valueRange = 32f..512f,
+              modifier = Modifier.weight(1f),
+            )
+
+            IconButton(
+              onClick = { playerPreferences.ramBufferSizeMb.set((ramBufferMb + 32).coerceAtMost(512)) },
+              modifier = Modifier.size(36.dp),
+            ) {
+              Icon(imageVector = Icons.RoundedFilled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+          }
+
+          LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+          ) {
+            val presets = listOf(64, 128, 160, 256, 384, 512)
+            items(presets, key = { it }) { presetMb ->
+              FilterChip(
+                selected = ramBufferMb == presetMb,
+                onClick = { playerPreferences.ramBufferSizeMb.set(presetMb) },
+                label = {
+                  Text(
+                    text = if (presetMb == 160) "160MB (Def)" else "${presetMb}MB",
+                    style = MaterialTheme.typography.labelSmall,
+                  )
+                },
+              )
+            }
           }
         }
       }
