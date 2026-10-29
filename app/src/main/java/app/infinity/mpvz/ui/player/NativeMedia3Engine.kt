@@ -1849,13 +1849,13 @@ private class DynamicLoadControl(
   allocator,
   /* minBufferMs = */ 10_000,
   /* minBufferForLocalPlaybackMs = */ 10_000,
-  /* maxBufferMs = */ 300_000,
-  /* maxBufferForLocalPlaybackMs = */ 300_000,
+  /* maxBufferMs = */ 180_000,
+  /* maxBufferForLocalPlaybackMs = */ 180_000,
   /* bufferForPlaybackMs = */ startBufferMs,
   /* bufferForPlaybackForLocalPlaybackMs = */ startBufferMs,
-  /* bufferForPlaybackAfterRebufferMs = */ 4_000,
-  /* bufferForPlaybackAfterRebufferForLocalPlaybackMs = */ 4_000,
-  /* targetBufferBytes = */ 1024 * 1024 * 1024,
+  /* bufferForPlaybackAfterRebufferMs = */ 3_000,
+  /* bufferForPlaybackAfterRebufferForLocalPlaybackMs = */ 3_000,
+  /* targetBufferBytes = */ 256 * 1024 * 1024,
   /* prioritizeTimeOverSizeThresholds = */ false,
   /* prioritizeTimeOverSizeThresholdsForLocalPlayback = */ false,
   /* backBufferDurationMs = */ 60_000,
@@ -1864,40 +1864,57 @@ private class DynamicLoadControl(
   private var lastAppliedMb = -1
 
   override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
+    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+
     val runtime = Runtime.getRuntime()
     val maxHeap = runtime.maxMemory()
     val usedHeap = runtime.totalMemory() - runtime.freeMemory()
-    val freeHeap = maxHeap - usedHeap
+    val freeHeap = (maxHeap - usedHeap).coerceAtLeast(0L)
 
-    // OOM Guardian: Never allocate more chunks if JVM heap has less than 64MB headroom
-    if (freeHeap < 64L * 1024L * 1024L) {
-      return false
-    }
-
-    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-    // Clamp target buffer bytes to safe heap budget (leaving at least 96MB for UI, Compose, and GC)
-    val maxSafeBytes = (maxHeap - 96L * 1024L * 1024L).coerceAtLeast(32L * 1024L * 1024L)
+    // Media3 allocates in Dalvik Java heap (growth limit 512MB).
+    // Reserve at least 160MB for Compose UI, Bitmaps, decoders, and GC headroom.
+    val maxSafeBytes = (maxHeap - 160L * 1024L * 1024L).coerceIn(32L * 1024L * 1024L, 256L * 1024L * 1024L)
     val bufferTargetBytes = minOf(ramMb.toLong() * 1024L * 1024L, maxSafeBytes)
+
+    val maxBufferUs = (ramMb.toFloat() / 160f * 50_000_000L).toLong().coerceIn(20_000_000L, 180_000_000L)
+    val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
 
     if (ramMb != lastAppliedMb) {
       lastAppliedMb = ramMb
       allocator.setTargetBufferSize(bufferTargetBytes.toInt())
+      allocator.trim()
+      Log.i(
+        "mpvZero-DynamicBuffer",
+        "RAM Buffer updated: setting=${ramMb}MB -> effectiveMedia3=${bufferTargetBytes / (1024 * 1024)}MB (maxDuration=${maxBufferUs / 1_000_000}s, freeHeap=${freeHeap / (1024 * 1024)}MB)",
+      )
     }
 
-    val maxBufferUs = (ramMb.toFloat() / 160f * 50_000_000L).toLong().coerceIn(20_000_000L, 300_000_000L)
-    val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
+    // 1. Starvation Guardian:
+    // If the player has less than 5 seconds of buffer (starting, seeking, or rebuffering),
+    // NEVER return false. Refusing to load when buffer is empty violates Media3 LoadControl contract
+    // and causes "StuckPlayerException: Player stuck buffering and not loading".
+    if (parameters.bufferedDurationUs < 5_000_000L) {
+      return true
+    }
 
-    // Size limit check
+    // 2. JVM Heap Headroom Guardian:
+    // Only pause if we already have 5+ seconds of buffer and free JVM heap is critically low (<48MB).
+    if (freeHeap < 48L * 1024L * 1024L) {
+      allocator.trim()
+      return false
+    }
+
+    // 3. Size limit check:
     if (allocator.totalBytesAllocated.toLong() >= bufferTargetBytes) {
       return false
     }
 
-    // Time ceiling check
+    // 4. Time ceiling check:
     if (parameters.bufferedDurationUs >= maxBufferUs) {
       return false
     }
 
-    // Dynamic minimum check (only load if size limit and heap allow it)
+    // 5. Dynamic refill check:
     if (parameters.bufferedDurationUs < minBufferUs) {
       return true
     }
