@@ -39,8 +39,6 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.FileDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
-import androidx.media3.exoplayer.LoadControl
-import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.common.audio.AudioProcessor
 import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
@@ -221,20 +219,23 @@ class NativeMedia3Engine(
         val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).coerceAtLeast(64L)
         val startBufferMs = if (isLowRam) 1_500 else 2_500
 
-        val allocator = DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
-        val baseLoadControl = DefaultLoadControl.Builder()
-          .setAllocator(allocator)
+        val userBufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+        val targetBufferBytes = userBufferMb * 1024 * 1024
+        val maxBufferMs = (userBufferMb.toFloat() / 160f * 50_000).toInt().coerceIn(20_000, 300_000)
+        val minBufferMs = (maxBufferMs / 2.5f).toInt().coerceAtLeast(10_000)
+        val backBufferMs = (userBufferMb.toFloat() / 160f * 20_000).toInt().coerceIn(10_000, 60_000)
+
+        DefaultLoadControl.Builder()
           .setBufferDurationsMs(
-            10_000,
-            300_000,
+            minBufferMs,
+            maxBufferMs,
             startBufferMs,
             4_000,
           )
-          .setBackBuffer(60_000, false)
-          .setTargetBufferBytes(1024 * 1024 * 1024)
+          .setBackBuffer(backBufferMs, false)
+          .setTargetBufferBytes(targetBufferBytes)
           .setPrioritizeTimeOverSizeThresholds(false)
           .build()
-        DynamicLoadControl(baseLoadControl, allocator, playerPreferences)
       },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -1845,46 +1846,5 @@ class NativeMedia3Engine(
   private fun startTimelineUpdates() {
     loopHandler.removeCallbacks(timelineRunnable)
     if (player.currentMediaItem != null) loopHandler.post(timelineRunnable)
-  }
-}
-
-/**
- * Wraps DefaultLoadControl to make RAM buffer size and duration ceilings dynamic.
- * Queries [PlayerPreferences.ramBufferSizeMb] live on every loading cycle.
- */
-private class DynamicLoadControl(
-  private val base: DefaultLoadControl,
-  private val allocator: DefaultAllocator,
-  private val playerPreferences: PlayerPreferences,
-) : LoadControl by base {
-
-  override fun shouldContinueLoading(
-    playbackPositionUs: Long,
-    bufferedDurationUs: Long,
-    playbackSpeed: Float,
-  ): Boolean {
-    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-    val maxBufferUs = (ramMb.toFloat() / 160f * 50_000_000L).toLong().coerceIn(20_000_000L, 300_000_000L)
-    val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
-
-    val bufferTargetBytes = ramMb.toLong() * 1024L * 1024L
-    val allocatedBytes = allocator.totalBytesAllocated.toLong()
-    if (allocatedBytes >= bufferTargetBytes) {
-      return false
-    }
-
-    if (bufferedDurationUs >= maxBufferUs) {
-      return false
-    }
-    if (bufferedDurationUs < minBufferUs) {
-      return true
-    }
-
-    return base.shouldContinueLoading(playbackPositionUs, bufferedDurationUs, playbackSpeed)
-  }
-
-  override fun getBackBufferDurationUs(): Long {
-    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-    return (ramMb.toFloat() / 160f * 20_000_000L).toLong().coerceIn(10_000_000L, 60_000_000L)
   }
 }
