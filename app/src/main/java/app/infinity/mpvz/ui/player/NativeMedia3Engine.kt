@@ -39,6 +39,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.FileDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.common.audio.AudioProcessor
 import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
@@ -218,24 +219,18 @@ class NativeMedia3Engine(
         val isLowRam = activityManager?.isLowRamDevice == true || totalMemMb < 3500L
         val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).coerceAtLeast(64L)
 
-        val userBufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-        val targetBufferBytes = userBufferMb * 1024 * 1024
-        val maxBufferMs = (userBufferMb.toFloat() / 160f * 50_000).toInt().coerceIn(20_000, 180_000)
-        val minBufferMs = (maxBufferMs / 2.5f).toInt().coerceAtLeast(10_000)
-        val startBufferMs = if (isLowRam) 1_500 else 2_500
-        val backBufferMs = (userBufferMb.toFloat() / 160f * 20_000).toInt().coerceIn(10_000, 60_000)
-
-        DefaultLoadControl.Builder()
+        val baseLoadControl = DefaultLoadControl.Builder()
           .setBufferDurationsMs(
-            minBufferMs,
-            maxBufferMs,
+            10_000,
+            300_000,
             startBufferMs,
             4_000,
           )
-          .setBackBuffer(backBufferMs, false)
-          .setTargetBufferBytes(targetBufferBytes)
+          .setBackBuffer(60_000, false)
+          .setTargetBufferBytes(1024 * 1024 * 1024)
           .setPrioritizeTimeOverSizeThresholds(false)
           .build()
+        DynamicLoadControl(baseLoadControl, playerPreferences)
       },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -757,7 +752,10 @@ class NativeMedia3Engine(
     var score = 0
     val label = (format.label ?: "").lowercase()
     val mime = (format.sampleMimeType ?: "").lowercase()
+    val codecs = (format.codecs ?: "").lowercase()
+    val containerMime = (format.containerMimeType ?: "").lowercase()
     val lang = (format.language ?: "").lowercase()
+    val combinedType = "$mime $codecs $containerMime $label"
 
     // External tracks (from Stremio or downloaded) get top priority if they are English
     val isExternal = group?.mediaTrackGroup?.id?.startsWith("external:") == true ||
@@ -778,7 +776,7 @@ class NativeMedia3Engine(
     // Anti-Commentary
     if (listOf("commentary", "director", "cast").any { label.contains(it) }) return -40000
 
-    // SDH penalty
+    // SDH penalty (prefer clean dialogue)
     val isSdh = listOf("sdh", "hearing impaired", "hoh", "deaf").any { label.contains(it) }
     if (isSdh) score -= 3000
 
@@ -786,12 +784,12 @@ class NativeMedia3Engine(
     val isForced = listOf("forced", "forzato", "forzati").any { label.contains(it) }
     if (isForced) score -= 10000
 
-    // Format hierarchy (Text > Bitmap)
+    // Format hierarchy (Text > Bitmap): SRT/ASS/VTT get high priority, PGS bitmap gets low priority
     when {
-      mime.contains("x-subrip") || mime.contains("subrip") || label.contains("srt") -> score += 5000
-      mime.contains("x-ssa") || mime.contains("ass") || label.contains("ass") -> score += 4500
-      mime.contains("vtt") || label.contains("vtt") -> score += 4000
-      mime.contains("pgs") || label.contains("pgs") || mime.contains("hdmv") -> score += 1500
+      combinedType.contains("subrip") || combinedType.contains("srt") -> score += 10000
+      combinedType.contains("ssa") || combinedType.contains("ass") -> score += 9500
+      combinedType.contains("vtt") -> score += 8000
+      combinedType.contains("pgs") || combinedType.contains("hdmv") -> score += 1000
     }
 
     if (listOf("full", "dialog", "dialogue").any { label.contains(it) }) score += 800
@@ -1843,5 +1841,45 @@ class NativeMedia3Engine(
   private fun startTimelineUpdates() {
     loopHandler.removeCallbacks(timelineRunnable)
     if (player.currentMediaItem != null) loopHandler.post(timelineRunnable)
+  }
+}
+
+/**
+ * Wraps DefaultLoadControl to make RAM buffer size and duration ceilings dynamic.
+ * Queries [PlayerPreferences.ramBufferSizeMb] live on every loading cycle.
+ */
+private class DynamicLoadControl(
+  private val base: DefaultLoadControl,
+  private val playerPreferences: PlayerPreferences,
+) : LoadControl by base {
+
+  override fun shouldContinueLoading(
+    playbackPositionUs: Long,
+    bufferedDurationUs: Long,
+    playbackSpeed: Float,
+  ): Boolean {
+    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+    val maxBufferUs = (ramMb.toFloat() / 160f * 50_000_000L).toLong().coerceIn(20_000_000L, 300_000_000L)
+    val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
+
+    val bufferTargetBytes = ramMb.toLong() * 1024L * 1024L
+    val allocatedBytes = base.allocator.totalBytesAllocated.toLong()
+    if (allocatedBytes >= bufferTargetBytes) {
+      return false
+    }
+
+    if (bufferedDurationUs >= maxBufferUs) {
+      return false
+    }
+    if (bufferedDurationUs < minBufferUs) {
+      return true
+    }
+
+    return base.shouldContinueLoading(playbackPositionUs, bufferedDurationUs, playbackSpeed)
+  }
+
+  override fun getBackBufferDurationUs(): Long {
+    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+    return (ramMb.toFloat() / 160f * 20_000_000L).toLong().coerceIn(10_000_000L, 60_000_000L)
   }
 }
