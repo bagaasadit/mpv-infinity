@@ -39,6 +39,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.FileDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.LoadControl
+import androidx.media3.exoplayer.analytics.PlayerId
+import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.common.audio.AudioProcessor
 import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
@@ -219,23 +222,8 @@ class NativeMedia3Engine(
         val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).coerceAtLeast(64L)
         val startBufferMs = if (isLowRam) 1_500 else 2_500
 
-        val userBufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-        val targetBufferBytes = userBufferMb * 1024 * 1024
-        val maxBufferMs = (userBufferMb.toFloat() / 160f * 50_000).toInt().coerceIn(20_000, 300_000)
-        val minBufferMs = (maxBufferMs / 2.5f).toInt().coerceAtLeast(10_000)
-        val backBufferMs = (userBufferMb.toFloat() / 160f * 20_000).toInt().coerceIn(10_000, 60_000)
-
-        DefaultLoadControl.Builder()
-          .setBufferDurationsMs(
-            minBufferMs,
-            maxBufferMs,
-            startBufferMs,
-            4_000,
-          )
-          .setBackBuffer(backBufferMs, false)
-          .setTargetBufferBytes(targetBufferBytes)
-          .setPrioritizeTimeOverSizeThresholds(false)
-          .build()
+        val allocator = DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
+        DynamicLoadControl(allocator, playerPreferences, startBufferMs)
       },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -1846,5 +1834,66 @@ class NativeMedia3Engine(
   private fun startTimelineUpdates() {
     loopHandler.removeCallbacks(timelineRunnable)
     if (player.currentMediaItem != null) loopHandler.post(timelineRunnable)
+  }
+}
+
+/**
+ * Subclasses DefaultLoadControl to make RAM buffer size and duration ceilings dynamic.
+ * Queries [PlayerPreferences.ramBufferSizeMb] live on every loading cycle.
+ */
+private class DynamicLoadControl(
+  private val allocator: DefaultAllocator,
+  private val playerPreferences: PlayerPreferences,
+  startBufferMs: Int,
+) : DefaultLoadControl(
+  allocator,
+  /* minBufferMs = */ 10_000,
+  /* minBufferForLocalPlaybackMs = */ 10_000,
+  /* maxBufferMs = */ 300_000,
+  /* maxBufferForLocalPlaybackMs = */ 300_000,
+  /* bufferForPlaybackMs = */ startBufferMs,
+  /* bufferForPlaybackForLocalPlaybackMs = */ startBufferMs,
+  /* bufferForPlaybackAfterRebufferMs = */ 4_000,
+  /* bufferForPlaybackAfterRebufferForLocalPlaybackMs = */ 4_000,
+  /* targetBufferBytes = */ 1024 * 1024 * 1024,
+  /* prioritizeTimeOverSizeThresholds = */ false,
+  /* prioritizeTimeOverSizeThresholdsForLocalPlayback = */ false,
+  /* backBufferDurationMs = */ 60_000,
+  /* retainBackBufferFromKeyframe = */ false,
+) {
+  private var lastAppliedMb = -1
+
+  override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
+    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+    if (ramMb != lastAppliedMb) {
+      lastAppliedMb = ramMb
+      allocator.setTargetBufferSize(ramMb * 1024 * 1024)
+    }
+
+    val maxBufferUs = (ramMb.toFloat() / 160f * 50_000_000L).toLong().coerceIn(20_000_000L, 300_000_000L)
+    val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
+    val bufferTargetBytes = ramMb.toLong() * 1024L * 1024L
+
+    // Size limit check
+    if (allocator.totalBytesAllocated.toLong() >= bufferTargetBytes) {
+      return false
+    }
+
+    // Time ceiling check
+    if (parameters.bufferedDurationUs >= maxBufferUs) {
+      return false
+    }
+
+    // Below dynamic minimum, always load
+    if (parameters.bufferedDurationUs < minBufferUs) {
+      return true
+    }
+
+    return super.shouldContinueLoading(parameters)
+  }
+
+  override fun getBackBufferDurationUs(playerId: PlayerId): Long {
+    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+    return (ramMb.toFloat() / 160f * 20_000_000L).toLong().coerceIn(10_000_000L, 60_000_000L)
   }
 }
