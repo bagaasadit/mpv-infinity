@@ -40,6 +40,7 @@ import androidx.media3.datasource.FileDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.LoadControl
+import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.common.audio.AudioProcessor
 import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
@@ -218,8 +219,11 @@ class NativeMedia3Engine(
         val totalMemMb = (memInfo.totalMem / (1024 * 1024)).coerceAtLeast(1024L)
         val isLowRam = activityManager?.isLowRamDevice == true || totalMemMb < 3500L
         val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).coerceAtLeast(64L)
+        val startBufferMs = if (isLowRam) 1_500 else 2_500
 
+        val allocator = DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
         val baseLoadControl = DefaultLoadControl.Builder()
+          .setAllocator(allocator)
           .setBufferDurationsMs(
             10_000,
             300_000,
@@ -230,7 +234,7 @@ class NativeMedia3Engine(
           .setTargetBufferBytes(1024 * 1024 * 1024)
           .setPrioritizeTimeOverSizeThresholds(false)
           .build()
-        DynamicLoadControl(baseLoadControl, playerPreferences)
+        DynamicLoadControl(baseLoadControl, allocator, playerPreferences)
       },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -1850,6 +1854,7 @@ class NativeMedia3Engine(
  */
 private class DynamicLoadControl(
   private val base: DefaultLoadControl,
+  private val allocator: DefaultAllocator,
   private val playerPreferences: PlayerPreferences,
 ) : LoadControl by base {
 
@@ -1863,7 +1868,7 @@ private class DynamicLoadControl(
     val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
 
     val bufferTargetBytes = ramMb.toLong() * 1024L * 1024L
-    val allocatedBytes = base.allocator.totalBytesAllocated.toLong()
+    val allocatedBytes = allocator.totalBytesAllocated.toLong()
     if (allocatedBytes >= bufferTargetBytes) {
       return false
     }
