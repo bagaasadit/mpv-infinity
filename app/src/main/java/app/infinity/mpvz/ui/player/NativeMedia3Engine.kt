@@ -788,12 +788,12 @@ class NativeMedia3Engine(
     val isForced = listOf("forced", "forzato", "forzati").any { label.contains(it) }
     if (isForced) score -= 10000
 
-    // Format hierarchy (Text > Bitmap): SRT/ASS/VTT get high priority, PGS bitmap gets low priority
+    // Format hierarchy: PGS (Original Remux Disc Master) is top priority
     when {
-      combinedType.contains("subrip") || combinedType.contains("srt") -> score += 10000
-      combinedType.contains("ssa") || combinedType.contains("ass") -> score += 9500
-      combinedType.contains("vtt") -> score += 8000
-      combinedType.contains("pgs") || combinedType.contains("hdmv") -> score += 1000
+      combinedType.contains("pgs") || combinedType.contains("hdmv") -> score += 15000
+      combinedType.contains("ssa") || combinedType.contains("ass") -> score += 6000
+      combinedType.contains("subrip") || combinedType.contains("srt") -> score += 5000
+      combinedType.contains("vtt") -> score += 4000
     }
 
     if (listOf("full", "dialog", "dialogue").any { label.contains(it) }) score += 800
