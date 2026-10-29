@@ -1864,15 +1864,28 @@ private class DynamicLoadControl(
   private var lastAppliedMb = -1
 
   override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
+    val runtime = Runtime.getRuntime()
+    val maxHeap = runtime.maxMemory()
+    val usedHeap = runtime.totalMemory() - runtime.freeMemory()
+    val freeHeap = maxHeap - usedHeap
+
+    // OOM Guardian: Never allocate more chunks if JVM heap has less than 64MB headroom
+    if (freeHeap < 64L * 1024L * 1024L) {
+      return false
+    }
+
     val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+    // Clamp target buffer bytes to safe heap budget (leaving at least 96MB for UI, Compose, and GC)
+    val maxSafeBytes = (maxHeap - 96L * 1024L * 1024L).coerceAtLeast(32L * 1024L * 1024L)
+    val bufferTargetBytes = minOf(ramMb.toLong() * 1024L * 1024L, maxSafeBytes)
+
     if (ramMb != lastAppliedMb) {
       lastAppliedMb = ramMb
-      allocator.setTargetBufferSize(ramMb * 1024 * 1024)
+      allocator.setTargetBufferSize(bufferTargetBytes.toInt())
     }
 
     val maxBufferUs = (ramMb.toFloat() / 160f * 50_000_000L).toLong().coerceIn(20_000_000L, 300_000_000L)
     val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
-    val bufferTargetBytes = ramMb.toLong() * 1024L * 1024L
 
     // Size limit check
     if (allocator.totalBytesAllocated.toLong() >= bufferTargetBytes) {
@@ -1884,7 +1897,7 @@ private class DynamicLoadControl(
       return false
     }
 
-    // Below dynamic minimum, always load
+    // Dynamic minimum check (only load if size limit and heap allow it)
     if (parameters.bufferedDurationUs < minBufferUs) {
       return true
     }
