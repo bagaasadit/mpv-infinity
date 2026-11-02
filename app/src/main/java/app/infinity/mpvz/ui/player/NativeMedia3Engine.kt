@@ -227,9 +227,8 @@ class NativeMedia3Engine(
       },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
-    // being handed over from MPV. Disable this watchdog for Native; a real player/codec error is
-    // still delivered through Player.Listener.onPlayerError.
-    .setStuckBufferingDetectionTimeoutMs(Int.MAX_VALUE)
+    // being handed over from MPV. Set a generous 2-minute watchdog to prevent premature fallback.
+    .setStuckBufferingDetectionTimeoutMs(120_000)
     .setMediaSourceFactory(mediaSourceFactory)
     .setRenderersFactory(
       object : DefaultRenderersFactory(context.applicationContext) {
@@ -1847,18 +1846,18 @@ private class DynamicLoadControl(
   startBufferMs: Int,
 ) : DefaultLoadControl(
   allocator,
-  /* minBufferMs = */ 10_000,
-  /* minBufferForLocalPlaybackMs = */ 10_000,
-  /* maxBufferMs = */ 180_000,
-  /* maxBufferForLocalPlaybackMs = */ 180_000,
+  /* minBufferMs = */ 3_000,
+  /* minBufferForLocalPlaybackMs = */ 3_000,
+  /* maxBufferMs = */ 30_000,
+  /* maxBufferForLocalPlaybackMs = */ 30_000,
   /* bufferForPlaybackMs = */ startBufferMs,
   /* bufferForPlaybackForLocalPlaybackMs = */ startBufferMs,
-  /* bufferForPlaybackAfterRebufferMs = */ 3_000,
-  /* bufferForPlaybackAfterRebufferForLocalPlaybackMs = */ 3_000,
+  /* bufferForPlaybackAfterRebufferMs = */ 2_500,
+  /* bufferForPlaybackAfterRebufferForLocalPlaybackMs = */ 2_500,
   /* targetBufferBytes = */ 256 * 1024 * 1024,
   /* prioritizeTimeOverSizeThresholds = */ false,
   /* prioritizeTimeOverSizeThresholdsForLocalPlayback = */ false,
-  /* backBufferDurationMs = */ 60_000,
+  /* backBufferDurationMs = */ 15_000,
   /* retainBackBufferFromKeyframe = */ false,
 ) {
   private var lastAppliedMb = -1
@@ -1871,13 +1870,10 @@ private class DynamicLoadControl(
     val usedHeap = runtime.totalMemory() - runtime.freeMemory()
     val freeHeap = (maxHeap - usedHeap).coerceAtLeast(0L)
 
-    // Media3 allocates in Dalvik Java heap (growth limit 512MB).
-    // Reserve at least 160MB for Compose UI, Bitmaps, decoders, and GC headroom.
-    val maxSafeBytes = (maxHeap - 160L * 1024L * 1024L).coerceIn(32L * 1024L * 1024L, 256L * 1024L * 1024L)
+    // Media3 allocates in Dalvik Java heap (512MB growth limit on Android).
+    // Reserve at least 128MB for Compose UI, Bitmaps, decoders, and GC headroom.
+    val maxSafeBytes = (maxHeap - 128L * 1024L * 1024L).coerceIn(32L * 1024L * 1024L, 256L * 1024L * 1024L)
     val bufferTargetBytes = minOf(ramMb.toLong() * 1024L * 1024L, maxSafeBytes)
-
-    val maxBufferUs = (ramMb.toFloat() / 160f * 50_000_000L).toLong().coerceIn(20_000_000L, 180_000_000L)
-    val minBufferUs = (maxBufferUs / 2.5f).toLong().coerceAtLeast(10_000_000L)
 
     if (ramMb != lastAppliedMb) {
       lastAppliedMb = ramMb
@@ -1885,37 +1881,31 @@ private class DynamicLoadControl(
       allocator.trim()
       Log.i(
         "mpvZero-DynamicBuffer",
-        "RAM Buffer updated: setting=${ramMb}MB -> effectiveMedia3=${bufferTargetBytes / (1024 * 1024)}MB (maxDuration=${maxBufferUs / 1_000_000}s, freeHeap=${freeHeap / (1024 * 1024)}MB)",
+        "RAM Buffer updated: setting=${ramMb}MB -> effectiveMedia3=${bufferTargetBytes / (1024 * 1024)}MB (freeHeap=${freeHeap / (1024 * 1024)}MB)",
       )
     }
 
-    // 1. Starvation Guardian:
-    // If the player has less than 5 seconds of buffer (starting, seeking, or rebuffering),
-    // NEVER return false. Refusing to load when buffer is empty violates Media3 LoadControl contract
-    // and causes "StuckPlayerException: Player stuck buffering and not loading".
-    if (parameters.bufferedDurationUs < 5_000_000L) {
-      return true
-    }
-
-    // 2. JVM Heap Headroom Guardian:
-    // Only pause if we already have 5+ seconds of buffer and free JVM heap is critically low (<48MB).
-    if (freeHeap < 48L * 1024L * 1024L) {
-      allocator.trim()
-      return false
-    }
-
-    // 3. Size limit check:
+    // 1. Hard Dalvik Heap Ceiling (256MB Hard Cap):
+    // If allocated buffer exceeds bufferTargetBytes, STOP LOADING immediately.
+    // Continuing beyond this point will throw Dalvik OutOfMemoryError.
     if (allocator.totalBytesAllocated.toLong() >= bufferTargetBytes) {
       return false
     }
 
-    // 4. Time ceiling check:
-    if (parameters.bufferedDurationUs >= maxBufferUs) {
+    // 2. JVM Heap Headroom Guardian:
+    // If available free heap drops dangerously low (<64MB), trim allocator and stop loading.
+    if (freeHeap < 64L * 1024L * 1024L) {
+      allocator.trim()
       return false
     }
 
-    // 5. Dynamic refill check:
-    if (parameters.bufferedDurationUs < minBufferUs) {
+    // 3. Time Ceiling Guardian (max 30s buffer ahead):
+    if (parameters.bufferedDurationUs >= 30_000_000L) {
+      return false
+    }
+
+    // 4. Minimum Buffer Refill Trigger:
+    if (parameters.bufferedDurationUs < 6_000_000L) {
       return true
     }
 
@@ -1923,7 +1913,6 @@ private class DynamicLoadControl(
   }
 
   override fun getBackBufferDurationUs(playerId: PlayerId): Long {
-    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-    return (ramMb.toFloat() / 160f * 20_000_000L).toLong().coerceIn(10_000_000L, 60_000_000L)
+    return 15_000_000L
   }
 }
