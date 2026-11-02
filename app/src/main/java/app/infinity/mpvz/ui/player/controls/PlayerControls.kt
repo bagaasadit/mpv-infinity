@@ -103,6 +103,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import app.infinity.mpvz.utils.device.AdaptiveBufferManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -2212,9 +2213,9 @@ private fun NativeStatsPageOverlay(
   snapshot: NativePlaybackSnapshot,
   modifier: Modifier = Modifier,
 ) {
-  val playerPreferences = koinInject<PlayerPreferences>()
-  val ramBufferMb by playerPreferences.ramBufferSizeMb.collectAsState()
-  val maxBufferSecs = (ramBufferMb.toFloat() / 160f * 50).roundToInt().coerceIn(20, 180)
+  val context = LocalContext.current
+  val ramBufferMb = AdaptiveBufferManager.getMedia3BufferMb(context)
+  val maxBufferSecs = 30
   val quality = if (snapshot.videoWidth > 0 && snapshot.videoHeight > 0) {
     "${snapshot.videoWidth}×${snapshot.videoHeight}"
   } else {
@@ -2505,9 +2506,13 @@ private fun CustomStatsPageSixOverlay(
             formatByteSize(fileCacheBytes),
           )
         }
-      val currentRamBufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-      val maxNativeBufferSecs = (currentRamBufferMb.toFloat() / 160f * 50).roundToInt().coerceIn(20, 180)
-      val minNativeBufferSecs = (maxNativeBufferSecs / 2.5f).roundToInt().coerceAtLeast(10)
+      val currentRamBufferMb = if (isNativeActive) {
+        AdaptiveBufferManager.getMedia3BufferMb(context)
+      } else {
+        AdaptiveBufferManager.getMpvBufferMb(context)
+      }
+      val maxNativeBufferSecs = 30
+      val minNativeBufferSecs = 6
       val cacheActivityText =
         if (isNativeActive) {
           "RAM Buffer target=${currentRamBufferMb}MB · max=${maxNativeBufferSecs}s · state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"

@@ -42,6 +42,7 @@ import app.infinity.mpvz.domain.anime4k.Anime4KManager
 import app.infinity.mpvz.domain.autocrop.AutoCropAnalyzer
 import app.infinity.mpvz.domain.autocrop.AutoCropEdges
 import app.infinity.mpvz.domain.hdr.HdrToysManager
+import app.infinity.mpvz.utils.device.AdaptiveBufferManager
 import app.infinity.mpvz.preferences.AdvancedPreferences
 import app.infinity.mpvz.preferences.AudioChannels
 import app.infinity.mpvz.preferences.AudioPreferences
@@ -1673,13 +1674,13 @@ class PlayerViewModel : ViewModel(),
       }
     }
 
-    // Observe RAM buffer size preference changes to update MPV cache dynamically
+    // Apply adaptive buffer size for MPV cache
     viewModelScope.launch(playbackStateDispatcher) {
-      playerPreferences.ramBufferSizeMb.changes().collect { mb ->
-        if (!_isMpvCoreReady.value) return@collect
-        val bufferMb = mb.coerceIn(32, 1024)
-        val readaheadSecs = (bufferMb.toFloat() / 160f * 60).toInt().coerceIn(20, 180)
-        val backBytesMb = (bufferMb / 4).coerceIn(16, 128)
+      _isMpvCoreReady.collect { ready ->
+        if (!ready) return@collect
+        val bufferMb = AdaptiveBufferManager.getMpvBufferMb(appContext)
+        val readaheadSecs = AdaptiveBufferManager.getMpvReadaheadSecs(bufferMb)
+        val backBytesMb = AdaptiveBufferManager.getMpvBackBytesMb(bufferMb)
         runCatching {
           val bytes = bufferMb.toLong() * 1024L * 1024L
           val backBytes = backBytesMb.toLong() * 1024L * 1024L
@@ -1689,7 +1690,7 @@ class PlayerViewModel : ViewModel(),
           PlaybackSession.setPropertyString("demuxer-max-back-bytes", "${backBytesMb}MiB")
           PlaybackSession.setPropertyString("demuxer-readahead-secs", readaheadSecs.toString())
         }.onFailure { e ->
-          Log.w(TAG, "Error updating dynamic buffer options: $e")
+          Log.w(TAG, "Error configuring adaptive buffer options: $e")
         }
       }
     }

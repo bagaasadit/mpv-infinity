@@ -73,6 +73,7 @@ import app.infinity.mpvz.presentation.crash.CrashActivity
 import app.infinity.mpvz.ui.icons.Icon
 import app.infinity.mpvz.ui.icons.Icons
 import app.infinity.mpvz.ui.preferences.components.SwitchPreference
+import app.infinity.mpvz.utils.device.AdaptiveBufferManager
 import app.infinity.mpvz.ui.utils.LocalBackStack
 import app.infinity.mpvz.ui.utils.LocalShowSettingsBackArrow
 import app.infinity.mpvz.ui.utils.popSafely
@@ -612,28 +613,19 @@ object AdvancedPreferencesScreen : Screen {
 
               PreferenceDivider()
 
-              val ramBufferMb by playerPreferences.ramBufferSizeMb.collectAsState()
-              val estSeconds = (ramBufferMb.toFloat() / 160f * 50).roundToInt().coerceIn(15, 180)
+              val totalRamMb = AdaptiveBufferManager.getTotalRamMb(context)
+              val mpvBufferMb = AdaptiveBufferManager.getMpvBufferMb(context)
+              val media3BufferMb = AdaptiveBufferManager.getMedia3BufferMb(context)
+              val ramStr = if (totalRamMb >= 1024) "${"%.1f".format(totalRamMb / 1024f)} GB" else "$totalRamMb MB"
 
-              SliderPreference(
-                value = ramBufferMb.toFloat(),
-                onValueChange = {
-                  val snapped = (it / 16).roundToInt() * 16
-                  playerPreferences.ramBufferSizeMb.set(snapped.coerceIn(32, 512))
-                },
-                title = { Text("RAM Buffer Cache") },
-                valueRange = 32f..512f,
+              Preference(
+                title = { Text("Adaptive RAM Buffer") },
                 summary = {
                   Text(
-                    "Network & file read-ahead memory buffer for MPV and Media3 ($ramBufferMb MB · ~$estSeconds s)",
+                    "Automatically tuned to device hardware ($ramStr RAM · MPV: ${mpvBufferMb}MB, Media3: ${media3BufferMb}MB)",
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                onSliderValueChange = {
-                  val snapped = (it / 16).roundToInt() * 16
-                  playerPreferences.ramBufferSizeMb.set(snapped.coerceIn(32, 512))
-                },
-                sliderValue = ramBufferMb.toFloat(),
               )
             }
           }

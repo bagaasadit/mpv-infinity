@@ -36,6 +36,7 @@ import app.infinity.mpvz.ui.player.anime4k.clearAnime4KShaders
 import app.infinity.mpvz.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.infinity.mpvz.ui.player.controls.components.panels.toColorHexString
 import app.infinity.mpvz.ui.player.ytdlp.YtdlpManager
+import app.infinity.mpvz.utils.device.AdaptiveBufferManager
 import app.infinity.mpvz.utils.device.VulkanCapabilities
 import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.KeyMapping
@@ -285,9 +286,9 @@ class MPVView(
     PlaybackSession.setOptionString("cache", "auto")
     PlaybackSession.setOptionString("cache-pause", "yes")
     PlaybackSession.setOptionString("cache-pause-wait", "1")
-    val bufferMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
-    val readaheadSecs = (bufferMb.toFloat() / 160f * 60).toInt().coerceIn(20, 180)
-    val backBytesMb = (bufferMb / 4).coerceIn(16, 128)
+    val bufferMb = AdaptiveBufferManager.getMpvBufferMb(context)
+    val readaheadSecs = AdaptiveBufferManager.getMpvReadaheadSecs(bufferMb)
+    val backBytesMb = AdaptiveBufferManager.getMpvBackBytesMb(bufferMb)
     PlaybackSession.setOptionString("demuxer-max-bytes", "${bufferMb}MiB")
     PlaybackSession.setOptionString("demuxer-max-back-bytes", "${backBytesMb}MiB")
     PlaybackSession.setOptionString("demuxer-readahead-secs", readaheadSecs.toString())

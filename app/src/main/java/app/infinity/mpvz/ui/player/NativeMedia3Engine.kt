@@ -43,6 +43,7 @@ import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.analytics.PlayerId
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import app.infinity.mpvz.utils.device.AdaptiveBufferManager
 import androidx.media3.common.audio.AudioProcessor
 import app.infinity.mpvz.ui.player.audio.AudioOutputRouter
 import app.infinity.mpvz.ui.player.audio.AudioOutputType
@@ -223,7 +224,7 @@ class NativeMedia3Engine(
         val startBufferMs = if (isLowRam) 1_500 else 2_500
 
         val allocator = DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
-        DynamicLoadControl(allocator, playerPreferences, startBufferMs)
+        DynamicLoadControl(context.applicationContext, allocator, startBufferMs)
       },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -1838,11 +1839,11 @@ class NativeMedia3Engine(
 
 /**
  * Subclasses DefaultLoadControl to make RAM buffer size and duration ceilings dynamic.
- * Queries [PlayerPreferences.ramBufferSizeMb] live on every loading cycle.
+ * Queries [AdaptiveBufferManager.getMedia3BufferMb] live on every loading cycle.
  */
 private class DynamicLoadControl(
+  private val context: Context,
   private val allocator: DefaultAllocator,
-  private val playerPreferences: PlayerPreferences,
   startBufferMs: Int,
 ) : DefaultLoadControl(
   allocator,
@@ -1863,7 +1864,7 @@ private class DynamicLoadControl(
   private var lastAppliedMb = -1
 
   override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
-    val ramMb = playerPreferences.ramBufferSizeMb.get().coerceIn(32, 1024)
+    val adaptiveMedia3Mb = AdaptiveBufferManager.getMedia3BufferMb(context)
 
     val runtime = Runtime.getRuntime()
     val maxHeap = runtime.maxMemory()
@@ -1873,15 +1874,15 @@ private class DynamicLoadControl(
     // Media3 allocates in Dalvik Java heap (512MB growth limit on Android).
     // Reserve at least 128MB for Compose UI, Bitmaps, decoders, and GC headroom.
     val maxSafeBytes = (maxHeap - 128L * 1024L * 1024L).coerceIn(32L * 1024L * 1024L, 256L * 1024L * 1024L)
-    val bufferTargetBytes = minOf(ramMb.toLong() * 1024L * 1024L, maxSafeBytes)
+    val bufferTargetBytes = minOf(adaptiveMedia3Mb.toLong() * 1024L * 1024L, maxSafeBytes)
 
-    if (ramMb != lastAppliedMb) {
-      lastAppliedMb = ramMb
+    if (adaptiveMedia3Mb != lastAppliedMb) {
+      lastAppliedMb = adaptiveMedia3Mb
       allocator.setTargetBufferSize(bufferTargetBytes.toInt())
       allocator.trim()
       Log.i(
         "mpvZero-DynamicBuffer",
-        "RAM Buffer updated: setting=${ramMb}MB -> effectiveMedia3=${bufferTargetBytes / (1024 * 1024)}MB (freeHeap=${freeHeap / (1024 * 1024)}MB)",
+        "Adaptive RAM Buffer applied: target=${adaptiveMedia3Mb}MB (freeHeap=${freeHeap / (1024 * 1024)}MB)",
       )
     }
 
