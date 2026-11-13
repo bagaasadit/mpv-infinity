@@ -34,14 +34,18 @@ import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.FileDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.analytics.PlayerId
 import androidx.media3.exoplayer.upstream.DefaultAllocator
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import app.infinity.mpvz.utils.device.AdaptiveBufferManager
 import androidx.media3.common.audio.AudioProcessor
@@ -81,6 +85,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.pow
 
 data class NativePlaybackSnapshot(
@@ -182,6 +188,16 @@ class NativeMedia3Engine(
     upstreamFactory = httpDataSourceFactory,
     sessionManager = offHeapSessionManager,
     opener = httpStreamOpener,
+    onSourceLengthResolved = { resolvedUri, totalBytes ->
+      if (totalBytes > 0L) {
+        loopHandler.post {
+          if (sourceSizeBytes <= 0L && preparationUri == resolvedUri) {
+            sourceSizeBytes = totalBytes
+            publishSnapshot()
+          }
+        }
+      }
+    },
   )
   // Direct streaming into off-heap SharedMemory + lean Dalvik queue without flash I/O thrashing
   private val dataSourceFactory = DefaultDataSource.Factory(context.applicationContext, readAheadHttpDataSourceFactory)
@@ -245,8 +261,31 @@ class NativeMedia3Engine(
   private val extractorsFactory: ExtractorsFactory =
     androidx.media3.extractor.DefaultExtractorsFactory()
       .withAssMkvSupport(assSubtitleParserFactory, assHandler)
+  private val loadErrorHandlingPolicy = object : DefaultLoadErrorHandlingPolicy() {
+    override fun getMinimumLoadableRetryCount(dataType: Int): Int =
+      when (dataType) {
+        C.DATA_TYPE_MEDIA,
+        C.DATA_TYPE_MEDIA_PROGRESSIVE_LIVE,
+        C.DATA_TYPE_MANIFEST,
+        -> 6
+        else -> super.getMinimumLoadableRetryCount(dataType)
+      }
+
+    override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+      val superDelay = super.getRetryDelayMsFor(loadErrorInfo)
+      if (superDelay == C.TIME_UNSET) return C.TIME_UNSET
+      val err = loadErrorInfo.exception
+      if (err is HttpDataSource.InvalidResponseCodeException &&
+        err.responseCode in setOf(400, 401, 403, 404, 410)
+      ) {
+        return C.TIME_UNSET
+      }
+      return minOf(5_000L, superDelay)
+    }
+  }
   private val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
     .setSubtitleParserFactory(assSubtitleParserFactory)
+    .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
   private val player = ExoPlayer.Builder(context.applicationContext)
     .setLoadControl(
       run {
@@ -481,6 +520,7 @@ class NativeMedia3Engine(
     }
 
     override fun onCues(cueGroup: CueGroup) {
+      if (_subtitleCueText.subscriptionCount.value <= 0) return
       // This is only a text bridge for embedded translation. Media3/ass-media still renders the
       // original cue through PlayerView/libass; no cue is converted or re-rendered here.
       _subtitleCueText.value = cueGroup.cues
@@ -1222,21 +1262,32 @@ class NativeMedia3Engine(
     lastAppliedResizeMode = null
     lastAppliedSegmentIndex = -1
     isManualAspectOverride = false
-    loadAspectMapForUri(mediaUri, sourceHint, sourceUri)
-    if (activeAspectSegments.isNotEmpty()) {
-      val initialIndex = activeAspectSegments.indexOfFirst { startPositionMs in it.startMs..it.endMs }
-      if (initialIndex != -1) {
-        lastAppliedSegmentIndex = initialIndex
-        val initialActive = activeAspectSegments[initialIndex]
-        val initialMode = if (initialActive.ratio < 2.0f) {
-          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-        } else {
-          androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-        }
-        lastAppliedResizeMode = initialMode
-        attachedView?.post {
-          attachedView?.resizeMode = initialMode
-          attachedView?.requestLayout()
+    aspectMapJob?.cancel()
+    val aspectRequestId = ++aspectMapRequestId
+    activeAspectSegments = emptyList()
+    aspectMapJob = engineScope.launch(Dispatchers.IO) {
+      val segments = findAspectMapForUri(mediaUri, sourceHint, sourceUri)
+      if (segments.isEmpty()) return@launch
+      withContext(Dispatchers.Main) {
+        if (aspectRequestId != aspectMapRequestId) return@withContext
+        activeAspectSegments = segments
+        if (lastAppliedResizeMode == null && !isManualAspectOverride) {
+          val currentPos = player.currentPosition.coerceAtLeast(startPositionMs)
+          val initialIndex = segments.indexOfFirst { currentPos in it.startMs..it.endMs }
+          if (initialIndex != -1) {
+            lastAppliedSegmentIndex = initialIndex
+            val initialActive = segments[initialIndex]
+            val initialMode = if (initialActive.ratio < 2.0f) {
+              androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+            } else {
+              androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+            lastAppliedResizeMode = initialMode
+            attachedView?.post {
+              attachedView?.resizeMode = initialMode
+              attachedView?.requestLayout()
+            }
+          }
         }
       }
     }
@@ -1267,15 +1318,6 @@ class NativeMedia3Engine(
     preparationStartedAtMs = SystemClock.elapsedRealtime()
     preparationUri = mediaItem.localConfiguration?.uri
     sourceSizeBytes = resolveLocalSize(mediaUri)
-    if (sourceSizeBytes <= 0L && (mediaUri.scheme.equals("http", true) || mediaUri.scheme.equals("https", true))) {
-      Thread {
-        val resolved = resolveHttpSize(mediaUri, headers)
-        if (resolved > 0L && preparationUri == mediaUri) {
-          sourceSizeBytes = resolved
-          loopHandler.post { publishSnapshot() }
-        }
-      }.apply { name = "native-media-size"; isDaemon = true }.start()
-    }
     metadataChapters = emptyList()
     Log.d(logTag, "prepare begin uri=$preparationUri")
     player.setMediaItem(mediaItem, startPositionMs.coerceAtLeast(0L))
@@ -1315,34 +1357,6 @@ class NativeMedia3Engine(
     }
     return 0L
   }
-
-  private fun resolveHttpSize(uri: Uri, requestHeaders: Map<String, String>): Long =
-    runCatching {
-      fun open(method: String, range: String? = null) =
-        (java.net.URL(uri.toString()).openConnection() as java.net.HttpURLConnection).apply {
-          requestMethod = method
-          connectTimeout = 4_000
-          readTimeout = 4_000
-          range?.let { setRequestProperty("Range", it) }
-          requestHeaders.forEach { (key, value) -> setRequestProperty(key, value) }
-        }
-      open("HEAD").let { connection ->
-        try {
-          if (connection.responseCode in 200..399 && connection.contentLengthLong > 0L) connection.contentLengthLong else -1L
-        } finally {
-          connection.disconnect()
-        }
-      }.takeIf { it > 0L } ?: open("GET", "bytes=0-0").let { connection ->
-        try {
-          val range = connection.getHeaderField("Content-Range").orEmpty()
-          Regex("/(\\d+)$").find(range)?.groupValues?.get(1)?.toLongOrNull()
-            ?: connection.contentLengthLong.takeIf { it > 0L }
-            ?: -1L
-        } finally {
-          connection.disconnect()
-        }
-      }
-    }.getOrDefault(-1L).coerceAtLeast(0L)
 
   fun setPlaying(playing: Boolean) {
     if (playing) {
@@ -1489,7 +1503,10 @@ class NativeMedia3Engine(
   // ==============================================================================
   // ASPECT MAP JSON LOADER (FOR SHIFTING RATIO FILMS LIKE NOLAN / IMAX)
   // ==============================================================================
-  private fun loadAspectMapForUri(mediaUri: Uri, sourceHint: String = "", sourceUri: Uri? = null) {
+  private var aspectMapJob: Job? = null
+  private var aspectMapRequestId: Long = 0L
+
+  private fun findAspectMapForUri(mediaUri: Uri, sourceHint: String = "", sourceUri: Uri? = null): List<AspectTimeSegment> {
     val candidateNames = mutableListOf<String>()
 
     fun extractDisplayName(u: Uri?): String? {
@@ -1537,18 +1554,17 @@ class NativeMedia3Engine(
           }
           if (isMatch) {
             Log.i(logTag, "Matched aspect map file: ${file.absolutePath} for candidates: $cleanCandidates")
-            parseAspectMapJson(file)
-            return
+            return parseAspectMapJson(file)
           }
         }
       }
     }
-    activeAspectSegments = emptyList()
     Log.w(logTag, "No matching aspect map found for: $cleanCandidates")
+    return emptyList()
   }
 
-  private fun parseAspectMapJson(file: File) {
-    runCatching {
+  private fun parseAspectMapJson(file: File): List<AspectTimeSegment> {
+    return runCatching {
       val text = file.readText()
       val array = JSONArray(text)
       val list = mutableListOf<AspectTimeSegment>()
@@ -1561,11 +1577,11 @@ class NativeMedia3Engine(
           list.add(AspectTimeSegment(start, end, ratio))
         }
       }
-      activeAspectSegments = list
       Log.i(logTag, "Loaded external aspect map from ${file.name} with ${list.size} cues")
+      list
     }.onFailure {
       Log.e(logTag, "Failed to parse aspect map JSON: ${it.message}")
-    }
+    }.getOrDefault(emptyList())
   }
 
   fun disableSubtitles() {
@@ -1928,8 +1944,8 @@ private class DynamicLoadControl(
   allocator,
   /* minBufferMs = */ 3_000,
   /* minBufferForLocalPlaybackMs = */ 3_000,
-  /* maxBufferMs = */ 120_000,
-  /* maxBufferForLocalPlaybackMs = */ 120_000,
+  /* maxBufferMs = */ 20_000,
+  /* maxBufferForLocalPlaybackMs = */ 20_000,
   /* bufferForPlaybackMs = */ startBufferMs,
   /* bufferForPlaybackForLocalPlaybackMs = */ startBufferMs,
   /* bufferForPlaybackAfterRebufferMs = */ 2_000,
@@ -1947,7 +1963,7 @@ private class DynamicLoadControl(
   }
 
   override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
-    // 1. Hard Dalvik sample-queue ceiling (48-128MB); heavy bytes sit off-heap in SharedMemory.
+    // 1. Hard Dalvik sample-queue ceiling (32-64MB); heavy bytes sit off-heap in SharedMemory.
     if (allocator.totalBytesAllocated.toLong() >= bufferTargetBytes) {
       return false
     }
@@ -1967,8 +1983,8 @@ private class DynamicLoadControl(
       return false
     }
 
-    // 4. Time ceiling guard (max 120s sample queue ahead).
-    if (bufferedUs >= 120_000_000L) {
+    // 4. Time ceiling guard (max 20s sample queue in Dalvik; off-heap ring buffers ahead up to stream budget).
+    if (bufferedUs >= 20_000_000L) {
       return false
     }
 

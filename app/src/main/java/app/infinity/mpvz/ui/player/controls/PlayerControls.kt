@@ -2215,7 +2215,7 @@ private fun NativeStatsPageOverlay(
 ) {
   val context = LocalContext.current
   val ramBufferMb = remember(context) { AdaptiveBufferManager.getTotalMedia3BufferMb(context) }
-  val maxBufferSecs = 120
+  val maxBufferSecs = 20
   val streamCachedMb = snapshot.streamBufferedBytes / (1024L * 1024L)
   val streamCapMb = snapshot.streamBufferCapacityBytes / (1024L * 1024L)
   val quality = if (snapshot.videoWidth > 0 && snapshot.videoHeight > 0) {
@@ -2436,105 +2436,103 @@ private fun CustomStatsPageSixOverlay(
           formatByteSize(memorySnapshot.javaHeapMaxBytes),
           formatByteSize(memorySnapshot.nativeHeapBytes),
         )
-      val cacheDurationSeconds =
-        runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-duration") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?: 0.0
-      val packetCacheBytes =
-        runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-state/fw-bytes") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?.toLong()
-          ?: 0L
-      val fileCacheBytes =
-        runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-state/file-cache-bytes") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?.toLong()
-          ?: 0L
-      val isPaused = runCatching { PlaybackSession.getPropertyBoolean("pause") }.getOrDefault(false) == true
-      val pausedForCache = runCatching { PlaybackSession.getPropertyBoolean("paused-for-cache") }.getOrNull()
-      val cacheIdle = runCatching { PlaybackSession.getPropertyBoolean("demuxer-cache-idle") }.getOrNull()
-      val cacheReadBytesPerSecond =
-        runCatching { PlaybackSession.getPropertyInt("cache-speed") }
-          .getOrNull()
-          ?.takeIf { it >= 0 }
-      val cacheMode = runCatching { PlaybackSession.getPropertyString("cache") }.getOrNull() ?: "?"
-      val cachePause = runCatching { PlaybackSession.getPropertyBoolean("cache-pause") }.getOrNull()
-      val cachePauseWait = runCatching { PlaybackSession.getPropertyInt("cache-pause-wait") }.getOrNull()
-      val cacheMaxBytes =
-        runCatching { PlaybackSession.getPropertyInt("demuxer-max-bytes") }
-          .getOrNull()
-          ?.takeIf { it >= 0 }
-          ?.toLong()
-      val cacheSecondsLimit =
-        runCatching { PlaybackSession.getPropertyDouble("cache-secs") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?.let { String.format("%.1f", it) }
-          ?: "?"
-      val demuxerReadaheadSeconds =
-        runCatching { PlaybackSession.getPropertyDouble("demuxer-readahead-secs") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?.let { String.format("%.1f", it) }
-          ?: "?"
-      val cachePauseState = when {
-        pausedForCache == true -> "cache-paused"
-        isPaused -> "paused"
-        else -> "playing"
-      }
-      val cacheActivity = when (cacheIdle) {
-        true -> "idle"
-        false -> "reading"
-        null -> "unknown"
-      }
-      val cacheReadRateText =
-        cacheReadBytesPerSecond?.let { "${formatByteSize(it.toLong())}/s" } ?: "?"
-      val cacheMaxText = cacheMaxBytes?.let(::formatByteSize) ?: "?"
-      val hlsBitrate = runCatching { PlaybackSession.getPropertyString("hls-bitrate") }.getOrNull() ?: "?"
       val isNativeActive = activity?.isNativeEngineActive() == true
-      val currentNativeSnapshot = activity?.nativePlaybackSnapshot?.value ?: NativePlaybackSnapshot()
-      val playbackCacheText =
-        if (isNativeActive) {
-          val aheadSecs = String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)
-          val status = if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isLoading) "downloading" else "healthy"
-          "Native (Media3): ${aheadSecs}s ahead · $status"
-        } else {
+      val isPaused: Boolean
+      val currentRamBufferMb: Int
+      val playbackCacheText: String
+      val cacheActivityText: String
+      val cacheOptionsText: String
+      if (isNativeActive) {
+        val currentNativeSnapshot = activity?.nativePlaybackSnapshot?.value ?: NativePlaybackSnapshot()
+        isPaused = !currentNativeSnapshot.isPlaying
+        currentRamBufferMb = AdaptiveBufferManager.getTotalMedia3BufferMb(context)
+        val aheadSecs = String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)
+        val status = if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isLoading) "downloading" else "healthy"
+        playbackCacheText = "Native (Media3): ${aheadSecs}s ahead · $status"
+        val maxNativeBufferSecs = 20
+        val minNativeBufferSecs = 3
+        val streamAheadMb = currentNativeSnapshot.streamBufferedBytes / (1024L * 1024L)
+        val streamCapMb = currentNativeSnapshot.streamBufferCapacityBytes / (1024L * 1024L)
+        val streamLabel = if (streamCapMb > 0L) " · offheap=${streamAheadMb}/${streamCapMb}MB" else ""
+        cacheActivityText =
+          "RAM Buffer target=${currentRamBufferMb}MB$streamLabel · max=${maxNativeBufferSecs}s · " +
+            "state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"
+        cacheOptionsText =
+          "engine=Native(ExoPlayer) · min=${minNativeBufferSecs}s · max=${maxNativeBufferSecs}s · " +
+            "RAM=${currentRamBufferMb}MB · ahead=${String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)}s"
+      } else {
+        val cacheDurationSeconds =
+          runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-duration") }
+            .getOrNull()
+            ?.takeIf { it.isFinite() && it >= 0.0 }
+            ?: 0.0
+        val packetCacheBytes =
+          runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-state/fw-bytes") }
+            .getOrNull()
+            ?.takeIf { it.isFinite() && it >= 0.0 }
+            ?.toLong()
+            ?: 0L
+        val fileCacheBytes =
+          runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-state/file-cache-bytes") }
+            .getOrNull()
+            ?.takeIf { it.isFinite() && it >= 0.0 }
+            ?.toLong()
+            ?: 0L
+        isPaused = runCatching { PlaybackSession.getPropertyBoolean("pause") }.getOrDefault(false) == true
+        val pausedForCache = runCatching { PlaybackSession.getPropertyBoolean("paused-for-cache") }.getOrNull()
+        val cacheIdle = runCatching { PlaybackSession.getPropertyBoolean("demuxer-cache-idle") }.getOrNull()
+        val cacheReadBytesPerSecond =
+          runCatching { PlaybackSession.getPropertyInt("cache-speed") }
+            .getOrNull()
+            ?.takeIf { it >= 0 }
+        val cacheMode = runCatching { PlaybackSession.getPropertyString("cache") }.getOrNull() ?: "?"
+        val cachePause = runCatching { PlaybackSession.getPropertyBoolean("cache-pause") }.getOrNull()
+        val cachePauseWait = runCatching { PlaybackSession.getPropertyInt("cache-pause-wait") }.getOrNull()
+        val cacheMaxBytes =
+          runCatching { PlaybackSession.getPropertyInt("demuxer-max-bytes") }
+            .getOrNull()
+            ?.takeIf { it >= 0 }
+            ?.toLong()
+        val cacheSecondsLimit =
+          runCatching { PlaybackSession.getPropertyDouble("cache-secs") }
+            .getOrNull()
+            ?.takeIf { it.isFinite() && it >= 0.0 }
+            ?.let { String.format("%.1f", it) }
+            ?: "?"
+        val demuxerReadaheadSeconds =
+          runCatching { PlaybackSession.getPropertyDouble("demuxer-readahead-secs") }
+            .getOrNull()
+            ?.takeIf { it.isFinite() && it >= 0.0 }
+            ?.let { String.format("%.1f", it) }
+            ?: "?"
+        val cachePauseState = when {
+          pausedForCache == true -> "cache-paused"
+          isPaused -> "paused"
+          else -> "playing"
+        }
+        val cacheActivity = when (cacheIdle) {
+          true -> "idle"
+          false -> "reading"
+          null -> "unknown"
+        }
+        val cacheReadRateText =
+          cacheReadBytesPerSecond?.let { "${formatByteSize(it.toLong())}/s" } ?: "?"
+        val cacheMaxText = cacheMaxBytes?.let(::formatByteSize) ?: "?"
+        val hlsBitrate = runCatching { PlaybackSession.getPropertyString("hls-bitrate") }.getOrNull() ?: "?"
+        currentRamBufferMb = AdaptiveBufferManager.getMpvBufferMb(context)
+        playbackCacheText =
           String.format(
             playbackCacheFormat,
             cacheDurationSeconds,
             formatByteSize(packetCacheBytes),
             formatByteSize(fileCacheBytes),
           )
-        }
-      val currentRamBufferMb = if (isNativeActive) {
-        AdaptiveBufferManager.getTotalMedia3BufferMb(context)
-      } else {
-        AdaptiveBufferManager.getMpvBufferMb(context)
-      }
-      val maxNativeBufferSecs = 120
-      val minNativeBufferSecs = 3
-      val streamAheadMb = currentNativeSnapshot.streamBufferedBytes / (1024L * 1024L)
-      val streamCapMb = currentNativeSnapshot.streamBufferCapacityBytes / (1024L * 1024L)
-      val cacheActivityText =
-        if (isNativeActive) {
-          val streamLabel = if (streamCapMb > 0L) " · offheap=${streamAheadMb}/${streamCapMb}MB" else ""
-          "RAM Buffer target=${currentRamBufferMb}MB$streamLabel · max=${maxNativeBufferSecs}s · " +
-            "state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"
-        } else {
-          "$cachePauseState · $cacheActivity · in $cacheReadRateText"
-        }
-      val cacheOptionsText =
-        if (isNativeActive) {
-          "engine=Native(ExoPlayer) · min=${minNativeBufferSecs}s · max=${maxNativeBufferSecs}s · " +
-            "RAM=${currentRamBufferMb}MB · ahead=${String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)}s"
-        } else {
+        cacheActivityText = "$cachePauseState · $cacheActivity · in $cacheReadRateText"
+        cacheOptionsText =
           "cache=$cacheMode · pause=${cachePause?.toString() ?: "?"} · wait=${cachePauseWait?.toString() ?: "?"} · " +
             "max=$cacheMaxText · " +
             "secs=$cacheSecondsLimit · readahead=$demuxerReadaheadSeconds · hls=$hlsBitrate"
-        }
+      }
 
       val battery = readBatterySnapshot(context)
 

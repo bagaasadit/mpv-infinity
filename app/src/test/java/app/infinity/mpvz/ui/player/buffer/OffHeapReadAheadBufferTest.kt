@@ -660,6 +660,81 @@ class OffHeapReadAheadBufferTest {
     }
   }
 
+  @Test
+  fun expiredRedirectUrlFallsBackToOriginUrlAndResumesWithoutFailure() {
+    val payload = deterministicPayload(48 * 1024)
+    val originUrl = "https://origin.example/video.mkv"
+    val expiredCdnUrl = "https://cdn-edge-1.example/token-expired/video.mkv"
+    val allocator = TrackingSlabAllocator()
+    val requestedUrls = mutableListOf<String>()
+
+    val opener = HttpStreamOpener { targetUrl, _, offset ->
+      synchronized(requestedUrls) {
+        requestedUrls.add("$targetUrl@$offset")
+      }
+      when {
+        // First warmup open redirects to expiredCdnUrl and cuts off at 16 KB.
+        targetUrl == originUrl && offset == 0L && requestedUrls.size == 1 ->
+          ScriptedConnection(
+            payload = payload,
+            rangeStart = 0L,
+            resolvedUrl = expiredCdnUrl,
+            maxBytesBeforeDrop = 16 * 1024,
+            dropWithIoError = true,
+          )
+        // Reconnect against expiredCdnUrl fails with HTTP 403.
+        targetUrl == expiredCdnUrl ->
+          throw HttpOpenException(
+            responseCode = 403,
+            responseMessage = "Forbidden",
+            headers = emptyMap(),
+            url = expiredCdnUrl,
+            message = "Redirect token expired",
+          )
+        // Fallback reconnect against originUrl succeeds and streams remainder from offset 16 KB.
+        targetUrl == originUrl ->
+          ScriptedConnection(
+            payload = payload,
+            rangeStart = offset,
+            resolvedUrl = "https://cdn-edge-2.example/token-fresh/video.mkv",
+          )
+        else -> error("Unexpected targetUrl=$targetUrl offset=$offset")
+      }
+    }
+
+    val config = OffHeapStreamConfig(
+      capacityBytes = 64 * 1024L,
+      slabSizeBytes = 16 * 1024,
+      minGuaranteedForwardBytes = 8 * 1024L,
+      maxReconnectAttempts = 4,
+      reconnectBaseDelayMs = 5L,
+    )
+    val manager = OffHeapStreamSessionManager(
+      config = config,
+      opener = opener,
+      slabAllocator = allocator,
+      memoryGuard = SystemMemoryGuard { true },
+    )
+    val session = manager.getOrCreateSession(originUrl)
+    try {
+      val initialConn = opener.open(originUrl, emptyMap(), 0L)
+      val attached = session.promoteWarmupConnection(
+        connection = initialConn,
+        currentOffset = 0L,
+        reqHeaders = emptyMap(),
+      )
+      assertNotNull(attached)
+      val out = ByteArray(payload.size)
+      val totalRead = readExact(session, attached!!.seekEpoch, 0L, out)
+      assertEquals(payload.size, totalRead)
+      assertArrayEquals(payload, out)
+      assertTrue(requestedUrls.any { it.startsWith("$expiredCdnUrl@") })
+      assertTrue(requestedUrls.any { it == "$originUrl@${16 * 1024}" })
+    } finally {
+      manager.releaseAll()
+    }
+  }
+
   private fun readExact(
     session: OffHeapStreamSession,
     epoch: Long,

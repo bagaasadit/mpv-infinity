@@ -26,11 +26,11 @@ class AdaptiveBufferManagerTest {
 
   @Test
   fun media3DalvikQueueRemainsLeanAcrossAllHeapSizes() {
-    assertEquals(48, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 192, isLowRam = false))
-    assertEquals(48, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 512, isLowRam = true))
-    assertEquals(64, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 256, isLowRam = false))
-    assertEquals(96, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 384, isLowRam = false))
-    assertEquals(128, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 512, isLowRam = false))
+    assertEquals(32, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 192, isLowRam = false))
+    assertEquals(32, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 512, isLowRam = true))
+    assertEquals(48, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 256, isLowRam = false))
+    assertEquals(48, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 384, isLowRam = false))
+    assertEquals(64, AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 512, isLowRam = false))
   }
 
   @Test
@@ -40,15 +40,15 @@ class AdaptiveBufferManagerTest {
     assertEquals(128, AdaptiveBufferManager.computeMedia3StreamMb(totalRamMb = 4096, isLowRam = false))
     assertEquals(256, AdaptiveBufferManager.computeMedia3StreamMb(totalRamMb = 6144, isLowRam = false))
     assertEquals(384, AdaptiveBufferManager.computeMedia3StreamMb(totalRamMb = 8192, isLowRam = false))
-    assertEquals(512, AdaptiveBufferManager.computeMedia3StreamMb(totalRamMb = 12288, isLowRam = false))
+    assertEquals(576, AdaptiveBufferManager.computeMedia3StreamMb(totalRamMb = 12288, isLowRam = false))
   }
 
   @Test
-  fun flagshipCombinedBudgetGives640MbWhileKeepingDalvikAt128Mb() {
+  fun flagshipCombinedBudgetGives640MbWhileKeepingDalvikAt64Mb() {
     val dalvikMb = AdaptiveBufferManager.computeMedia3DalvikMb(maxHeapMb = 512, isLowRam = false)
     val offHeapMb = AdaptiveBufferManager.computeMedia3StreamMb(totalRamMb = 12288, isLowRam = false)
-    assertEquals(128, dalvikMb)
-    assertEquals(512, offHeapMb)
+    assertEquals(64, dalvikMb)
+    assertEquals(576, offHeapMb)
     assertEquals(640, dalvikMb + offHeapMb)
   }
 

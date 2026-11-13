@@ -36,6 +36,7 @@ class ReadAheadHttpDataSource(
   private val sessionManager: OffHeapStreamSessionManager,
   private val opener: HttpStreamOpener,
   private val defaultPropertiesSnapshot: () -> Map<String, String>,
+  private val onSourceLengthResolved: ((Uri, Long) -> Unit)? = null,
 ) : BaseDataSource(/* isNetwork = */ true) {
 
   private enum class Mode {
@@ -80,6 +81,18 @@ class ReadAheadHttpDataSource(
       mode = Mode.BYPASS
       opened = true
       bytesRemainingToReturn = length
+      val resolvedTotal =
+        when {
+          dataSpec.position == 0L && length > 0L -> length
+          delegate is HttpDataSource -> extractTotalLengthFromHeaders(delegate.responseHeaders, dataSpec.position, length)
+          else -> -1L
+        }
+      if (resolvedTotal > 0L) {
+        val lowerPath = dataSpec.uri.path?.lowercase(Locale.US).orEmpty()
+        if (!lowerPath.endsWith(".m3u8") && !lowerPath.endsWith(".mpd")) {
+          onSourceLengthResolved?.invoke(dataSpec.uri, resolvedTotal)
+        }
+      }
       transferStarted(dataSpec)
       return length
     }
@@ -95,6 +108,9 @@ class ReadAheadHttpDataSource(
       opened = true
       currentHeaders = hit.responseHeaders
       updateResolvedUri(hit.resolvedUrl, dataSpec.uri)
+      if (hit.totalResourceLength > 0L) {
+        onSourceLengthResolved?.invoke(dataSpec.uri, hit.totalResourceLength)
+      }
       val returnLen = computeReturnLength(dataSpec, C.LENGTH_UNSET.toLong(), hit.totalResourceLength)
       bytesRemainingToReturn = returnLen
       transferStarted(dataSpec)
@@ -115,6 +131,9 @@ class ReadAheadHttpDataSource(
       opened = true
       currentHeaders = attached.responseHeaders
       updateResolvedUri(attached.resolvedUrl, dataSpec.uri)
+      if (attached.totalResourceLength > 0L) {
+        onSourceLengthResolved?.invoke(dataSpec.uri, attached.totalResourceLength)
+      }
       val returnLen = computeReturnLength(dataSpec, C.LENGTH_UNSET.toLong(), attached.totalResourceLength)
       bytesRemainingToReturn = returnLen
       transferStarted(dataSpec)
@@ -140,6 +159,14 @@ class ReadAheadHttpDataSource(
     opened = true
     currentHeaders = conn.responseHeaders
     updateResolvedUri(conn.resolvedUrl, dataSpec.uri)
+    val discoveredTotal = when {
+      conn.totalResourceLength > 0L -> conn.totalResourceLength
+      dataSpec.position == 0L && conn.contentLength > 0L -> conn.contentLength
+      else -> -1L
+    }
+    if (discoveredTotal > 0L) {
+      onSourceLengthResolved?.invoke(dataSpec.uri, discoveredTotal)
+    }
 
     val returnLen = computeReturnLength(dataSpec, conn.contentLength, conn.totalResourceLength)
     bytesRemainingToReturn = returnLen
@@ -173,6 +200,36 @@ class ReadAheadHttpDataSource(
         HttpDataSource.HttpDataSourceException.TYPE_READ,
       )
     }
+  }
+
+  private val contentRangeTotalRegex = Regex("/(\\d+)$")
+
+  private fun extractTotalLengthFromHeaders(
+    responseHeaders: Map<String, List<String>>,
+    requestPosition: Long,
+    openResultLength: Long,
+  ): Long {
+    val contentRangeHeader =
+      responseHeaders.entries
+        .firstOrNull { it.key.equals("Content-Range", ignoreCase = true) }
+        ?.value
+        ?.firstOrNull()
+    if (!contentRangeHeader.isNullOrBlank()) {
+      contentRangeTotalRegex.find(contentRangeHeader)?.groupValues?.getOrNull(1)?.toLongOrNull()
+        ?.takeIf { it > 0L }
+        ?.let { return it }
+    }
+    if (requestPosition == 0L) {
+      if (openResultLength > 0L) return openResultLength
+      responseHeaders.entries
+        .firstOrNull { it.key.equals("Content-Length", ignoreCase = true) }
+        ?.value
+        ?.firstOrNull()
+        ?.toLongOrNull()
+        ?.takeIf { it > 0L }
+        ?.let { return it }
+    }
+    return -1L
   }
 
   override fun getUri(): Uri? {
@@ -434,6 +491,7 @@ class ReadAheadHttpDataSourceFactory(
   private val upstreamFactory: DataSource.Factory,
   private val sessionManager: OffHeapStreamSessionManager,
   private val opener: HttpStreamOpener,
+  private val onSourceLengthResolved: ((Uri, Long) -> Unit)? = null,
 ) : DataSource.Factory {
 
   @Volatile
@@ -452,6 +510,7 @@ class ReadAheadHttpDataSourceFactory(
       sessionManager = sessionManager,
       opener = opener,
       defaultPropertiesSnapshot = { defaultProperties },
+      onSourceLengthResolved = onSourceLengthResolved,
     )
   }
 }

@@ -137,7 +137,7 @@ object AdaptiveBufferManager {
   /**
    * Computes lean Media3 Dalvik sample-queue buffer target in MB.
    * Heavy HTTP byte caching is offloaded off-heap via [getMedia3StreamBufferMb], keeping Dalvik
-   * sample queues lean (48-128MB) to eliminate OutOfMemoryError and GC pauses on 512MB heaps.
+   * sample queues lean (32-64MB) to eliminate OutOfMemoryError and GC pauses on 512MB heaps.
    */
   fun getMedia3BufferMb(context: Context): Int {
     val specs = getOrResolveSpecs(context)
@@ -146,10 +146,10 @@ object AdaptiveBufferManager {
 
   internal fun computeMedia3DalvikMb(maxHeapMb: Int, isLowRam: Boolean): Int {
     return when {
-      isLowRam || maxHeapMb <= 192 -> 48
-      maxHeapMb <= 256 -> 64
-      maxHeapMb <= 384 -> 96
-      else -> 128
+      isLowRam || maxHeapMb <= 192 -> 32
+      maxHeapMb <= 256 -> 48
+      maxHeapMb <= 384 -> 48
+      else -> 64
     }
   }
 
@@ -168,7 +168,7 @@ object AdaptiveBufferManager {
       totalRamMb < 5000 -> 128
       totalRamMb < 7000 -> 256
       totalRamMb < 10500 -> 384
-      else -> 512
+      else -> 576
     }
   }
 

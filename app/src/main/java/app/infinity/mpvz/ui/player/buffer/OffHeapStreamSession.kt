@@ -482,7 +482,9 @@ internal class OffHeapStreamSession(
     var knownTotal = initialTotalLength
     var canRange = rangeSupported
     var retryCount = 0
-    val stagingBuf = ByteArray(64 * 1024)
+    var activeReconnectUrl = streamUrl
+    var fellBackToOriginUrl = (streamUrl == url)
+    val stagingBuf = ByteArray(128 * 1024)
 
     try {
       while (true) {
@@ -508,8 +510,20 @@ internal class OffHeapStreamSession(
           }
 
           val reopened = try {
-            opener.open(streamUrl, reqHeaders, reconnectOffset)
+            opener.open(activeReconnectUrl, reqHeaders, reconnectOffset)
           } catch (httpErr: HttpOpenException) {
+            val expiredRedirect =
+              !fellBackToOriginUrl && httpErr.responseCode in setOf(401, 403, 410)
+            if (expiredRedirect) {
+              Log.w(
+                TAG,
+                "Redirected stream URL expired (${httpErr.responseCode}), falling back to origin URL",
+              )
+              activeReconnectUrl = url
+              fellBackToOriginUrl = true
+              retryCount++
+              continue
+            }
             val isPermanent = httpErr.responseCode in 400..499 &&
               httpErr.responseCode != 408 &&
               httpErr.responseCode != 429
@@ -552,7 +566,7 @@ internal class OffHeapStreamSession(
           conn = reopened
         }
 
-        val currentConn = conn!!
+        val currentConn = conn ?: continue
         lock.withLock {
           if (closed || generation != myGen || workerToken != latestWorkerToken) {
             currentConn.abort()

@@ -999,7 +999,7 @@ class PlayerActivity :
                   viewModel.scheduleAutoCropAnalysis(force = true)
                 }
               }
-            } else if (mpvInitialized) {
+            } else if (ensureMpvInitialized() == null) {
               activeEngineMode = PlaybackEngineMode.MPV
               viewModel.setNativeEngineActive(false)
               forceMpvAudioTrackAutoOnNextLoad = outgoingEngine == PlaybackEngineMode.NATIVE
@@ -1157,18 +1157,26 @@ class PlayerActivity :
     // A detached background session belongs to PlaybackSession, not to the old Activity.
     // Notification re-entry attaches this new surface to that live core without reloading it.
     releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
-    val setupResult = setupMPV()
-    if (setupResult != null) {
-      isUserFinishing = true
-      Toast.makeText(this, getString(R.string.toast_playback_load_failed) + ": " + setupResult, Toast.LENGTH_LONG).show()
-      finish()
-      return
+    val deferMpvInit = shouldDeferMpvInitAtLaunch(intent)
+    if (deferMpvInit) {
+      // Keep MPV's SurfaceView detached when booting straight into Native Media3 video playback.
+      // Any fallback or manual engine switch lazily invokes ensureMpvInitialized() before loading.
+      binding.player.visibility = View.GONE
+    } else {
+      val setupResult = setupMPV()
+      if (setupResult != null) {
+        isUserFinishing = true
+        Toast.makeText(this, getString(R.string.toast_playback_load_failed) + ": " + setupResult, Toast.LENGTH_LONG).show()
+        finish()
+        return
+      }
     }
-    // Construct the Activity-scoped adapter only after the process-wide native core exists;
-    // its StateFlow declarations register native properties during ViewModel initialization.
+    // Construct the Activity-scoped adapter; onMpvCoreInitialized() runs once libmpv actually boots.
     viewModel.attachHost(this)
     viewModelHostAttached = true
-    viewModel.onMpvCoreInitialized()
+    if (mpvInitialized) {
+      viewModel.onMpvCoreInitialized()
+    }
     MediaPlaybackService.createNotificationChannel(this)
     setupAudio()
     setupBackPressHandler()
@@ -2954,6 +2962,7 @@ class PlayerActivity :
     val sessionState = PlaybackSession.state.value
     val currentItem = sessionState.currentItem ?: PlaybackSession.queue.value.currentItem ?: return false
     if (sessionState.phase !in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return false
+    if (ensureMpvInitialized() != null) return false
 
     val queueState = PlaybackSession.queue.value
     playlist = queueState.items.map { item -> Uri.parse(NetworkPlaybackUri.normalize(item.originalUri)) }
@@ -3119,6 +3128,30 @@ class PlayerActivity :
    * Initializes the MPV player with the necessary paths and observers.
    * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
+  private fun shouldDeferMpvInitAtLaunch(launchIntent: Intent): Boolean {
+    if (PlaybackSession.isInitialized || reusingPlaybackSessionOnLaunch) return false
+    if (hasAttachableNotificationSession() || hasAttachableAudioSession(launchIntent)) return false
+    if (restoredAudioPlaybackSnapshot != null) return false
+    val rawMime = launchIntent.getStringExtra("mime_type") ?: launchIntent.type
+    val isAudioExtra =
+      launchIntent.getBooleanExtra("is_audio", false) ||
+        launchIntent.getBooleanExtra("media_library_audio", false) ||
+        rawMime?.startsWith("audio/", ignoreCase = true) == true
+    if (isAudioExtra) return false
+    if (isStreamTabPlayback) return true
+    return decoderPreferences.playbackEngine.get() == PlaybackEngineMode.NATIVE
+  }
+
+  private fun ensureMpvInitialized(): String? {
+    if (mpvInitialized) return null
+    val setupError = setupMPV()
+    if (setupError != null) return setupError
+    if (viewModelHostAttached) {
+      viewModel.onMpvCoreInitialized()
+    }
+    return null
+  }
+
   private fun setupMPV(): String? {
     // Prepare config and user MPV assets before initializing MPV.
     runCatching {
@@ -6364,6 +6397,10 @@ class PlayerActivity :
       setNativeVideoSurfaceVisible(false)
       binding.player.alpha = 1f
       binding.player.visibility = View.VISIBLE
+      val mpvInitError = ensureMpvInitialized()
+      if (mpvInitError != null) {
+        throw IllegalStateException("Failed to initialize MPV: $mpvInitError")
+      }
     }
     if (!PlaybackSession.awaitStopCompletion()) {
       throw IllegalStateException("Timed out waiting for previous playback to stop")
@@ -7288,12 +7325,10 @@ class PlayerActivity :
       setNativeVideoSurfaceVisible(false)
       binding.player.alpha = 1f
       binding.player.visibility = View.VISIBLE
-      if (!mpvInitialized) {
-        val setupError = setupMPV()
-        if (setupError != null) {
-          Log.e(TAG, "Unable to initialize MPV for Native background handoff: $setupError")
-          return false
-        }
+      val setupError = ensureMpvInitialized()
+      if (setupError != null) {
+        Log.e(TAG, "Unable to initialize MPV for Native background handoff: $setupError")
+        return false
       }
       if (mpvInitialized) {
         loadPlaylistItem(playlistIndex.coerceAtLeast(0))
