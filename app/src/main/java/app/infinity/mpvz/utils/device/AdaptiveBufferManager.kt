@@ -19,51 +19,99 @@ import android.util.Log
  */
 object AdaptiveBufferManager {
   private const val TAG = "mpvZero-AdaptiveBuffer"
+  private const val BYTES_PER_MB = 1024L * 1024L
+
+  internal data class DeviceMemorySpecs(
+    val totalRamMb: Int,
+    val maxHeapMb: Int,
+    val isLowRam: Boolean,
+  )
+
+  data class SystemMemoryStatus(
+    val availableRamMb: Long,
+    val isLowMemory: Boolean,
+  )
+
+  @Volatile
+  private var cachedSpecs: DeviceMemorySpecs? = null
+
+  internal fun getOrResolveSpecs(context: Context): DeviceMemorySpecs {
+    cachedSpecs?.let { return it }
+    synchronized(this) {
+      cachedSpecs?.let { return it }
+      val appCtx = context.applicationContext ?: context
+      val am = appCtx.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+      val memInfo = ActivityManager.MemoryInfo()
+      am?.getMemoryInfo(memInfo)
+      val totalRamMb = (memInfo.totalMem / BYTES_PER_MB).toInt().coerceAtLeast(0)
+      val maxHeapMb = getDalvikMaxHeapMb()
+      val isLowRam = am?.isLowRamDevice == true
+
+      val resolved = DeviceMemorySpecs(
+        totalRamMb = totalRamMb,
+        maxHeapMb = maxHeapMb,
+        isLowRam = isLowRam,
+      )
+      cachedSpecs = resolved
+
+      val mpvMb = computeMpvBufferMb(totalRamMb, isLowRam)
+      val dalvikMb = computeMedia3DalvikMb(maxHeapMb, isLowRam)
+      val streamMb = computeMedia3StreamMb(totalRamMb, isLowRam)
+      Log.i(
+        TAG,
+        "Resolved buffers: totalRAM=${totalRamMb}MB, maxHeap=${maxHeapMb}MB, isLowRam=$isLowRam -> " +
+          "MPV=${mpvMb}MB, Media3(Dalvik=${dalvikMb}MB + OffHeapStream=${streamMb}MB)",
+      )
+      return resolved
+    }
+  }
 
   /**
    * Returns total physical system RAM in megabytes.
    */
-  fun getTotalRamMb(context: Context): Int {
-    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-    val memInfo = ActivityManager.MemoryInfo()
-    am?.getMemoryInfo(memInfo)
-    return (memInfo.totalMem / (1024L * 1024L)).toInt()
-  }
+  fun getTotalRamMb(context: Context): Int = getOrResolveSpecs(context).totalRamMb
 
   /**
    * Returns maximum Dalvik Java heap size in megabytes.
    */
   fun getDalvikMaxHeapMb(): Int {
-    return (Runtime.getRuntime().maxMemory() / (1024L * 1024L)).toInt()
+    return (Runtime.getRuntime().maxMemory() / BYTES_PER_MB).toInt()
+  }
+
+  /**
+   * Queries dynamic available system RAM and Android low-memory signal for runtime guard checks.
+   */
+  fun querySystemMemoryStatus(context: Context): SystemMemoryStatus {
+    val appCtx = context.applicationContext ?: context
+    val am = appCtx.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+    if (am == null) {
+      return SystemMemoryStatus(availableRamMb = Long.MAX_VALUE, isLowMemory = false)
+    }
+    val memInfo = ActivityManager.MemoryInfo()
+    am.getMemoryInfo(memInfo)
+    return SystemMemoryStatus(
+      availableRamMb = (memInfo.availMem / BYTES_PER_MB).coerceAtLeast(0L),
+      isLowMemory = memInfo.lowMemory,
+    )
   }
 
   /**
    * Computes native RAM buffer in MB for MPV based on device physical RAM.
    * MPV allocates via 64-bit native malloc in Linux user space, unconstrained by Dalvik heap.
-   *
-   * Tiers:
-   * - >= 10.5 GB RAM (e.g. 12GB/16GB flagships): 1024 MB (1 GB)
-   * - >= 7.0 GB RAM (e.g. 8GB devices): 512 MB
-   * - >= 5.0 GB RAM (e.g. 6GB devices): 384 MB
-   * - >= 3.5 GB RAM (e.g. 4GB devices): 256 MB
-   * - Low RAM / < 3.5 GB: 128 MB
    */
   fun getMpvBufferMb(context: Context): Int {
-    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-    val memInfo = ActivityManager.MemoryInfo()
-    am?.getMemoryInfo(memInfo)
-    val totalRamMb = (memInfo.totalMem / (1024L * 1024L)).toInt()
-    val isLowRam = am?.isLowRamDevice == true || memInfo.lowMemory
+    val specs = getOrResolveSpecs(context)
+    return computeMpvBufferMb(specs.totalRamMb, specs.isLowRam)
+  }
 
-    val calculated = when {
+  internal fun computeMpvBufferMb(totalRamMb: Int, isLowRam: Boolean): Int {
+    return when {
       isLowRam || totalRamMb < 3500 -> 128
       totalRamMb < 5000 -> 256
       totalRamMb < 7000 -> 384
       totalRamMb < 10500 -> 512
       else -> 1024
     }
-    Log.d(TAG, "Resolved MPV buffer: ${calculated}MB (device RAM: ${totalRamMb}MB, isLowRam=$isLowRam)")
-    return calculated
   }
 
   /**
@@ -87,24 +135,47 @@ object AdaptiveBufferManager {
   }
 
   /**
-   * Computes safe Media3 (ExoPlayer) buffer target in MB.
-   * Media3 allocates byte[] segments inside the Dalvik Java heap (512MB growth limit on modern Android).
-   * We reserve at least 128MB for UI, Compose, Bitmaps, Decoders, and GC headroom.
-   *
-   * Hard upper bound is strictly 256MB to eliminate any risk of Dalvik OutOfMemoryError.
+   * Computes lean Media3 Dalvik sample-queue buffer target in MB.
+   * Heavy HTTP byte caching is offloaded off-heap via [getMedia3StreamBufferMb], keeping Dalvik
+   * sample queues lean (48-128MB) to eliminate OutOfMemoryError and GC pauses on 512MB heaps.
    */
   fun getMedia3BufferMb(context: Context): Int {
-    val maxHeapMb = getDalvikMaxHeapMb()
-    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-    val isLowRam = am?.isLowRamDevice == true
+    val specs = getOrResolveSpecs(context)
+    return computeMedia3DalvikMb(specs.maxHeapMb, specs.isLowRam)
+  }
 
-    val calculated = when {
-      isLowRam || maxHeapMb <= 192 -> 96
-      maxHeapMb <= 256 -> 128
-      maxHeapMb <= 384 -> 192
-      else -> 256
+  internal fun computeMedia3DalvikMb(maxHeapMb: Int, isLowRam: Boolean): Int {
+    return when {
+      isLowRam || maxHeapMb <= 192 -> 48
+      maxHeapMb <= 256 -> 64
+      maxHeapMb <= 384 -> 96
+      else -> 128
     }
-    Log.d(TAG, "Resolved Media3 buffer: ${calculated}MB (maxHeap: ${maxHeapMb}MB, isLowRam=$isLowRam)")
-    return calculated
+  }
+
+  /**
+   * Computes off-heap native stream ring buffer size in MB for Media3 HTTP/Remux streams.
+   * Stored in Android SharedMemory outside Dalvik heap, allocated lazily in 8MB slabs and freed on stop.
+   */
+  fun getMedia3StreamBufferMb(context: Context): Int {
+    val specs = getOrResolveSpecs(context)
+    return computeMedia3StreamMb(specs.totalRamMb, specs.isLowRam)
+  }
+
+  internal fun computeMedia3StreamMb(totalRamMb: Int, isLowRam: Boolean): Int {
+    return when {
+      isLowRam || totalRamMb < 3500 -> 0
+      totalRamMb < 5000 -> 128
+      totalRamMb < 7000 -> 256
+      totalRamMb < 10500 -> 384
+      else -> 512
+    }
+  }
+
+  /**
+   * Combined effective Media3 RAM buffer (Dalvik sample queue + off-heap stream ring) in MB.
+   */
+  fun getTotalMedia3BufferMb(context: Context): Int {
+    return getMedia3BufferMb(context) + getMedia3StreamBufferMb(context)
   }
 }

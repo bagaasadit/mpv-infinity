@@ -2214,8 +2214,10 @@ private fun NativeStatsPageOverlay(
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
-  val ramBufferMb = AdaptiveBufferManager.getMedia3BufferMb(context)
-  val maxBufferSecs = 30
+  val ramBufferMb = remember(context) { AdaptiveBufferManager.getTotalMedia3BufferMb(context) }
+  val maxBufferSecs = 120
+  val streamCachedMb = snapshot.streamBufferedBytes / (1024L * 1024L)
+  val streamCapMb = snapshot.streamBufferCapacityBytes / (1024L * 1024L)
   val quality = if (snapshot.videoWidth > 0 && snapshot.videoHeight > 0) {
     "${snapshot.videoWidth}×${snapshot.videoHeight}"
   } else {
@@ -2244,7 +2246,8 @@ private fun NativeStatsPageOverlay(
           Text("Bitrate: $videoBitrate · Duration: ${snapshot.durationMs / 1000}s", style = MaterialTheme.typography.bodySmall, color = Color.White)
           val aheadSecs = String.format("%.1f", snapshot.totalBufferedDurationMs / 1000.0)
           val bufferStatus = if (snapshot.isBuffering) "Buffering..." else if (snapshot.isLoading) "Buffering from network" else "Buffer ready"
-          Text("Buffer: ${aheadSecs}s ahead · $bufferStatus (target ${ramBufferMb}MB)", style = MaterialTheme.typography.bodySmall, color = Color.White)
+          val ringSuffix = if (streamCapMb > 0L) " · stream ${streamCachedMb}/${streamCapMb}MB" else ""
+          Text("Buffer: ${aheadSecs}s ahead · $bufferStatus (target ${ramBufferMb}MB$ringSuffix)", style = MaterialTheme.typography.bodySmall, color = Color.White)
         }
         2 -> {
           Text("Audio: $audioCodec · Decoder: $audioDecoder", style = MaterialTheme.typography.bodySmall, color = Color.White)
@@ -2506,22 +2509,29 @@ private fun CustomStatsPageSixOverlay(
             formatByteSize(fileCacheBytes),
           )
         }
-      val currentRamBufferMb = if (isNativeActive) {
-        AdaptiveBufferManager.getMedia3BufferMb(context)
-      } else {
-        AdaptiveBufferManager.getMpvBufferMb(context)
+      val currentRamBufferMb = remember(context, isNativeActive) {
+        if (isNativeActive) {
+          AdaptiveBufferManager.getTotalMedia3BufferMb(context)
+        } else {
+          AdaptiveBufferManager.getMpvBufferMb(context)
+        }
       }
-      val maxNativeBufferSecs = 30
-      val minNativeBufferSecs = 6
+      val maxNativeBufferSecs = 120
+      val minNativeBufferSecs = 3
+      val streamAheadMb = currentNativeSnapshot.streamBufferedBytes / (1024L * 1024L)
+      val streamCapMb = currentNativeSnapshot.streamBufferCapacityBytes / (1024L * 1024L)
       val cacheActivityText =
         if (isNativeActive) {
-          "RAM Buffer target=${currentRamBufferMb}MB · max=${maxNativeBufferSecs}s · state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"
+          val streamLabel = if (streamCapMb > 0L) " · offheap=${streamAheadMb}/${streamCapMb}MB" else ""
+          "RAM Buffer target=${currentRamBufferMb}MB$streamLabel · max=${maxNativeBufferSecs}s · " +
+            "state=${if (currentNativeSnapshot.isBuffering) "buffering" else if (currentNativeSnapshot.isPlaying) "playing" else "paused"}"
         } else {
           "$cachePauseState · $cacheActivity · in $cacheReadRateText"
         }
       val cacheOptionsText =
         if (isNativeActive) {
-          "engine=Native(ExoPlayer) · min=${minNativeBufferSecs}s · max=${maxNativeBufferSecs}s · RAM=${currentRamBufferMb}MB · ahead=${String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)}s"
+          "engine=Native(ExoPlayer) · min=${minNativeBufferSecs}s · max=${maxNativeBufferSecs}s · " +
+            "RAM=${currentRamBufferMb}MB · ahead=${String.format("%.1f", currentNativeSnapshot.totalBufferedDurationMs / 1000.0)}s"
         } else {
           "cache=$cacheMode · pause=${cachePause?.toString() ?: "?"} · wait=${cachePauseWait?.toString() ?: "?"} · " +
             "max=$cacheMaxText · " +

@@ -615,14 +615,21 @@ object AdvancedPreferencesScreen : Screen {
 
               val totalRamMb = AdaptiveBufferManager.getTotalRamMb(context)
               val mpvBufferMb = AdaptiveBufferManager.getMpvBufferMb(context)
-              val media3BufferMb = AdaptiveBufferManager.getMedia3BufferMb(context)
+              val media3DalvikMb = AdaptiveBufferManager.getMedia3BufferMb(context)
+              val media3StreamMb = AdaptiveBufferManager.getMedia3StreamBufferMb(context)
+              val media3TotalMb = media3DalvikMb + media3StreamMb
               val ramStr = if (totalRamMb >= 1024) "${"%.1f".format(totalRamMb / 1024f)} GB" else "$totalRamMb MB"
+              val media3Detail = if (media3StreamMb > 0) {
+                "${media3TotalMb}MB (${media3StreamMb}MB stream + ${media3DalvikMb}MB queue)"
+              } else {
+                "${media3TotalMb}MB"
+              }
 
               Preference(
                 title = { Text("Adaptive RAM Buffer") },
                 summary = {
                   Text(
-                    "Automatically tuned to device hardware ($ramStr RAM · MPV: ${mpvBufferMb}MB, Media3: ${media3BufferMb}MB)",
+                    "Automatically tuned to device hardware ($ramStr RAM · MPV: ${mpvBufferMb}MB, Media3: $media3Detail)",
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

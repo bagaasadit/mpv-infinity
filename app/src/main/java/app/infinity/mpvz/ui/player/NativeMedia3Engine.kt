@@ -56,8 +56,16 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import app.infinity.mpvz.ui.player.buffer.AndroidOffHeapSlabAllocator
+import app.infinity.mpvz.ui.player.buffer.AndroidSystemMemoryGuard
+import app.infinity.mpvz.ui.player.buffer.OffHeapStreamConfig
+import app.infinity.mpvz.ui.player.buffer.OffHeapStreamSessionManager
+import app.infinity.mpvz.ui.player.buffer.OkHttpStreamOpener
+import app.infinity.mpvz.ui.player.buffer.ReadAheadHttpDataSourceFactory
 import io.github.peerless2012.ass.media.AssHandler
 import io.github.peerless2012.ass.media.kt.withAssMkvSupport
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 import io.github.peerless2012.ass.media.kt.withAssSupport
 import io.github.peerless2012.ass.media.parser.AssSubtitleParserFactory
 import io.github.peerless2012.ass.media.type.AssRenderType
@@ -98,6 +106,8 @@ data class NativePlaybackSnapshot(
   val audioChannels: Int = 0,
   val audioSampleRate: Int = 0,
   val speed: Float = 1f,
+  val streamBufferedBytes: Long = 0L,
+  val streamBufferCapacityBytes: Long = 0L,
   val subtitleTracks: List<NativeTrack> = emptyList(),
   val audioTracks: List<NativeTrack> = emptyList(),
   val chapters: List<NativeChapter> = emptyList(),
@@ -140,6 +150,7 @@ class NativeMedia3Engine(
 ) : KoinComponent {
   private val audioPreferences: AudioPreferences by inject()
   private val playerPreferences: PlayerPreferences by inject()
+  private val okHttpClient: OkHttpClient by inject()
   private val engineScope = CoroutineScope(Dispatchers.Main.immediate)
   private val loopHandler = Handler(Looper.getMainLooper())
   private var dialogueBoostJob: Job? = null
@@ -149,8 +160,31 @@ class NativeMedia3Engine(
     .setAllowCrossProtocolRedirects(true)
     .setConnectTimeoutMs(15_000)
     .setReadTimeoutMs(30_000)
-  // Direct streaming into RAM without intermediate flash storage I/O thrashing on high-bitrate 4K streams
-  private val dataSourceFactory = DefaultDataSource.Factory(context.applicationContext, httpDataSourceFactory)
+  private val streamHttpClient = okHttpClient.newBuilder()
+    .connectTimeout(15, TimeUnit.SECONDS)
+    .readTimeout(30, TimeUnit.SECONDS)
+    .callTimeout(0, TimeUnit.MILLISECONDS)
+    .build()
+  private val offHeapStreamCapacityBytes =
+    AdaptiveBufferManager.getMedia3StreamBufferMb(context.applicationContext).toLong() * 1024L * 1024L
+  private val offHeapStreamConfig = OffHeapStreamConfig(capacityBytes = offHeapStreamCapacityBytes)
+  private val httpStreamOpener = OkHttpStreamOpener(streamHttpClient)
+  private val offHeapSessionManager = OffHeapStreamSessionManager(
+    config = offHeapStreamConfig,
+    opener = httpStreamOpener,
+    slabAllocator = AndroidOffHeapSlabAllocator,
+    memoryGuard = AndroidSystemMemoryGuard(
+      context = context.applicationContext,
+      minGuaranteedForwardBytes = offHeapStreamConfig.minGuaranteedForwardBytes,
+    ),
+  )
+  private val readAheadHttpDataSourceFactory = ReadAheadHttpDataSourceFactory(
+    upstreamFactory = httpDataSourceFactory,
+    sessionManager = offHeapSessionManager,
+    opener = httpStreamOpener,
+  )
+  // Direct streaming into off-heap SharedMemory + lean Dalvik queue without flash I/O thrashing
+  private val dataSourceFactory = DefaultDataSource.Factory(context.applicationContext, readAheadHttpDataSourceFactory)
   private val assHandler = AssHandler(renderType = AssRenderType.OVERLAY_CANVAS)
   private val assSubtitleParserFactory = AssSubtitleParserFactory(assHandler)
 
@@ -216,15 +250,11 @@ class NativeMedia3Engine(
   private val player = ExoPlayer.Builder(context.applicationContext)
     .setLoadControl(
       run {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
-        val memInfo = android.app.ActivityManager.MemoryInfo().also { activityManager?.getMemoryInfo(it) }
-        val totalMemMb = (memInfo.totalMem / (1024 * 1024)).coerceAtLeast(1024L)
-        val isLowRam = activityManager?.isLowRamDevice == true || totalMemMb < 3500L
-        val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).coerceAtLeast(64L)
-        val startBufferMs = if (isLowRam) 1_500 else 2_500
-
+        val specs = AdaptiveBufferManager.getOrResolveSpecs(context.applicationContext)
+        val startBufferMs = if (specs.isLowRam || specs.totalRamMb < 3500) 1_500 else 2_000
+        val targetDalvikMb = AdaptiveBufferManager.computeMedia3DalvikMb(specs.maxHeapMb, specs.isLowRam)
         val allocator = DefaultAllocator(true, androidx.media3.common.C.DEFAULT_BUFFER_SEGMENT_SIZE)
-        DynamicLoadControl(context.applicationContext, allocator, startBufferMs)
+        DynamicLoadControl(targetDalvikMb, allocator, startBufferMs)
       },
     )
     // Xiaomi's 4K HDR decoder can report no loading progress while the SurfaceView and codec are
@@ -517,7 +547,11 @@ class NativeMedia3Engine(
     player.setHandleAudioBecomingNoisy(false) // PlayerActivity manages noisyReceiver
     assHandler.init(player)
     startAudioOutputTracking()
-    Log.i(logTag, "Native Media3 configured: stuckBufferingDetectionTimeoutMs=${Int.MAX_VALUE}")
+    Log.i(
+      logTag,
+      "Native Media3 configured: stuckBufferingDetectionTimeoutMs=120000, " +
+        "offHeapStreamMb=${offHeapStreamCapacityBytes / (1024L * 1024L)}",
+    )
     // Large UHD/Dolby Vision files can take a long time to decode an exact frame after a seek.
     // Start at the nearest keyframe so the decoder can resume immediately and refill forward.
     player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
@@ -1210,7 +1244,8 @@ class NativeMedia3Engine(
       surface.scaleX = 1f
       surface.scaleY = 1f
     }
-    httpDataSourceFactory.setDefaultRequestProperties(headers)
+    offHeapSessionManager.releaseAll()
+    readAheadHttpDataSourceFactory.setDefaultRequestProperties(headers)
     val mediaItem =
       MediaItem.Builder()
         .setUri(mediaUri)
@@ -1566,6 +1601,7 @@ class NativeMedia3Engine(
     if (currentDur > 0L) lastKnownDurationMs = currentDur
     player.stop()
     player.clearMediaItems()
+    offHeapSessionManager.releaseAll()
     _subtitleCueText.value = ""
     selectedNativeSubtitleKey = null
     selectedNativeSubtitleSelection = null
@@ -1614,6 +1650,7 @@ class NativeMedia3Engine(
     attachedView = null
     assHandler.release()
     player.release()
+    offHeapSessionManager.releaseAll()
   }
 
   private fun publishSnapshot() {
@@ -1704,15 +1741,25 @@ class NativeMedia3Engine(
     val currentPos = (pendingSeekDisplayPositionMs ?: player.currentPosition).coerceAtLeast(0L)
     if (currentPos > 0L) lastKnownPositionMs = currentPos
     _positionMs.value = currentPos
+    val resolvedVideoBitrate = declaredVideoBitrate.takeIf { it > 0 } ?: estimatedVideoBitrate
+    val resolvedAudioBitrate = audio?.bitrate?.takeIf { it > 0 } ?: 0
+    val streamAheadBytes = offHeapSessionManager.totalBufferedAheadBytes()
+    val combinedBufferedMs = computeCombinedBufferedDurationMs(
+      exoplayerBufferedMs = player.totalBufferedDuration.coerceAtLeast(0L),
+      streamAheadBytes = streamAheadBytes,
+      bitrateBps = resolvedVideoBitrate + resolvedAudioBitrate,
+      positionMs = currentPos,
+      durationMs = reportedDurationMs,
+    )
     _snapshot.value = NativePlaybackSnapshot(
       isPlaying = player.isPlaying,
       isReady = player.playbackState == Player.STATE_READY,
       isBuffering = player.playbackState == Player.STATE_BUFFERING,
-      isLoading = player.isLoading,
+      isLoading = player.isLoading || offHeapSessionManager.isActivelyDownloading(),
       isEnded = player.playbackState == Player.STATE_ENDED,
       positionMs = currentPos,
       durationMs = reportedDurationMs,
-      totalBufferedDurationMs = player.totalBufferedDuration.coerceAtLeast(0L),
+      totalBufferedDurationMs = combinedBufferedMs,
       videoWidth = video?.width ?: 0,
       videoHeight = video?.height ?: 0,
       videoMimeType = video?.sampleMimeType,
@@ -1721,12 +1768,14 @@ class NativeMedia3Engine(
       audioDecoder = audioDecoderName,
       videoDynamicRange = dynamicRange,
       videoColorSpace = colorSpace,
-      videoBitrate = declaredVideoBitrate.takeIf { it > 0 } ?: estimatedVideoBitrate,
+      videoBitrate = resolvedVideoBitrate,
       audioCodec = audio?.codecs ?: audio?.sampleMimeType,
-      audioBitrate = audio?.bitrate?.takeIf { it > 0 } ?: 0,
+      audioBitrate = resolvedAudioBitrate,
       audioChannels = audio?.channelCount ?: 0,
       audioSampleRate = audio?.sampleRate ?: 0,
       speed = player.playbackParameters.speed,
+      streamBufferedBytes = streamAheadBytes,
+      streamBufferCapacityBytes = offHeapSessionManager.capacityBytes,
       subtitleTracks = subtitles,
       audioTracks = audioTracks,
       chapters = chapters,
@@ -1746,9 +1795,16 @@ class NativeMedia3Engine(
     val isPlaying = player.isPlaying
     val isReady = player.playbackState == Player.STATE_READY
     val isBuffering = player.playbackState == Player.STATE_BUFFERING
-    val isLoading = player.isLoading
+    val isLoading = player.isLoading || offHeapSessionManager.isActivelyDownloading()
     val isEnded = player.playbackState == Player.STATE_ENDED
-    val buffered = player.totalBufferedDuration.coerceAtLeast(0L)
+    val streamAheadBytes = offHeapSessionManager.totalBufferedAheadBytes()
+    val buffered = computeCombinedBufferedDurationMs(
+      exoplayerBufferedMs = player.totalBufferedDuration.coerceAtLeast(0L),
+      streamAheadBytes = streamAheadBytes,
+      bitrateBps = previous.videoBitrate + previous.audioBitrate,
+      positionMs = currentPos,
+      durationMs = reportedDurationMs,
+    )
     val speed = player.playbackParameters.speed
 
     val prevChapterIdx = previous.chapters.indexOfLast { it.startSeconds <= previous.positionMs / 1000f }
@@ -1763,6 +1819,7 @@ class NativeMedia3Engine(
       previous.speed == speed &&
       previous.durationMs == reportedDurationMs &&
       kotlin.math.abs(previous.totalBufferedDurationMs - buffered) < 500L &&
+      kotlin.math.abs(previous.streamBufferedBytes - streamAheadBytes) < 1_048_576L &&
       !chapterChanged
     ) {
       return
@@ -1778,7 +1835,29 @@ class NativeMedia3Engine(
       durationMs = reportedDurationMs,
       totalBufferedDurationMs = buffered,
       speed = speed,
+      streamBufferedBytes = streamAheadBytes,
+      streamBufferCapacityBytes = offHeapSessionManager.capacityBytes,
     )
+  }
+
+  private fun computeCombinedBufferedDurationMs(
+    exoplayerBufferedMs: Long,
+    streamAheadBytes: Long,
+    bitrateBps: Int,
+    positionMs: Long,
+    durationMs: Long,
+  ): Long {
+    val streamAheadMs = if (streamAheadBytes > 0L && bitrateBps > 0) {
+      ((streamAheadBytes * 8_000L) / bitrateBps).coerceIn(0L, 600_000L)
+    } else {
+      0L
+    }
+    val combined = exoplayerBufferedMs + streamAheadMs
+    return if (durationMs > 0L) {
+      combined.coerceAtMost((durationMs - positionMs).coerceAtLeast(0L))
+    } else {
+      combined
+    }
   }
 
   private fun metadataEntriesToChapters(metadata: Metadata): List<NativeChapter> =
@@ -1842,78 +1921,61 @@ class NativeMedia3Engine(
  * Queries [AdaptiveBufferManager.getMedia3BufferMb] live on every loading cycle.
  */
 private class DynamicLoadControl(
-  private val context: Context,
+  targetDalvikMb: Int,
   private val allocator: DefaultAllocator,
   startBufferMs: Int,
 ) : DefaultLoadControl(
   allocator,
   /* minBufferMs = */ 3_000,
   /* minBufferForLocalPlaybackMs = */ 3_000,
-  /* maxBufferMs = */ 30_000,
-  /* maxBufferForLocalPlaybackMs = */ 30_000,
+  /* maxBufferMs = */ 120_000,
+  /* maxBufferForLocalPlaybackMs = */ 120_000,
   /* bufferForPlaybackMs = */ startBufferMs,
   /* bufferForPlaybackForLocalPlaybackMs = */ startBufferMs,
-  /* bufferForPlaybackAfterRebufferMs = */ 2_500,
-  /* bufferForPlaybackAfterRebufferForLocalPlaybackMs = */ 2_500,
-  /* targetBufferBytes = */ 256 * 1024 * 1024,
+  /* bufferForPlaybackAfterRebufferMs = */ 2_000,
+  /* bufferForPlaybackAfterRebufferForLocalPlaybackMs = */ 2_000,
+  /* targetBufferBytes = */ targetDalvikMb * 1024 * 1024,
   /* prioritizeTimeOverSizeThresholds = */ false,
   /* prioritizeTimeOverSizeThresholdsForLocalPlayback = */ false,
-  /* backBufferDurationMs = */ 15_000,
+  /* backBufferDurationMs = */ 2_000,
   /* retainBackBufferFromKeyframe = */ false,
 ) {
-  private var lastAppliedMb = -1
+  private val bufferTargetBytes = targetDalvikMb.toLong() * 1024L * 1024L
+
+  init {
+    allocator.setTargetBufferSize(bufferTargetBytes.toInt())
+  }
 
   override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
-    val adaptiveMedia3Mb = AdaptiveBufferManager.getMedia3BufferMb(context)
-
-    val runtime = Runtime.getRuntime()
-    val maxHeap = runtime.maxMemory()
-    val usedHeap = runtime.totalMemory() - runtime.freeMemory()
-    val freeHeap = (maxHeap - usedHeap).coerceAtLeast(0L)
-
-    // Media3 allocates in Dalvik Java heap (512MB growth limit on Android).
-    // Reserve at least 128MB for Compose UI, Bitmaps, decoders, and GC headroom.
-    val maxSafeBytes = (maxHeap - 128L * 1024L * 1024L).coerceIn(32L * 1024L * 1024L, 256L * 1024L * 1024L)
-    val bufferTargetBytes = minOf(adaptiveMedia3Mb.toLong() * 1024L * 1024L, maxSafeBytes)
-
-    if (adaptiveMedia3Mb != lastAppliedMb) {
-      lastAppliedMb = adaptiveMedia3Mb
-      allocator.setTargetBufferSize(bufferTargetBytes.toInt())
-      allocator.trim()
-      Log.i(
-        "mpvZero-DynamicBuffer",
-        "Adaptive RAM Buffer applied: target=${adaptiveMedia3Mb}MB (freeHeap=${freeHeap / (1024 * 1024)}MB)",
-      )
-    }
-
-    // 1. Hard Dalvik Heap Ceiling (256MB Hard Cap):
-    // If allocated buffer exceeds bufferTargetBytes, STOP LOADING immediately.
-    // Continuing beyond this point will throw Dalvik OutOfMemoryError.
+    // 1. Hard Dalvik sample-queue ceiling (48-128MB); heavy bytes sit off-heap in SharedMemory.
     if (allocator.totalBytesAllocated.toLong() >= bufferTargetBytes) {
       return false
     }
 
-    // 2. JVM Heap Headroom Guardian:
-    // If available free heap drops dangerously low (<64MB), trim allocator and stop loading.
-    if (freeHeap < 64L * 1024L * 1024L) {
-      allocator.trim()
-      return false
-    }
-
-    // 3. Time Ceiling Guardian (max 30s buffer ahead):
-    if (parameters.bufferedDurationUs >= 30_000_000L) {
-      return false
-    }
-
-    // 4. Minimum Buffer Refill Trigger:
-    if (parameters.bufferedDurationUs < 6_000_000L) {
+    // 2. Minimum starvation guard checked BEFORE soft heap headroom so decoded sample queue
+    // never drops to 0 and triggers StuckPlayerException / unintended MPV fallback.
+    val bufferedUs = parameters.bufferedDurationUs
+    if (bufferedUs < 3_000_000L) {
       return true
+    }
+
+    // 3. Soft Dalvik heap headroom guardian (>= 96MB reserved for UI, bitmaps, codecs & GC).
+    val runtime = Runtime.getRuntime()
+    val usedHeap = runtime.totalMemory() - runtime.freeMemory()
+    val freeHeap = (runtime.maxMemory() - usedHeap).coerceAtLeast(0L)
+    if (freeHeap < 96L * 1024L * 1024L) {
+      return false
+    }
+
+    // 4. Time ceiling guard (max 120s sample queue ahead).
+    if (bufferedUs >= 120_000_000L) {
+      return false
     }
 
     return super.shouldContinueLoading(parameters)
   }
 
   override fun getBackBufferDurationUs(playerId: PlayerId): Long {
-    return 15_000_000L
+    return 2_000_000L
   }
 }
