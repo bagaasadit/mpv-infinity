@@ -655,6 +655,9 @@ class OffHeapReadAheadBufferTest {
       assertTrue(manager.allocatedOffHeapBytes() <= 4096L)
     } finally {
       manager.releaseAll()
+      waitUntil {
+        manager.allocatedOffHeapBytes() == 0L && allocator.openSlabCount.get() == 0
+      }
       assertEquals(0L, manager.allocatedOffHeapBytes())
       assertEquals(0, allocator.openSlabCount.get())
     }

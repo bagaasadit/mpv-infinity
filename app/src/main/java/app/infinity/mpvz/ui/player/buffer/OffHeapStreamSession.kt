@@ -716,6 +716,8 @@ internal class OffHeapStreamSession(
           continue
         }
 
+        if (lock.withLock { closed || generation != myGen }) return false
+
         val newSlab = try {
           slabAllocator.allocate(slabSizeBytes)
         } catch (t: Throwable) {
