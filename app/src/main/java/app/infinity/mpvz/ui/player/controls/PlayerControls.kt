@@ -2509,12 +2509,10 @@ private fun CustomStatsPageSixOverlay(
             formatByteSize(fileCacheBytes),
           )
         }
-      val currentRamBufferMb = remember(context, isNativeActive) {
-        if (isNativeActive) {
-          AdaptiveBufferManager.getTotalMedia3BufferMb(context)
-        } else {
-          AdaptiveBufferManager.getMpvBufferMb(context)
-        }
+      val currentRamBufferMb = if (isNativeActive) {
+        AdaptiveBufferManager.getTotalMedia3BufferMb(context)
+      } else {
+        AdaptiveBufferManager.getMpvBufferMb(context)
       }
       val maxNativeBufferSecs = 120
       val minNativeBufferSecs = 3
